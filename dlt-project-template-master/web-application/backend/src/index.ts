@@ -124,6 +124,6 @@ async function main() {
 }
 
 main().catch(function (ex) {
-    console.error(ex);
+    Monitor.exception(ex);
     process.exit(1);
 });

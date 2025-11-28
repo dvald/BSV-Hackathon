@@ -126,7 +126,7 @@ export class CrowdfundingController extends Controller {
      * @returns {ErrorResponse.model} 400 - Bad Request
      */
     public async handleInvest(request: Express.Request, response: Express.Response, next: Express.NextFunction) {
-        console.log("[DEBUG] HandleInvest - Start");
+        Monitor.debug("HandleInvest - Start");
 
         const bsvService = BsvService.getInstance();
         const wallet = bsvService.getWallet();
@@ -166,7 +166,7 @@ export class CrowdfundingController extends Controller {
                         req.auth.identityKey = paymentData.senderIdentityKey;
                     }
                 } catch (e) {
-                    console.error("[DEBUG] Failed to parse payment header:", e);
+                    Monitor.error(`Failed to parse payment header: ${e}`);
                 }
             }
 

@@ -1,5 +1,7 @@
 "use strict";
 
+import { Monitor } from "../monitor";
+
 /**
  * BSV configuration.
  */
@@ -15,9 +17,9 @@ export class BsvConfig {
 
         const config: BsvConfig = new BsvConfig();
 
-        console.log("[BSV_CONFIG] Initializing BsvConfig...");
-        console.log("[BSV_CONFIG] process.env.BSV_PRIVATE_KEY length:", process.env.BSV_PRIVATE_KEY ? process.env.BSV_PRIVATE_KEY.length : "undefined");
-        console.log("[BSV_CONFIG] process.env.BSV_NETWORK:", process.env.BSV_NETWORK);
+        Monitor.debug("Initializing BsvConfig...");
+        Monitor.debug(`BSV_PRIVATE_KEY length: ${process.env.BSV_PRIVATE_KEY ? process.env.BSV_PRIVATE_KEY.length : "undefined"}`);
+        Monitor.debug(`BSV_NETWORK: ${process.env.BSV_NETWORK}`);
         config.privateKey = process.env.BSV_PRIVATE_KEY || "";
         config.network = process.env.BSV_NETWORK || "main";
 

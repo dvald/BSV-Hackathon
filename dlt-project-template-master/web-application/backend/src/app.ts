@@ -44,7 +44,7 @@ export class MainWebApplication {
         this.application = Express();
 
         // Cors
-        console.log("[CORS] Allowed Origins:", Config.getInstance().allowedOrigins);
+        Monitor.debug(`CORS Allowed Origins: ${JSON.stringify(Config.getInstance().allowedOrigins)}`);
         this.application.use(CORS({
             origin: Config.getInstance().allowedOrigins,
             credentials: true,
