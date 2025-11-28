@@ -30,6 +30,9 @@ export class AuthController {
     public static ProfileName = "";
     public static ProfileImage = "";
 
+    public static WalletProvider = "";
+    public static WalletIdentityKey = "";
+
     public static Loading = true;
 
     public static FirstTimeLoaded = false;
@@ -76,6 +79,8 @@ export class AuthController {
                 AuthController.ProfileName = response.profileName;
                 AuthController.ProfileImage = response.profileImage;
                 AuthController.Locale = response.locale;
+                AuthController.WalletProvider = response.walletProvider || "";
+                AuthController.WalletIdentityKey = response.walletIdentityKey || "";
                 AuthController.FirstTimeLoaded = true;
                 AppEvents.Emit("auth-status-changed");
                 AppEvents.Emit("auth-status-loading", false);

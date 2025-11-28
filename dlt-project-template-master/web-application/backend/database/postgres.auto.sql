@@ -84,12 +84,15 @@ CREATE TABLE "users" (
     "tfa" BOOLEAN,
     "tfa_secret" VARCHAR(255),
     "created" BIGINT,
-    "locale" VARCHAR(255)
+    "locale" VARCHAR(255),
+    "wallet_provider" VARCHAR(255),
+    "wallet_identity_key" VARCHAR(255)
 );
 
 CREATE UNIQUE INDEX "ix_users_s_1" ON "users"("username_lower_case");
 CREATE UNIQUE INDEX "ix_users_s_2" ON "users"("email");
 CREATE INDEX "ix_users_s_3" ON "users"("role");
+CREATE UNIQUE INDEX "ix_users_s_4" ON "users"("wallet_identity_key");
 
 CREATE TABLE "wallets" (
     "id" VARCHAR(255) PRIMARY KEY,

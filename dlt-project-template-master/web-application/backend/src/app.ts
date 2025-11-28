@@ -47,8 +47,9 @@ export class MainWebApplication {
         console.log("[CORS] Allowed Origins:", Config.getInstance().allowedOrigins);
         this.application.use(CORS({
             origin: Config.getInstance().allowedOrigins,
+            credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'x-bsv-payment', 'x-session-id'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'x-bsv-payment', 'x-session-id', 'x-identity-key'],
             exposedHeaders: ['x-bsv-payment-derivation-prefix', 'x-bsv-payment-derivation-suffix', 'x-bsv-payment-satoshis']
         }));
 

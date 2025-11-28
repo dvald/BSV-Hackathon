@@ -45,6 +45,11 @@
                             icon: 'fas fa-user-lock',
                         },
                         {
+                            id: 'bsv-wallet',
+                            name: $t('BSV Wallet Identity'),
+                            icon: 'fas fa-wallet',
+                        },
+                        {
                             id: 'devices',
                             name: $t('Active sessions'),
                             icon: 'fas fa-desktop',
@@ -86,6 +91,7 @@
             <ChangeEmailPage v-else-if="current === 'email'"></ChangeEmailPage>
             <ChangePasswordPage v-else-if="current === 'password'"></ChangePasswordPage>
             <TwoFactorAuthenticationPage v-else-if="current === 'tfa'"></TwoFactorAuthenticationPage>
+            <LinkWalletPage v-else-if="current === 'bsv-wallet'"></LinkWalletPage>
             <ActiveSessionsPage v-else-if="current === 'devices'"></ActiveSessionsPage>
             <WalletsListPage v-else-if="current === 'wallets'"></WalletsListPage>
             <CreateWalletPage v-else-if="current === 'create-wallet'"></CreateWalletPage>
@@ -162,6 +168,12 @@ const DeleteAccountPage = defineAsyncComponent({
     delay: 1000,
 });
 
+const LinkWalletPage = defineAsyncComponent({
+    loader: () => import("./LinkWalletPage.vue"),
+    loadingComponent: ComponentLoader,
+    delay: 1000,
+});
+
 export default defineComponent({
     components: {
         VerticalMenuPageLayout,
@@ -172,6 +184,7 @@ export default defineComponent({
         ChangeEmailPage,
         ChangePasswordPage,
         TwoFactorAuthenticationPage,
+        LinkWalletPage,
         ActiveSessionsPage,
         WalletsListPage,
         CreateWalletPage,

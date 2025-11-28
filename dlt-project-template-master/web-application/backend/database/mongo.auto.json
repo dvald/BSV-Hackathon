@@ -109,6 +109,16 @@
             ]
         },
         {
+            "collection": "users",
+            "unique": true,
+            "fields": [
+                {
+                    "name": "walletIdentityKey",
+                    "dir": ""
+                }
+            ]
+        },
+        {
             "collection": "wallets",
             "unique": false,
             "fields": [

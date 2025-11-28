@@ -47,6 +47,12 @@
                         <a :href="tp.url"> {{ $t("Login with") }} {{ tp.name }} </a>
                     </p>
                 </div>
+                
+                <!-- BSV Wallet Login -->
+                <div class="wallet-login-section">
+                    <WalletLoginButton />
+                </div>
+                
                 <p>
                     <router-link class="link-deco" :to="{ name: 'signup' }">{{ $t("Create an account") }}</router-link>
                 </p>
@@ -81,6 +87,7 @@ import CookiesModal from "@/components/modals/CookiesModal.vue";
 import ChangeLanguageModal from "@/components/modals/ChangeLanguageModal.vue";
 import { getUniqueStringId } from "@/utils/unique-id";
 import { Timeouts } from "@/utils/timeout";
+import WalletLoginButton from "@/components/wallet/WalletLoginButton.vue";
 
 export default defineComponent({
     components: {
@@ -88,6 +95,7 @@ export default defineComponent({
         ChangeLanguageModal,
         PasswordInput,
         CookiesModal,
+        WalletLoginButton,
     },
     name: "LoginPage",
     setup: function () {

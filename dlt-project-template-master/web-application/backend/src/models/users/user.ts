@@ -254,6 +254,12 @@ export class User extends DataModel {
     // User locale
     public locale: string;
 
+    // BSV Wallet authentication (optional)
+    public walletProvider: string;
+
+    /* db-index-unique: walletIdentityKey */
+    public walletIdentityKey: string;
+
     // Constructor
 
     constructor(data: TypedRow<User>) {
@@ -281,6 +287,9 @@ export class User extends DataModel {
 
         this.created = enforceType(data.created, "int") || 0;
         this.locale = data.locale || "";
+
+        this.walletProvider = data.walletProvider || null;
+        this.walletIdentityKey = data.walletIdentityKey || null;
 
         this.init();
     }

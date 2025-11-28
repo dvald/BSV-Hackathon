@@ -991,6 +991,16 @@ export interface AuthenticationContext {
      * Profile image URL
      */
     profileImage?: string;
+
+    /**
+     * Wallet provider (e.g., 'bsv-metanet')
+     */
+    walletProvider?: string;
+
+    /**
+     * Wallet identity key (public key)
+     */
+    walletIdentityKey?: string;
 }
 
 export interface AuthenticationContextError {
@@ -1354,6 +1364,32 @@ export interface ResetPasswordErrorBadRequest {
     /**
      * Error Code:
      *  - WEAK_PASSWORD: Password too short
+     */
+    code: string;
+}
+
+export interface WalletLoginResponse {
+    /**
+     * User ID
+     */
+    uid: string;
+
+    /**
+     * Session ID
+     */
+    session_id: string;
+}
+
+export interface WalletLoginError {
+    /**
+     * Error codes:\n - WALLET_NOT_CONFIGURED: BSV wallet not available\n - NO_IDENTITY_KEY: Could not extract identity key from request\n - INTERNAL_ERROR: Server error
+     */
+    code: string;
+}
+
+export interface LinkWalletError {
+    /**
+     * Error codes:\n - WALLET_NOT_CONFIGURED: BSV wallet not available\n - NO_IDENTITY_KEY: Could not extract identity key\n - ALREADY_LINKED: This wallet is already linked to another account\n - INTERNAL_ERROR: Server error
      */
     code: string;
 }

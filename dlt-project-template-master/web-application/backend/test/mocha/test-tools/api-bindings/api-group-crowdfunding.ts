@@ -8,6 +8,25 @@ import { WalletInfo, CrowdfundingStatus, InvestmentResponse } from "./definition
 
 export class ApiCrowdfunding {
     /**
+     * Method: POST
+     * Path: /api/v1/bsv/complete
+     * Completes the crowdfunding campaign
+     * @returns The request parameters
+     */
+    public static CompleteCrowdfunding(): RequestParams<void, CommonErrorHandler> {
+        return {
+            method: "POST",
+            url: getApiUrl(`/api/v1/bsv/complete`),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
+
+    /**
      * Method: GET
      * Path: /api/v1/bsv/wallet-info
      * Returns backend wallet's identity key
@@ -59,6 +78,25 @@ export class ApiCrowdfunding {
                 new RequestErrorHandler()
                     .add(402, "*", handler.status402)
                     .add(400, "*", handler.badRequest)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
+
+    /**
+     * Method: POST
+     * Path: /api/v1/bsv/reset
+     * Resets the crowdfunding campaign
+     * @returns The request parameters
+     */
+    public static ResetCrowdfunding(): RequestParams<void, CommonErrorHandler> {
+        return {
+            method: "POST",
+            url: getApiUrl(`/api/v1/bsv/reset`),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
                     .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
                     .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
                     .handle(err);

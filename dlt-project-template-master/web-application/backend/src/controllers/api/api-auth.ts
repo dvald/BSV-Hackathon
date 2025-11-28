@@ -19,6 +19,7 @@ import { UserProfile } from "../../models/users/user-profile";
 import { FileStorageService } from "../../services/file-storage";
 import { InternationalizationService, DEFAULT_LOCALE } from "../../services/i18n-service";
 import { GoogleLoginService } from "../../services/google-login-service";
+import { WalletAuthService } from "../../services/wallet-auth-service";
 
 /**
  * Authentication API
@@ -52,6 +53,10 @@ export class AuthController extends Controller {
         application.get(prefix + "/auth/tp", ensureObjectBody(noCache(this.thirdPartyLoginDetails.bind(this))));
         application.post(prefix + "/auth/login/tp", ensureObjectBody(this.thirdPartyLogin.bind(this)));
         application.post(prefix + "/auth/signup/tp", ensureObjectBody(this.thirdPartyRegister.bind(this)));
+
+        // BSV Wallet authentication
+        application.post(prefix + "/auth/login-wallet", this.loginWithWallet.bind(this));
+        application.post(prefix + "/auth/link-wallet", this.linkWallet.bind(this));
     }
 
     /**
@@ -71,6 +76,8 @@ export class AuthController extends Controller {
      * @property {string} locale - User locale
      * @property {string} profileName - Profile name
      * @property {string} profileImage - Profile image URL
+     * @property {string} walletProvider - Wallet provider (e.g., 'bsv-metanet')
+     * @property {string} walletIdentityKey - Wallet identity key (public key)
      */
 
     /**
@@ -130,6 +137,8 @@ export class AuthController extends Controller {
             locale: user ? user.locale : "",
             profileName: profile ? profile.name : "",
             profileImage: profile ? FileStorageService.getInstance().getStaticFileURL(profile.image) : "",
+            walletProvider: user ? user.walletProvider : "",
+            walletIdentityKey: user ? user.walletIdentityKey : "",
         });
     }
 
@@ -490,7 +499,7 @@ export class AuthController extends Controller {
             return;
         }
 
-        const email = userTp.tpEmail ? userTp.tpEmail :(request.body.email || "").toLowerCase();
+        const email = userTp.tpEmail ? userTp.tpEmail : (request.body.email || "").toLowerCase();
 
         if (!email || !validateEmail(email)) {
             sendApiError(
@@ -1074,6 +1083,194 @@ export class AuthController extends Controller {
                 NOT_FOUND,
                 "INVALID_RESET_CODE",
                 "The client provided an invalid password reset code",
+            );
+        }
+    }
+
+    /**
+     * @typedef WalletLoginResponse
+     * @property {string} uid.required - User ID
+     * @property {string} session_id.required - Session ID
+     */
+
+    /**
+     * @typedef WalletLoginError
+     * @property {string} code.required - Error codes:\n - WALLET_NOT_CONFIGURED: BSV wallet not available\n - NO_IDENTITY_KEY: Could not extract identity key from request\n - INTERNAL_ERROR: Server error
+     */
+
+    /**
+     * Login or register with BSV Wallet (Metanet Desktop)
+     * Binding: LoginWithWallet
+     * @route POST /auth/login-wallet
+     * @group auth
+     * @returns {WalletLoginResponse.model} 200 - Success (new user or existing user logged in)
+     * @returns {WalletLoginError.model} 400 - Bad request
+     * @returns {WalletLoginError.model} 500 - Internal server error
+     */
+    public async loginWithWallet(request: Express.Request, response: Express.Response) {
+        // For development, accept identity key directly from the request
+        // TODO: In production, use full BRC-103/104 signature verification with middleware
+
+        const identityKey = request.headers['x-identity-key'] as string || request.body?.identityKey;
+
+        request.logger.info("=== LOGIN WITH WALLET DEBUG ===");
+        request.logger.info(`Identity key from header: ${request.headers['x-identity-key']}`);
+        request.logger.info(`Identity key from body: ${request.body?.identityKey}`);
+        request.logger.info(`Final identity key: ${identityKey}`);
+
+        if (!identityKey) {
+            sendApiError(
+                request,
+                response,
+                BAD_REQUEST,
+                "NO_IDENTITY_KEY",
+                "Wallet identity key is required",
+            );
+            return;
+        }
+
+        try {
+            // Find or create user by wallet identity
+            const walletAuthService = WalletAuthService.getInstance();
+            const user = await walletAuthService.findOrCreateUserByWallet(identityKey, request.getLocale());
+
+            request.logger.info(`Found/created user: ${user.id} (${user.username})`);
+            request.logger.info(`User wallet fields: provider=${user.walletProvider}, key=${user.walletIdentityKey}`);
+
+            // Check if user is banned
+            if (user.banned) {
+                sendApiError(
+                    request,
+                    response,
+                    FORBIDDEN,
+                    "USER_BANNED",
+                    "The user associated with this wallet is banned",
+                );
+                return;
+            }
+
+            // Create session
+            const session = await walletAuthService.createWalletSession(user, request);
+            response.cookie("session_id", session.getSession(), { path: "/" });
+
+            sendApiResult(request, response, {
+                uid: user.id,
+                session_id: session.getSession(),
+            });
+        } catch (ex) {
+            request.logger.error("Wallet login error:", ex);
+            sendApiError(
+                request,
+                response,
+                INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+                ex.message,
+            );
+        }
+    }
+
+    /**
+     * @typedef LinkWalletError
+     * @property {string} code.required - Error codes:\n - WALLET_NOT_CONFIGURED: BSV wallet not available\n - NO_IDENTITY_KEY: Could not extract identity key\n - ALREADY_LINKED: This wallet is already linked to another account\n - INTERNAL_ERROR: Server error
+     */
+
+    /**
+     * Link BSV Wallet to the current authenticated user account
+     * Binding: LinkWallet
+     * @route POST /auth/link-wallet
+     * @group auth
+     * @returns {void} 200 - Success, wallet linked to account
+     * @returns {LinkWalletError.model} 400 - Bad request
+     * @returns {LinkWalletError.model} 403 - Wallet already linked
+     * @returns {void} 401 - Must be logged in
+     * @security AuthToken
+     */
+    public async linkWallet(request: Express.Request, response: Express.Response) {
+        // Debug: log cookies and headers
+        request.logger.debug("Link wallet request - Cookies:", request.cookies);
+        request.logger.debug("Link wallet request - Headers x-session-id:", { sessionId: request.headers['x-session-id'] });
+
+        // Verify user is authenticated with classic session
+        const session = await UsersService.getInstance().session(request, false);
+        if (!session) {
+            request.logger.debug("Link wallet - No session found, returning UNAUTHORIZED");
+            sendApiError(
+                request,
+                response,
+                NOT_FOUND,
+                "UNAUTHORIZED",
+                "You must be logged in to link a wallet",
+            );
+            return;
+        }
+
+        const user = await session.findUser();
+        if (!user) {
+            sendApiError(
+                request,
+                response,
+                NOT_FOUND,
+                "USER_NOT_FOUND",
+                "User not found",
+            );
+            return;
+        }
+
+        // For development, accept identity key directly from the request
+        // TODO: In production, use full BRC-103/104 signature verification with middleware
+        const identityKey = request.headers['x-identity-key'] as string || request.body?.identityKey;
+
+        if (!identityKey) {
+            sendApiError(
+                request,
+                response,
+                BAD_REQUEST,
+                "NO_IDENTITY_KEY",
+                "Wallet identity key is required",
+            );
+            return;
+        }
+
+        try {
+            // Check if this identity key is already linked to another user
+            const existingUsers = await User.finder.find(
+                { field: "walletIdentityKey", operator: "=", value: identityKey } as any,
+                { field: "id", order: "ASC" } as any
+            );
+
+            if (existingUsers.length > 0 && existingUsers[0].id !== user.id) {
+                // Linked to a different user
+                sendApiError(
+                    request,
+                    response,
+                    FORBIDDEN,
+                    "ALREADY_LINKED",
+                    "This wallet identity is already linked to another account",
+                );
+                return;
+            }
+
+            // Link the wallet directly here
+            user.walletProvider = "bsv-metanet";
+            user.walletIdentityKey = identityKey;
+
+            request.logger.info(`Linking wallet to user ${user.id} (${user.username})`);
+            request.logger.info(`  walletProvider: ${user.walletProvider}`);
+            request.logger.info(`  walletIdentityKey: ${user.walletIdentityKey}`);
+
+            await user.save();
+
+            request.logger.info(`Wallet linked successfully`);
+
+            sendApiSuccess(request, response);
+        } catch (ex) {
+            request.logger.error("Wallet linking error:", ex);
+            sendApiError(
+                request,
+                response,
+                INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+                ex.message,
             );
         }
     }

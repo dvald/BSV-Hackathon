@@ -19,6 +19,7 @@
     "dependencies": {
         "@asanrom/request-browser": "1.0.5",
         "@bsv/sdk": "^1.9.11",
+        "@bsv/wallet-toolbox": "^1.7.13",
         "check-password-strength": "2.0.7",
         "decimal.js": "10.4.3",
         "frontend": "file:",

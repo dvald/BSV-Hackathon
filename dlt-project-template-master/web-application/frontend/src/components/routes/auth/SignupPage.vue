@@ -64,6 +64,15 @@
                         <a :href="tp.url"> {{ $t("Sign up with") }} {{ tp.name }} </a>
                     </p>
                 </div>
+                
+                <!-- BSV Wallet Signup Option -->
+                <div class="wallet-signup-section">
+                    <div class="divider-text">
+                        <span>{{ $t('or') }}</span>
+                    </div>
+                    <WalletLoginButton :is-signup="true" />
+                </div>
+                
                 <p>
                     <router-link class="link-deco" :to="{ name: 'login' }">{{ $t("I already have an account") }}</router-link>
                 </p>
@@ -86,6 +95,7 @@ import { defineComponent } from "vue";
 
 import ChangeLanguageModal from "@/components/modals/ChangeLanguageModal.vue";
 import PasswordInput from "@/components/utils/PasswordInput.vue";
+import WalletLoginButton from "@/components/wallet/WalletLoginButton.vue";
 import { getUniqueStringId } from "@/utils/unique-id";
 import { Timeouts } from "@/utils/timeout";
 import { getLanguage } from "@/i18n";
@@ -94,6 +104,7 @@ export default defineComponent({
     components: {
         ChangeLanguageModal,
         PasswordInput,
+        WalletLoginButton,
     },
     name: "SignupPage",
     setup: function () {

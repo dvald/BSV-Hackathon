@@ -4,7 +4,7 @@
 
 import { RequestErrorHandler, RequestParams, CommonAuthenticatedErrorHandler, CommonErrorHandler } from "@asanrom/request-browser";
 import { getApiUrl, generateURIQuery } from "./utils";
-import { AuthenticationContext, LoginResponse, LoginRequest, ThirdPartyLoginService, ThirdPartyLoginResponse, ThirdPartyLoginBody, SignupTPResponse, SignupTPRequest, TFALoginRequest, SignupResponse, SignupRequest, EmailVerifyResponse, EmailVerifyRequest, ForgotPasswordResponse, ForgotPasswordRequest, ResetPasswordRequest } from "./definitions";
+import { AuthenticationContext, LoginResponse, LoginRequest, ThirdPartyLoginService, ThirdPartyLoginResponse, ThirdPartyLoginBody, SignupTPResponse, SignupTPRequest, TFALoginRequest, SignupResponse, SignupRequest, EmailVerifyResponse, EmailVerifyRequest, ForgotPasswordResponse, ForgotPasswordRequest, ResetPasswordRequest, WalletLoginResponse } from "./definitions";
 
 export class ApiAuth {
     /**
@@ -277,6 +277,48 @@ export class ApiAuth {
             },
         };
     }
+
+    /**
+     * Method: POST
+     * Path: /auth/login-wallet
+     * Login or register with BSV Wallet (Metanet Desktop)
+     * @returns The request parameters
+     */
+    public static LoginWithWallet(): RequestParams<WalletLoginResponse, LoginWithWalletErrorHandler> {
+        return {
+            method: "POST",
+            url: getApiUrl(`/auth/login-wallet` + generateURIQuery({ _time: Date.now() })),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(400, "*", handler.badRequest)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
+
+    /**
+     * Method: POST
+     * Path: /auth/link-wallet
+     * Link BSV Wallet to the current authenticated user account
+     * @returns The request parameters
+     */
+    public static LinkWallet(): RequestParams<void, LinkWalletErrorHandler> {
+        return {
+            method: "POST",
+            url: getApiUrl(`/auth/link-wallet` + generateURIQuery({ _time: Date.now() })),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(403, "*", handler.forbidden)
+                    .add(400, "*", handler.badRequest)
+                    .add(401, "*", handler.unauthorized)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
 }
 
 /**
@@ -527,5 +569,30 @@ export type ResetAccountPasswordErrorHandler = CommonErrorHandler & {
      * General handler for status = 404
      */
     notFound: () => void;
+};
+
+/**
+ * Error handler for LoginWithWallet
+ */
+export type LoginWithWalletErrorHandler = CommonErrorHandler & {
+    /**
+     * General handler for status = 400
+     */
+    badRequest: () => void;
+};
+
+/**
+ * Error handler for LinkWallet
+ */
+export type LinkWalletErrorHandler = CommonAuthenticatedErrorHandler & {
+    /**
+     * General handler for status = 400
+     */
+    badRequest: () => void;
+
+    /**
+     * General handler for status = 403
+     */
+    forbidden: () => void;
 };
 
