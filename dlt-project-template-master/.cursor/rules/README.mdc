@@ -1,0 +1,86 @@
+# Cursor Rules for DLT Project
+
+This directory contains development rules for Cursor IDE.
+## Language Policy
+
+- **Response Language:** Always respond in the same language the user asks the question
+- **Documentation Language:** If user asks in Spanish for documentation in English, provide it in English as requested
+- **Code Consistency:** Code comments should be in English to maintain consistency across the project
+
+## File Structure
+
+- **`general.mdc`** - General project rules that apply to all code
+- **`config.mdc`** - Specific rules for configuration files
+- **`controllers.mdc`** - Rules for API controllers with JSDoc/Swagger documentation
+- **`models.mdc`** - Rules for data models using tsbean-orm
+- **`services.mdc`** - Rules for the domain services layer
+- **`utils.mdc`** - Rules for utility modules
+
+## How to Use
+
+Cursor IDE will automatically detect and apply these rules based on the file patterns defined in each rules file. The rules are organized by:
+
+1. **Applicable file patterns** - Each rules file specifies which files it covers
+2. **Naming conventions** - Standards for class, function, and variable names
+3. **Code structures** - Required architectural patterns (e.g., Singleton for services)
+4. **Validation and error handling** - How to handle errors and validate inputs
+5. **Required documentation** - JSDoc and other necessary comments
+6. **PR checklist** - Items to verify before creating pull requests
+
+## Migration from Copilot
+
+These rules have been converted from the original GitHub Copilot instructions while maintaining:
+
+- ✅ All existing code conventions
+- ✅ Established architectural patterns
+- ✅ JSDoc documentation requirements for API generation
+- ✅ Security and error handling standards
+- ✅ Git workflow and commit policies
+
+## Key Features
+
+### 🎯 **File Type Specific Focus**
+Each file type (config, controllers, models, services, utils) has specific rules that apply automatically.
+
+### 🔒 **Security by Default**
+- No logging of secrets or PII
+- Early input validation
+- Centralized error handling
+
+### 📚 **Automatic Documentation**
+- JSDoc required for APIs
+- Automatic client binding generation
+- Structured comments for databases
+
+### 🏗️ **Consistent Architecture**
+- Singleton pattern for services and configurations
+- Clear separation between layers (controller → service → model)
+- Strict typing in TypeScript
+
+### 🌐 **Language Flexibility**
+- Always respond in the user's preferred language
+- Support for documentation in requested language
+- Naming conventions that preserve technical terms
+
+## Benefits
+
+1. **Consistency** - Uniform code across the entire project
+2. **Quality** - Prevention of common errors through automatic rules
+3. **Productivity** - Contextual suggestions based on file type
+4. **Maintainability** - Established patterns facilitate maintenance
+5. **Collaboration** - Clear standards for the entire team
+
+## Getting Started
+
+Once Cursor IDE is configured with these rules, the editor will automatically:
+
+- Suggest appropriate patterns for each file type
+- Validate that naming conventions are followed
+- Remind you to add required JSDoc documentation
+- Apply security and error handling best practices
+
+For more specific details, consult each individual rules file.
+description:
+globs:
+alwaysApply: false
+---

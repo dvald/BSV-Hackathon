@@ -1,0 +1,107 @@
+/* Theme colors */
+
+.dark-theme {
+    background: var(--background-dark-soft);
+    color: var(--background-light);
+
+    --bg-color: var(--background-dark-soft);
+    --bg-color-hard: var(--background-dark);
+    --text-color: var(--background-light);
+
+    --theme-border-color: rgba(255, 255, 255, 0.1);
+    --theme-btn-hover-color: var(--background-light);
+    --theme-btn-color: var(--text-color);
+    --modal-overlay-bg-color: rgba(0, 0, 0, 0.4);
+    --modal-bg-color: var(--background-dark);
+    --bar-bg-color: var(--background-dark);
+
+    --hover-color: var(--secondary-color);
+    --selected-color: var(--primary-color);
+
+    --switch-color: var(--background-light);
+    --switch-shadow-color: rgba(0, 0, 0, 0.33);
+    --switch-shadow-toggled-color: var(--primary-color);
+    --switch-disabled-color: var(--tertiary-color);
+
+    --button-primary-bg: var(--primary-color);
+    --button-primary-bg-hover: var(--secondary-color);
+    --button-primary-text: var(--background-light);
+
+    --button-login-bg: var(--primary-color);
+    --button-login-bg-hover: var(--secondary-color);
+    --button-login-text: var(--background-light);
+
+    --button-danger-bg: var(--danger-color);
+    --button-danger-bg-hover: var(--danger-color-hover);
+    --button-danger-text: var(--background-light);
+
+    --button-submit-bg: var(--success-color);
+    --button-submit-bg-hover: var(--success-color-hover);
+    --button-submit-text: var(--background-light);
+
+    --input-bg-color: var(--background-dark-soft);
+    --input-autocomplete-bg-color: var(--background-dark-soft);
+
+    --user-profile-image-background: var(--tertiary-color);
+
+    --success-color: var(--success-color);
+    --error-color: var(--danger-color);
+    --warn-color: var(--warning-color);
+}
+
+.light-theme {
+    background: var(--background-light-soft);
+    color: var(--background-dark);
+
+    --bg-color: var(--background-light-soft);
+    --bg-color-hard: var(--background-light);
+    --text-color: var(--background-dark);
+
+    --theme-border-color: rgba(255, 255, 255, 0.1);
+    --theme-btn-hover-color: var(--background-dark);
+    --theme-btn-color: var(--text-color);
+    --modal-overlay-bg-color: rgba(0, 0, 0, 0.4);
+    --modal-bg-color: var(--background-light);
+    --bar-bg-color: var(--background-light);
+
+    --hover-color: var(--secondary-color);
+    --selected-color: var(--primary-color);
+
+    --switch-color: var(--background-dark);
+    --switch-shadow-color: rgba(0, 0, 0, 0.33);
+    --switch-shadow-toggled-color: var(--primary-color);
+    --switch-disabled-color: var(--tertiary-color);
+
+    --button-primary-bg: var(--primary-color);
+    --button-primary-bg-hover: var(--secondary-color);
+    --button-primary-text: var(--background-light);
+
+    --button-login-bg: var(--primary-color);
+    --button-login-bg-hover: var(--secondary-color);
+    --button-login-text: var(--background-light);
+
+    --button-danger-bg: var(--danger-color);
+    --button-danger-bg-hover: var(--danger-color-hover);
+    --button-danger-text: var(--background-light);
+
+    --button-submit-bg: var(--success-color);
+    --button-submit-bg-hover: var(--success-color-hover);
+    --button-submit-text: var(--background-light);
+
+    --input-bg-color: var(--background-light-soft);
+    --input-autocomplete-bg-color: var(--background-light-soft);
+
+    --user-profile-image-background: var(--tertiary-color);
+
+    --success-color: var(--success-color);
+    --error-color: var(--danger-color);
+    --warn-color: var(--warning-color);
+}
+
+.dark-theme a {
+    color: lightskyblue;
+}
+
+.dark-theme a:visited {
+    color: lightpink;
+}

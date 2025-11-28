@@ -1,0 +1,181 @@
+# Rules for Models (tsbean-orm)
+
+These rules apply to files matching the patterns:
+- `src/models/**/*.ts`
+- `**/models/**/**/*.ts`
+
+**Purpose:** Enforce a uniform, driver-agnostic model style compatible with `tsbean-orm` and the project's schema/DB script generator.
+
+## Quick Checklist
+
+- [ ] Single `DataModel` subclass per file
+- [ ] `DATA_SOURCE`, `TABLE`, `PRIMARY_KEY` constants present
+- [ ] `public static finder` defined with a factory `(row) => new Entity(row)`
+- [ ] Constructor calls `super(...)`, assigns props with `enforceType(...)`, and ends with `this.init()`
+- [ ] No business logic or I/O in models
+- [ ] DB annotation comments present where necessary (`db-type`, `db-index`, etc.)
+
+## 1. Scope & Design Rules
+
+* Models represent persistence shape + minimal helpers (finders, small convenience helpers). Keep business rules and validation inside services
+* One exported class per file, named after the entity in PascalCase and extending `DataModel`
+* No side-effects at module import time. All I/O must be performed by instance/static methods, not during load
+* Use strict typing; avoid `any` on public surfaces
+
+## 2. Module Layout (recommended order)
+
+1. Imports (put `tsbean-orm` imports first)
+2. Constants: `DATA_SOURCE`, `TABLE`, `PRIMARY_KEY`
+3. `export class <Entity> extends DataModel` declaration
+4. Static `finder` and static helpers (`findBy...`, `create`, counts, pagination)
+5. Field declarations (public properties)
+6. Constructor: call `super(DATA_SOURCE, TABLE, PRIMARY_KEY)`, assign fields using `enforceType(...)`, then `this.init()`
+
+## 3. Constructor Contract
+
+Follow this exact pattern to avoid prototype pollution and to keep ORM tracking working:
+
+```typescript
+constructor(data: TypedRow<Entity>) {
+  super(DATA_SOURCE, TABLE, PRIMARY_KEY);
+  this.id = enforceType(data.id, "string") || "";
+  // set each field explicitly
+  this.init();
+}
+```
+
+Notes:
+
+- Prefer `TypedRow<Entity>` for the constructor parameter. Use `GenericRow` only for dynamic shapes
+- Always call `this.init()` as the last constructor statement
+
+## 4. DB Annotations (single-line comments)
+
+Place single-line block comments immediately above the file or the field they describe. Supported annotations:
+
+- `/* db-table: my_table */` — override table name
+- `/* db-primary-key */` — mark the next field as primary key
+- `/* db-type: VARCHAR 255 */` — force DB column type. Supported base types: `BOOLEAN, DOUBLE, FLOAT, SMALLINT, INT, BIGINT, DATE, DATETIME, TEXT, MEDIUMTEXT, LONGTEXT, VARCHAR`
+- `/* db-index: fieldA ASC, fieldB DESC */` — composite / sorted index (repeatable)
+- `/* db-index-unique: field */` — unique index
+- `/* db-ignore */` — skip this file in schema generation
+
+Column naming: field names are converted to snake_case by the generator. Keep property names stable and descriptive
+
+## 5. Type Enforcement & DB Mapping
+
+Use `enforceType(value, kind)` inside the constructor for runtime safety. When `db-type` is not forced, the generator maps enforceType kinds to DB types:
+
+- `enforceType(..., "int")` → `BIGINT`
+- `enforceType(..., "number")` → `DOUBLE`
+- `enforceType(..., "boolean")` → `BOOLEAN`
+- otherwise → `VARCHAR(255)`
+
+Only force `db-type` when strictly necessary for portability or precision (e.g., TEXT vs VARCHAR)
+
+## 6. Static Finder Pattern
+
+Provide a `public static finder` initialized like:
+
+```typescript
+public static finder = new DataFinder<Entity, string>(
+  DATA_SOURCE,
+  TABLE,
+  PRIMARY_KEY,
+  (row: TypedRow<Entity>) => new Entity(row)
+);
+```
+
+Guidelines:
+
+- Always pass a factory that constructs the entity instance
+- Use `SelectOptions.configure().setFirstRow(skip).setMaxRows(limit)` for pagination
+- Use `OrderBy.asc("field")` / `OrderBy.desc("field")` for ordering
+- Compose filters with `DataFilter.and(...)`, `or(...)`, `equals(...)`, etc.
+
+## 7. CRUD Helpers
+
+Keep small convenience helpers on the model (e.g., `findByEmail`, `findById`) but avoid heavy logic
+
+- Insert: create instance with required fields then `await model.insert()`
+- Update: mutate fields and `await model.save()` (change tracking depends on `init()`)
+- Delete: `await model.delete()`
+- Bulk ops: use `finder.update(partial, filter)` / `finder.delete(filter)`
+
+## 8. Serialization
+
+Use `.toObject()` for plain objects and `.toJSON()` for string output. Do not return model instances directly across module boundaries — convert to plain objects to avoid circular references
+
+## 9. Naming Conventions
+
+- Files: kebab-case entity-name.ts (generator expects this by convention)
+- Class names: PascalCase matching the file name
+- Tables: snake_case; set explicit `const TABLE = "entity_name"` when you need a specific table name
+- Primary key: set `const PRIMARY_KEY = "id"` explicitly; don't rely on implicit conventions
+
+## 10. Multi-DB Portability
+
+The project targets MySQL, PostgreSQL and MongoDB via generated scripts. Keep these in mind:
+
+- Postgres type names differ (e.g., `DOUBLE` → `DOUBLE PRECISION`). Prefer generator defaults unless you must force `db-type`
+- Use `db-index` / `db-index-unique` annotations for indexes required for performance and cross-DB parity
+
+## 11. Full Example
+
+```typescript
+// users/user.ts
+"use strict";
+import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter, OrderBy, SelectOptions } from "tsbean-orm";
+
+const DATA_SOURCE = DataSource.DEFAULT;
+const TABLE = "users";
+const PRIMARY_KEY = "id";
+
+export class User extends DataModel {
+  public static finder = new DataFinder<User, string>(DATA_SOURCE, TABLE, PRIMARY_KEY, (row: TypedRow<User>) => new User(row));
+
+  /* db-index: email ASC */
+  public id: string;
+  public email: string;
+  public createdAt: number;
+  public active: boolean;
+
+  constructor(data: TypedRow<User>) {
+    super(DATA_SOURCE, TABLE, PRIMARY_KEY);
+    this.id = enforceType(data.id, "string") || "";
+    this.email = enforceType(data.email, "string") || "";
+    this.createdAt = enforceType(data.createdAt, "int") || 0;
+    this.active = enforceType(data.active, "boolean") || false;
+    this.init();
+  }
+
+  public static async findByEmail(email: string) {
+    return User.finder.find(DataFilter.equals("email", email), OrderBy.nothing());
+  }
+}
+```
+
+## 12. PR Checklist
+
+- [ ] Single `DataModel` subclass per file; constants and `finder` present
+- [ ] Constructor uses `enforceType(...)` and ends with `this.init()`
+- [ ] `PRIMARY_KEY` defined explicitly
+- [ ] DB annotations where necessary; no secrets or business logic in models
+- [ ] Finder helpers include pagination and ordering where relevant
+- [ ] Models serialize via `.toObject()`/`.toJSON()` when exposed
+
+## 13. Cursor Prompt (for this folder)
+
+When editing files under `src/models/`:
+
+* Follow the `DataModel` pattern with constants (`DATA_SOURCE`, `TABLE`, `PRIMARY_KEY`), a `finder`, and a constructor using `enforceType(...)` followed by `this.init()`
+* Add DB annotations as single-line block comments above fields: `db-type`, `db-index`, `db-index-unique`, `db-primary-key`, and optionally `db-table` at the top of the file
+* Keep field names camelCase; the generator will emit snake_case column names and derive column types from `enforceType` unless `db-type` is forced
+* Implement minimal static helpers (`findById`, `findBy...`, pagination) and keep business logic in services
+* Ensure models serialize via `.toObject()` or `.toJSON()` before sending data outside the domain model
+
+**Notes:** This document merges the project's `tsbean-orm` conventions and the schema generator annotations. Updating model files may require regenerating database scripts — follow project instructions when changing `db-type` or table definitions.
+description:
+globs:
+alwaysApply: false
+---

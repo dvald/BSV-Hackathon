@@ -1,0 +1,48 @@
+name: Smart Contracts CI
+
+on:
+  push:
+    branches: [ "master", "main", "develop" ]
+    paths:
+      - smart-contracts/**
+      - .github/workflows/smart-contracts.yml
+  pull_request:
+    branches: [ "master", "main", "develop" ]
+    paths:
+      - smart-contracts/**
+      - .github/workflows/smart-contracts.yml
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install NodeJS
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20
+
+    - name: Set up Test HyperLedger Besu node
+      working-directory: ./besu-test-node
+      run: docker compose up -d
+
+    - name: Install dependencies
+      working-directory: ./smart-contracts
+      run: npm install
+
+    - name: Compile smart contracts
+      working-directory: ./smart-contracts
+      run: npm run compile
+
+    - name: Lint smart contract test code
+      working-directory: ./smart-contracts
+      run: npm run test-lint
+
+    - name: Test smart contracts
+      working-directory: ./smart-contracts
+      run: npm test
+

@@ -1,0 +1,163 @@
+# Rules for Configuration Files
+
+These rules apply to files matching the patterns:
+- `config/**/*.ts`
+- `config/*.ts` 
+- `config-*.ts`
+- `config.ts`
+
+## Architecture and Fundamental Patterns
+
+### Mandatory Singleton Pattern
+- **Implementation:** Configuration classes must follow the Singleton pattern and expose:
+  - A static `getInstance()` method as the single access point
+  - A private static `instance` field to ensure a single instance
+  - A private constructor to prevent direct instantiation
+
+### Single Source of Truth
+- **Environment variables:** Configuration must load exclusively from `process.env`
+- **Defaults:** Always provide reasonable development fallbacks (never real secrets)
+- **Determinism:** Avoid performing I/O or network access at module import time
+
+## Code Style and Conventions
+
+### Naming
+- **Classes:** use PascalCase (e.g. `DatabaseConfig`, `AzureConfig`)
+- **Files:** use kebab-case prefixed with `config-` (e.g. `config-redis.ts`, `config-file-storage.ts`)
+- **Environment variables:** UPPER_SNAKE_CASE; include units when relevant (`TIMEOUT_MS`, `INTERVAL_SEC`)
+
+### Strict Typing
+- Use TypeScript and define explicit interfaces and types
+- Avoid `any` on public APIs
+- Prefer `readonly` properties and `Object.freeze()` for immutable configuration objects
+
+### File Structure (recommended order)
+1. Interface and type definitions
+2. Constants and non-secret defaults
+3. Environment loading and normalization
+4. Configuration object construction
+5. Final validation and `freeze`
+6. Export the single entry point (`getInstance()` or equivalent)
+
+## Validation and Error Handling
+
+### Fail-fast Validation
+- Validate configuration early and throw if minimum requirements are not met
+- Error messages must be actionable and include the exact env var name and allowed values when applicable
+- Validate numeric ranges, enums and common formats
+
+### Parsing Environment Variables
+- **Integers:** `parseInt(value, 10)` and validate the result
+- **Booleans:** compare explicitly to strings like `"true"` or `"false"`
+- **Lists:** `value.split(',').map(s => s.trim()).filter(Boolean)`
+
+## Common Field Standards
+
+```typescript
+// Typical standard fields with reasonable defaults
+timeoutMs: number;        // >= 0, default: 30000
+retries: number;          // >= 0, default: 0 or 3 depending on context
+logLevel: 'debug' | 'info' | 'warn' | 'error';  // default: 'info'
+endpoints: Record<string, string>;  // do not embed secrets in URLs
+features: Record<string, boolean>;   // feature toggle flags
+```
+
+## Security and Secrets
+
+- Never commit real secrets
+- Use obvious placeholders such as `"<set-me>"` or `"<required>"`
+- Only reference the expected env keys if a secrets manager is used; do not hardcode secret values
+- Avoid embedding credentials in URLs
+
+## Anti-patterns (What NOT to do)
+
+- ❌ Do not introduce new configuration patterns: stick to the established Singleton / single-entry conventions
+- ❌ Do not hardcode values: use `process.env` for configurable values
+- ❌ Do not use `require`: use ES module `import`
+- ❌ Do not perform side effects at import time (no I/O, no network calls)
+- ❌ Do not export multiple implicit access points; keep a single public entry
+
+## Implementation Example
+
+```typescript
+// config-example.ts
+
+"use strict";
+
+/**
+ * Example configuration interface
+ */
+export interface ExampleConfig {
+    readonly apiBaseUrl: string;
+    readonly timeoutMs: number;
+    readonly retries: number;
+    readonly features: { readonly experimentalMode: boolean };
+}
+
+/**
+ * Singleton configuration manager example
+ */
+export class ExampleConfigManager {
+    public static getInstance(): ExampleConfig {
+        if (ExampleConfigManager.instance) return ExampleConfigManager.instance;
+
+        const env = process.env;
+        const apiBaseUrl = (env.API_BASE_URL || "http://localhost:3000").trim();
+        const timeoutMs = Number.parseInt(env.TIMEOUT_MS || "30000", 10);
+        const retries = Number.parseInt(env.RETRIES || "0", 10);
+        const experimentalMode = (env.FEATURE_EXPERIMENTAL || "false").toLowerCase() === "true";
+
+        if (!/^https?:\/\//i.test(apiBaseUrl)) {
+            throw new Error("API_BASE_URL must start with http:// or https:// (env: API_BASE_URL)");
+        }
+        if (!Number.isFinite(timeoutMs) || timeoutMs < 0) {
+            throw new Error("Invalid TIMEOUT_MS: must be a non-negative integer (env: TIMEOUT_MS)");
+        }
+        if (!Number.isInteger(retries) || retries < 0) {
+            throw new Error("Invalid RETRIES: must be a non-negative integer (env: RETRIES)");
+        }
+
+        const cfg: ExampleConfig = Object.freeze({
+            apiBaseUrl,
+            timeoutMs,
+            retries,
+            features: Object.freeze({ experimentalMode }),
+        });
+
+        ExampleConfigManager.instance = cfg;
+        return cfg;
+    }
+
+    private static instance: ExampleConfig = null;
+    private constructor() {}
+}
+```
+
+## Pull Request Checklist
+
+- [ ] Implements Singleton pattern with `getInstance()`
+- [ ] No side effects at import time
+- [ ] Exported types/interfaces without public `any`
+- [ ] Env variables parsed with sensible development defaults
+- [ ] Validation with actionable messages
+- [ ] Final configuration object is immutable (`readonly` / `Object.freeze`)
+- [ ] No real secrets or URLs containing credentials committed
+- [ ] Follows the recommended file structure order
+- [ ] Consistent naming (`kebab-case` files, `PascalCase` classes)
+- [ ] Public methods documented with JSDoc
+
+## Cursor Guidance
+
+When editing or creating files under `config/` or `config-*.{ts,js}`:
+
+* Keep configuration separate from business logic; avoid top-level I/O
+* Expose a single access point (`getInstance()` or a class singleton); avoid implicit global state
+* Parse `process.env` with prudent dev defaults, validate ranges/enums, and throw clear, actionable errors
+* Return `readonly`/frozen objects and use strict typing on the public config API
+* Do not include real secrets; use placeholders and document required env variables
+* Follow the order: interfaces → defaults → env → normalization → validation → export
+* Maintain consistency with existing project patterns
+description:
+globs:
+alwaysApply: false
+---

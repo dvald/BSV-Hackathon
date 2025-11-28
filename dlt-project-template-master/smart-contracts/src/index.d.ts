@@ -1,0 +1,1 @@
+// Global typescript definitions

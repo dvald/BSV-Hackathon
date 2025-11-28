@@ -1,0 +1,7 @@
+{
+    "bail": true,
+    "exit": true,
+    "timeout": 60000,
+    "spec": "test/mocha/api-tests/*.ts",
+    "recursive": true
+}

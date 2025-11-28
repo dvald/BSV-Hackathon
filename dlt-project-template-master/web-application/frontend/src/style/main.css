@@ -1,0 +1,82 @@
+/* Base style */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+.bold {
+    font-weight: bold;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.one-line {
+    white-space: nowrap;
+}
+
+.icon-margin {
+    margin-right: 0.1rem;
+}
+
+/* Link decoration styles */
+.link-deco,
+.link-deco-back {
+    display: inline-flex !important;
+    position: relative !important;
+    background: linear-gradient(to right, var(--primary-color) 50%, var(--text-color) 50%) !important;
+    background-size: 200% 100% !important;
+    background-position: right bottom !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    text-decoration: none !important;
+    transition: background-position 0.4s ease-in-out !important;
+}
+
+.link-deco::after {
+    content: "" !important;
+    position: absolute !important;
+    border-bottom: 1px solid var(--text-color) !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 50% !important;
+    transition:
+        width 0.4s ease-in-out,
+        border-color 0.4s ease-in-out !important;
+}
+
+.link-deco:hover::after {
+    width: 100% !important;
+    border-color: var(--primary-color) !important;
+}
+
+.link-deco.hovered:after {
+    width: 100% !important;
+    border-color: var(--primary-color) !important;
+}
+
+.link-deco.hovered,
+.link-deco-back.hovered {
+    background-position: left bottom !important;
+}
+
+.link-deco:hover,
+.link-deco-back:hover {
+    background-position: left bottom !important;
+}
+
+.link-deco-back {
+    margin-top: 15px;
+    padding: 0 !important;
+}

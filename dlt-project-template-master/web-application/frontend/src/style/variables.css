@@ -1,0 +1,16 @@
+.global-variables {
+    --background-dark: #3f3a4a;
+    --background-dark-soft: #534d5f;
+    --background-light: #f5f9fc;
+    --background-light-soft: #e8eef3;
+    --primary-color: #188b9a;
+    --secondary-color: #096773;
+    --tertiary-color: #a1b1bf;
+
+    --danger-color: red;
+    --danger-color-hover: darkred;
+    --success-color: green;
+    --success-color-hover: darkgreen;
+    --warning-color: orange;
+    --warning-color-hover: darkorange;
+}

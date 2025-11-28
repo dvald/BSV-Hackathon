@@ -1,0 +1,31 @@
+{
+  "project": "dlt-project-template",
+  "description": "Proyecto DLT Project Template",
+  "faviconPath": "dlt-project-template\\web-application\\frontend\\public\\favicon.ico",
+  "services": [
+    {
+      "name": "fdltBs",
+      "description": "Frontend DLT",
+      "path": "dlt-project-template\\web-application\\frontend",
+      "commands": [
+        "npm run serve"
+      ]
+    },
+    {
+      "name": "bdltBs",
+      "description": "Backend DLT",
+      "path": "dlt-project-template\\web-application\\backend",
+      "commands": [
+        "npm run build",
+        "npm start"
+      ]
+    }
+  ],
+  "mainFunction": {
+    "name": "dltBs",
+    "description": "Inicia frontend y backend de dlt-project-template",
+    "services": ["fdltBs", "bdltBs"],
+    "trackingName": "dlt-project-template",
+    "trackingDescription": "Proyecto DLT Project Template"
+  }
+}

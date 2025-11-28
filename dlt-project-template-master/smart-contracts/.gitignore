@@ -1,0 +1,9 @@
+/bin/
+/node_modules/
+key
+build
+dist
+.env
+*.log
+.VSCodeCounter
+wrappers

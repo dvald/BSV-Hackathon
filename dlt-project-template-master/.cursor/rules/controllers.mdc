@@ -1,0 +1,187 @@
+# Rules for Controllers (Swagger-driven API)
+
+These rules apply to files matching the patterns:
+- `src/controllers/api/**/*.ts`
+- `src/controllers/**/*.ts`
+- `**/controllers/api/**/*.ts`
+- `controllers/**/*.ts`
+
+**Purpose:** Standardize controller structure and JSDoc so the Swagger scanner generates stable API bindings used by backend tests, frontend and mobile clients.
+
+## Quick Checklist
+
+- [ ] Class-based controller exported
+- [ ] `registerAPI(prefix: string, app: Express.Express)` implemented and routes mounted under `prefix`
+- [ ] Each handler has a JSDoc block with: description, `Binding:` (optional), `@route`, `@group`, `@param`(s), `@returns`(es)
+- [ ] Body parameters use `@typedef` models referenced as `.model`
+- [ ] Path params documented as `.path.required`
+- [ ] Errors reference models with `code` enumerations or list codes in `@returns`
+- [ ] No business logic or direct DB calls in controllers (delegate to services)
+
+## 1. File/Module Pattern
+
+- Controllers register routes only. Keep business logic inside service classes
+- Export a class (PascalCase, ending with `Controller`) with a `public registerAPI(prefix: string, app: Express.Express)` method
+- Register routes using `prefix`, e.g. `app.get(prefix + "/users/:id", this.getUser.bind(this));`
+- Avoid top-level side effects during module import
+
+## 2. Minimal JSDoc Required per Handler
+
+Place a JSDoc block immediately above the handler method. Required items:
+
+- Free-text summary/description line(s)
+- Optional: `Binding: <AlphanumericName>` to force a stable generated client method name
+- `@route <METHOD> <path>` — Use `{param}` in docs for path parameters (see examples)
+- `@group <group_name>` — Groups generated client methods
+- `@param` for every input (see §3)
+- One or more `@returns` lines for success and error cases (see §4)
+- Optional: `@security <Scheme>`, `@consumes` / `@produces`, `@headers`
+
+## 3. Parameters Mapping (use this exact shape)
+
+Format: `@param {Type} name.<in>.<required?> - description`
+
+Supported `.<in>` values:
+- `.path` — URL path parameters (document as `.path.required` when mandatory)
+- `.query` — Query string parameters
+- `.body` — JSON body typed with a `@typedef` model, e.g. `{CreateUser.model} request.body.required`
+- `.formData` — multipart form fields/files for uploads (`file` type)
+- `.header` — Custom headers (string or enum)
+
+Notes:
+- Use `Array.<Type>` for arrays or define models
+- JSDoc defines the contract only; parse and validate values in code
+
+## 4. Responses and Errors
+
+- Add one `@returns` per status you want to expose, using typed models when possible
+  - Success: `@returns {User.model} 200 - OK`
+  - Error: `@returns {ErrorResponse.model} 400 - Bad request`
+
+- To generate rich client error handlers, either:
+  1. Reference an error model that contains `code: string` and list codes in its description, or
+  2. Include codes in the `@returns` description (comma-separated)
+
+- Always avoid `@returns {object}` — define specific models instead
+
+## 5. Model Definitions with `@typedef`
+
+- Define request/response/error models near the controller or in a shared file scanned by the generator
+- Use `.model` when referencing a typedef in `@param` or `@returns`
+
+Example:
+
+```javascript
+/**
+ * @typedef CreateThing
+ * @property {string} name.required - Human-readable name
+ * @property {integer} ttl - Time to live (seconds)
+ */
+
+/**
+ * @typedef Thing
+ * @property {string} id.required
+ * @property {string} name.required
+ */
+
+/**
+ * @typedef ErrorResponse
+ * @property {string} code.required - Error codes:\n - WRONG_PASSWORD: Wrong password\n - INVALID_INPUT: Payload validation failed
+ */
+```
+
+## 6. Security, Headers and Content Types
+
+- Mark secured endpoints with `@security AuthToken` (or other schemes). Multiple schemes supported via array syntax
+- Document additional response headers with `@headers`
+- For uploads or non-JSON content add `@consumes multipart/form-data` or the appropriate MIME type
+
+## 7. Example Handler Blocks
+
+### GET with path + query and custom binding
+
+```javascript
+/**
+ * Retrieves a thing by id
+ * Binding: GetThing
+ * @route GET /things/{id}
+ * @group things
+ * @param {string} id.path.required - Thing ID
+ * @param {boolean} verbose.query - Include extra fields
+ * @returns {Thing.model} 200 - OK
+ */
+```
+
+### POST with JSON body & errors
+
+```javascript
+/**
+ * Creates a new thing
+ * Binding: CreateThing
+ * @route POST /things
+ * @group things
+ * @param {CreateThing.model} request.body.required - Payload
+ * @returns {Thing.model} 200 - Created
+ * @returns {ErrorResponse.model} 400 - Bad request
+ * @security AuthToken
+ */
+```
+
+### POST multipart upload
+
+```javascript
+/**
+ * Uploads a file for a thing
+ * Binding: UploadThingFile
+ * @route POST /things/{id}/file
+ * @group things
+ * @param {string} id.path.required - Thing ID
+ * @param {file} file.formData.required - Binary payload
+ * @returns {void} 200 - OK
+ */
+```
+
+## 8. Controller Scaffolding and Conventions
+
+- Keep route registration under the provided `prefix` and avoid business logic in controllers
+- Handler methods should be `public async` and use `try/catch` to capture errors and pass them to centralized handlers or use the project's `sendError`/`sendSuccess` utilities
+- Use `request.logger` / Monitor for logging (do not use `console.log`)
+
+Scaffold example:
+
+```typescript
+export class ThingsController extends Controller {
+  public registerAPI(prefix: string, app: Express.Express) {
+    app.get(prefix + "/things/:id", this.getThing.bind(this));
+    app.post(prefix + "/things", this.createThing.bind(this));
+  }
+}
+```
+
+## 9. PR Checklist (detailed)
+
+- [ ] JSDoc includes `@route`, `@group`, `@param`, `@returns`; add `Binding:` when a stable client name is required
+- [ ] All path params documented as `.path.required` and match the Express route token names
+- [ ] Request bodies use `@typedef` models and referenced with `.model`
+- [ ] Errors reference a model whose `code` property enumerates possible codes, or list codes in `@returns`
+- [ ] Auth endpoints annotated with `@security`
+- [ ] No direct DB/ORM calls from controllers; delegate to services
+- [ ] No `console.log` in backend; use Monitor/request.logger
+
+## 10. Cursor Prompt (for this folder)
+
+When editing controllers under `src/controllers/...`:
+
+* Enforce the JSDoc format above so the Swagger generator can produce clients. Always add `@route`, `@group`, parameters with proper `.path|.query|.body|.formData|.header`, and success+error `@returns`
+* Use `Binding: <Name>` to force stable client method names when needed
+* Reference models with `.model` and keep error codes enumerated under the `code` property's description so custom error handlers are generated
+* Register routes under the provided `prefix` and keep controllers thin: only input validation, routing wiring, and delegation to services
+
+---
+
+**Notes:**
+This document combines project conventions (Monitor logging, `sendError`/`sendSuccess`, `noCache`, upload helpers) with Swagger/JSDoc requirements used by the repository's `gen-api-bindings.js` script. Update controller JSDoc first; generated bindings are then produced by running `npm run update-api-bindings` in the backend package.
+description:
+globs:
+alwaysApply: false
+---
