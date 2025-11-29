@@ -174,7 +174,7 @@
                                             :class="getCredentialClass(cred.status)"
                                             :title="$t(cred.type)"
                                         >
-                                            <i :class="'mdi ' + getCredentialIcon(cred.type)"></i>
+                                            <i :class="'mdi ' + getCredentialIcon(cred.type)" class="credential-icon"></i>
                                         </span>
                                         <span 
                                             v-if="citizen.credentials.length === 0"
@@ -995,14 +995,15 @@ export default defineComponent({
 .credentials-badges {
     display: flex;
     gap: var(--a11y-spacing-xs);
+    width: 5rem;
 }
 
 .credential-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     font-size: 1rem;
 }
@@ -1098,7 +1099,8 @@ export default defineComponent({
 .modal-content {
     width: 100%;
     max-width: 600px;
-    max-height: 90vh;
+    max-height: calc(100% - var(--top-bar-size));
+    margin-top: var(--top-bar-size);
     overflow-y: auto;
 }
 
@@ -1290,6 +1292,10 @@ export default defineComponent({
     .citizens-table td:nth-child(4) {
         display: none;
     }
+}
+
+.credential-icon {
+    font-size: 25px;
 }
 </style>
 

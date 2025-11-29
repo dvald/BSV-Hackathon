@@ -948,8 +948,14 @@
 /* Tablas */
 .a11y-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: var(--mci-font-size-base);
+    background-color: var(--mci-white);
+    border: var(--mci-border-width) solid var(--mci-gray-200);
+    border-radius: var(--mci-radius-lg);
+    box-shadow: var(--mci-shadow-sm);
+    overflow: hidden;
 }
 
 .a11y-table th,
@@ -963,6 +969,31 @@
     background-color: var(--mci-gray-50);
     font-weight: 600;
     color: var(--mci-gray-800);
+}
+
+/* Border-radius para las esquinas de la tabla */
+.a11y-table thead tr:first-child th:first-child {
+    border-top-left-radius: var(--mci-radius-lg);
+}
+
+.a11y-table thead tr:first-child th:last-child {
+    border-top-right-radius: var(--mci-radius-lg);
+}
+
+.a11y-table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: var(--mci-radius-lg);
+}
+
+.a11y-table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: var(--mci-radius-lg);
+}
+
+.a11y-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.a11y-table tr:nth-child(odd) {
+    background-color: var(--mci-gray-100);
 }
 
 .a11y-table tr:hover {
