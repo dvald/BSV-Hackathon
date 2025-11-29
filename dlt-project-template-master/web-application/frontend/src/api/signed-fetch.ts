@@ -1,7 +1,11 @@
 import { useWallet } from '@/composables/useWallet';
 import { getApiUrl } from './utils';
 
-export async function signedFetch(path: string, options: RequestInit = {}) {
+export interface SignedFetchOptions extends Omit<RequestInit, 'body'> {
+    body?: BodyInit | Record<string, unknown> | null;
+}
+
+export async function signedFetch(path: string, options: SignedFetchOptions = {}): Promise<Response> {
     const { identityKey, isConnected, connect } = useWallet();
 
     if (!isConnected.value) {
@@ -17,9 +21,12 @@ export async function signedFetch(path: string, options: RequestInit = {}) {
     // Simple approach: Use regular fetch with identity key header
     const headers = new Headers(options.headers);
 
-    if (options.body && typeof options.body === 'object') {
+    let body: BodyInit | null | undefined = undefined;
+    if (options.body && typeof options.body === 'object' && !(options.body instanceof Blob) && !(options.body instanceof FormData) && !(options.body instanceof URLSearchParams) && !(options.body instanceof ArrayBuffer) && !(options.body instanceof ReadableStream)) {
         headers.set('Content-Type', 'application/json');
-        options.body = JSON.stringify(options.body);
+        body = JSON.stringify(options.body);
+    } else {
+        body = options.body as BodyInit | null | undefined;
     }
 
     // Add identity key for backend to identify user
@@ -33,6 +40,7 @@ export async function signedFetch(path: string, options: RequestInit = {}) {
 
     return fetch(url, {
         ...options,
+        body,
         method,
         headers
     });

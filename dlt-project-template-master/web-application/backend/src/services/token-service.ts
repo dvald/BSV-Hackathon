@@ -443,4 +443,90 @@ export class TokenService {
 
         return { success: true, txid: pseudoTxid };
     }
+
+    /**
+     * Create a service token directly from backend wallet
+     * This is used when admin creates a new service - the token is created by the backend
+     * so that users can later redeem/receive tokens from the backend
+     */
+    public async createServiceToken(
+        name: string, 
+        symbol: string, 
+        decimals: number, 
+        maxSupply: number, 
+        metadata: any,
+        backendIdentityKey: string
+    ): Promise<{ tokenId: string; txid: string }> {
+        console.log('[createServiceToken] Creating token from backend wallet:', { name, symbol, decimals, maxSupply });
+        
+        const wallet = this.getWallet();
+
+        // Derive a public key for the genesis output
+        const { publicKey } = await wallet.getPublicKey({
+            protocolID: [0, 'service token genesis'],
+            keyID: `${name} ${symbol} ${Date.now()}`,
+            counterparty: backendIdentityKey
+        });
+
+        // Create P2PKH locking script
+        const address = PublicKey.fromString(publicKey).toAddress();
+        const lockingScript = new P2PKH().lock(address).toHex();
+
+        // Create the genesis transaction using the backend wallet
+        const genesisAction = {
+            description: `Service Token Genesis: ${name} (${symbol})`,
+            outputs: [{
+                lockingScript,
+                satoshis: 1,
+                basket: 'mandala-service-tokens',
+                outputDescription: `Genesis for service token ${name}`
+            }]
+        };
+
+        console.log('[createServiceToken] Creating genesis action...');
+        const result = await wallet.createAction(genesisAction);
+        const txid = result.txid;
+        const vout = 0;
+        
+        console.log('[createServiceToken] Genesis transaction created:', txid);
+
+        // Create the token record
+        const assetId = `${txid}.${vout}`;
+
+        const token = new Token({
+            id: assetId,
+            name,
+            symbol,
+            decimals,
+            totalSupply: 0,
+            maxSupply,
+            creatorIdentityKey: backendIdentityKey,
+            createdAt: Date.now(),
+            metadataJson: JSON.stringify(metadata),
+            genesisTxid: txid,
+            genesisVout: vout
+        } as any);
+
+        await token.insert();
+        console.log('[createServiceToken] Token record created:', assetId);
+
+        // Log genesis transaction
+        const tx = new TokenTransaction({
+            id: createRandomUID(),
+            tokenId: assetId,
+            type: 'genesis',
+            fromIdentityKey: null,
+            toIdentityKey: backendIdentityKey,
+            amount: 0,
+            txid,
+            vout,
+            timestamp: Date.now(),
+            notes: `Service token genesis: ${name}`,
+            spentBy: null
+        } as any);
+        await tx.insert();
+        console.log('[createServiceToken] Genesis transaction logged');
+
+        return { tokenId: assetId, txid };
+    }
 }

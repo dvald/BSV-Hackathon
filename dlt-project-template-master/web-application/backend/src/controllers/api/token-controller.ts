@@ -5,6 +5,7 @@ import { Controller } from "../controller";
 import { TokenService } from "../../services/token-service";
 import { Token } from "../../models/tokens/token";
 import { DataFilter } from "tsbean-orm";
+import { BsvService } from "../../services/bsv-service";
 
 export class TokenController extends Controller {
     private tokenService: TokenService;
@@ -20,6 +21,9 @@ export class TokenController extends Controller {
         router.post('/create', this.createToken.bind(this));
         router.post('/confirm-genesis', this.confirmGenesis.bind(this));
 
+        // NEW: Create service token (backend creates and owns the token)
+        router.post('/create-service-token', this.createServiceToken.bind(this));
+
         router.post('/:tokenId/mint', this.mintToken.bind(this));
         router.post('/confirm-mint', this.confirmMint.bind(this));
 
@@ -29,10 +33,58 @@ export class TokenController extends Controller {
 
         router.get('/my-tokens', this.getMyTokens.bind(this)); // Tokens I created
         router.get('/my-balances', this.getMyBalances.bind(this)); // Tokens I hold
+        router.get('/service-tokens', this.getServiceTokens.bind(this)); // Tokens created by backend
         router.get('/all', this.getAllTokens.bind(this));
         router.get('/:tokenId', this.getToken.bind(this));
 
         app.use(baseUrl + '/tokens', router);
+    }
+
+    /**
+     * Create a service token - Backend wallet creates and owns the token
+     * This is used for municipal services where the backend manages tokens
+     */
+    private async createServiceToken(req: Express.Request, res: Express.Response) {
+        try {
+            const { name, symbol, decimals, maxSupply, metadata } = req.body;
+
+            if (!name || !symbol) {
+                res.status(400).json({ error: 'Name and symbol are required' });
+                return;
+            }
+
+            // Use backend's BSV wallet to create the token
+            const bsvService = BsvService.getInstance();
+            await bsvService.ready();
+
+            const backendIdentityKey = bsvService.getIdentityKey();
+
+            // Create the token using the new createServiceToken method
+            const result = await this.tokenService.createServiceToken(
+                name,
+                symbol,
+                decimals || 2,
+                maxSupply || 1000000000,
+                metadata || {},
+                backendIdentityKey
+            );
+
+            console.log('[createServiceToken] Token created:', result.tokenId);
+
+            res.json({
+                success: true,
+                tokenId: result.tokenId,
+                txid: result.txid,
+                name,
+                symbol,
+                decimals: decimals || 2,
+                maxSupply: maxSupply || 1000000000,
+                creatorIdentityKey: backendIdentityKey
+            });
+        } catch (e: any) {
+            console.error('[createServiceToken] Error:', e);
+            res.status(500).json({ error: e.message });
+        }
     }
 
     private async createToken(req: Express.Request, res: Express.Response) {
@@ -178,6 +230,26 @@ export class TokenController extends Controller {
             res.json(tokens);
         } catch (e: any) {
             console.error('[getMyBalances] Error:', e);
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    /**
+     * Get service tokens - tokens created by the backend wallet
+     * These are tokens for municipal services that the admin can manage
+     */
+    private async getServiceTokens(req: Express.Request, res: Express.Response) {
+        try {
+            const bsvService = BsvService.getInstance();
+            await bsvService.ready();
+            const backendIdentityKey = bsvService.getIdentityKey();
+            
+            console.log('[getServiceTokens] Backend identity key:', backendIdentityKey);
+            const tokens = await this.tokenService.getTokensByCreator(backendIdentityKey);
+            console.log('[getServiceTokens] Found service tokens:', tokens.length);
+            res.json(tokens);
+        } catch (e: any) {
+            console.error('[getServiceTokens] Error:', e);
             res.status(500).json({ error: e.message });
         }
     }

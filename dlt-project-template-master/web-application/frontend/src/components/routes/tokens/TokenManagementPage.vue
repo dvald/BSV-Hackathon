@@ -118,7 +118,9 @@ import { defineComponent, ref, onMounted, reactive, watch } from 'vue';
 import { useWallet } from '@/composables/useWallet';
 import TokenCard from '@/components/tokens/TokenCard.vue';
 import { signedFetch } from '@/api/signed-fetch';
+import { getApiUrl } from '@/api/utils';
 import { PushDrop, Utils } from '@bsv/sdk';
+import { AuthController } from '@/control/auth';
 
 export default defineComponent({
   name: 'TokenManagementPage',
@@ -144,17 +146,47 @@ export default defineComponent({
     const loadTokens = async () => {
       loading.value = true;
       try {
-        console.log('Loading my tokens...');
-        const response = await signedFetch('/api/v1/tokens/my-tokens');
-        console.log('My tokens response:', response);
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Failed to load my tokens:', errorText);
-          throw new Error('Failed to load tokens: ' + errorText);
+        console.log('Loading tokens...');
+        const allTokens: any[] = [];
+        
+        // Load user's own tokens (if wallet connected)
+        if (isConnected.value) {
+          try {
+            const response = await signedFetch('/api/v1/tokens/my-tokens');
+            if (response.ok) {
+              const userTokens = await response.json();
+              console.log('User tokens:', userTokens);
+              allTokens.push(...userTokens.map((t: any) => ({ ...t, source: 'user' })));
+            }
+          } catch (e) {
+            console.log('Could not load user tokens:', e);
+          }
         }
-        const jsonData = await response.json();
-        console.log('My tokens data:', jsonData);
-        tokens.value = jsonData;
+        
+        // Load service tokens (created by backend) - for admins
+        const isAdmin = AuthController.Role === 'admin' || AuthController.Role === 'root';
+        if (isAdmin) {
+          try {
+            const serviceResponse = await fetch(getApiUrl('/api/v1/tokens/service-tokens'), {
+              credentials: 'include'
+            });
+            if (serviceResponse.ok) {
+              const serviceTokens = await serviceResponse.json();
+              console.log('Service tokens:', serviceTokens);
+              // Avoid duplicates by checking if token already exists
+              for (const st of serviceTokens) {
+                if (!allTokens.find(t => t.id === st.id)) {
+                  allTokens.push({ ...st, source: 'service' });
+                }
+              }
+            }
+          } catch (e) {
+            console.log('Could not load service tokens:', e);
+          }
+        }
+        
+        console.log('All tokens:', allTokens);
+        tokens.value = allTokens;
       } catch (e: any) {
         console.error('Error loading tokens:', e);
         error.value = e.message;
