@@ -260,6 +260,8 @@ export class User extends DataModel {
     /* db-index-unique: walletIdentityKey */
     public walletIdentityKey: string;
 
+    public did: string;
+
     // Constructor
 
     constructor(data: TypedRow<User>) {

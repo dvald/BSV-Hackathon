@@ -2,7 +2,7 @@
 
 "use strict";
 
-import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter, OrderBy, SelectOptions, DataUpdate } from "tsbean-orm";
+import { DataModel, enforceType, TypedRow, DataSource, DataFinder } from "tsbean-orm";
 
 const DATA_SOURCE = DataSource.DEFAULT;
 const TABLE = "transaction";
