@@ -1,4 +1,4 @@
-/* Top bar */
+/* Top bar - MiCiudadID */
 
 .top-bar {
     position: fixed;
@@ -7,14 +7,18 @@
     width: 100%;
     height: var(--top-bar-size);
     background: var(--bar-bg-color);
-
+    padding: 0 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 
     white-space: nowrap;
 
-    box-shadow: 0 3px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    z-index: 100;
+    
+    /* Tipografía consistente */
+    font-family: var(--font-family-base, 'Segoe UI', Verdana, Arial, sans-serif);
 }
 
 .top-bar-logo-td {
@@ -24,20 +28,31 @@
 }
 
 .top-bar-user-td {
-    padding-right: 8px;
     display: flex;
     flex-direction: row;
     align-items: center;
 }
 
 .top-bar-title {
-    font-weight: bold;
-    font-size: 24px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--primary-color, #004d99) 0%, var(--secondary-color, #003366) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .top-bar-title-min {
-    font-weight: bold;
-    font-size: 24px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--primary-color, #004d99) 0%, var(--secondary-color, #003366) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     display: none;
 }
 
@@ -58,24 +73,31 @@
 }
 
 .top-bar-button {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
     width: 48px;
     height: 48px;
     box-shadow: none;
     border: none;
     cursor: pointer;
-    font-size: 24px;
+    font-size: 1.25rem;
     background: transparent;
     color: var(--theme-btn-color);
+    border-radius: 6px;
+    transition: background-color 0.15s, color 0.15s;
 }
 
 .top-bar-button:disabled {
-    opacity: 0.7;
-    cursor: default;
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .top-bar-button:not(:disabled):hover {
     color: var(--theme-btn-hover-color);
+    background-color: var(--hover-color);
 }
 
 .top-bar-logo-td .top-bar-button {
@@ -83,13 +105,17 @@
 }
 
 .top-bar-button-img {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
     width: 48px;
     height: 48px;
     box-shadow: none;
     border: none;
     cursor: pointer;
-    font-size: 24px;
+    font-size: 1.25rem;
     background: transparent;
     color: var(--theme-btn-color);
     border-radius: 50%;
@@ -107,5 +133,6 @@
 
 .top-bar-hello-message {
     margin-right: 0.5rem;
-    font-size: large;
+    font-size: var(--font-size-base, 1.125rem);
+    font-family: inherit;
 }

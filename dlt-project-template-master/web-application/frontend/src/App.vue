@@ -46,6 +46,9 @@ export default defineComponent({
 
 @import "@/style/scroll-bar.css";
 
+/* MiCiudadID - Accesibilidad WCAG + Lectura Fácil */
+@import "@/style/accessibility.css";
+
 /* Layout */
 
 @import "@/style/layout/main-layout.css";
@@ -57,8 +60,6 @@ export default defineComponent({
 @import "@/style/layout/account-menu.css";
 
 @import "@/style/layout/page.css";
-
-@import "@/style/layout/side-bar.css";
 
 @import "@/style/layout/snack-bar.css";
 </style>

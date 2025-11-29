@@ -579,6 +579,120 @@ export interface BsvStorageConfigResponse {
     retentionMinutes: number;
 
     buckets: string[];
+export interface ServiceEndpoint {
+    /**
+     * Service ID 
+     */
+    id: string;
+
+    /**
+     * Service type 
+     */
+    type: string;
+
+    /**
+     * Service endpoint URL 
+     */
+    serviceEndpoint: string;
+}
+
+export interface CreateDIDRequest {
+    /**
+     * Private key in hex format (optional, will generate random if not provided)
+     */
+    privateKey?: string;
+
+    services?: ServiceEndpoint[];
+}
+
+export interface CreateDIDResponse {
+    /**
+     * The created DID identifier 
+     */
+    did: string;
+
+    /**
+     * Transaction ID on BSV blockchain
+     */
+    txid: string;
+
+    /**
+     * The complete DID document
+     */
+    document: any;
+}
+
+export interface ResolveDIDResponse {
+    /**
+     * The resolved DID document
+     */
+    didDocument: any;
+
+    /**
+     * Metadata about the DID document
+     */
+    didDocumentMetadata: any;
+
+    /**
+     * Verification results
+     */
+    verification: any;
+}
+
+export interface GenerateRandomDIDRequest {
+    services?: ServiceEndpoint[];
+}
+
+export interface GenerateRandomDIDResponse {
+    /**
+     * The generated DID identifier
+     */
+    did: string;
+
+    /**
+     * The generated private key (KEEP SECURE!)
+     */
+    privateKey: string;
+
+    /**
+     * Transaction ID on BSV blockchain
+     */
+    txid: string;
+
+    /**
+     * The complete DID document
+     */
+    document: any;
+}
+
+export interface ValidateDIDRequest {
+    /**
+     * The DID document to validate
+     */
+    document: any;
+}
+
+export interface ValidateDIDResponse {
+    /**
+     * Whether the document is valid
+     */
+    valid: boolean;
+
+    errors?: string[];
+}
+
+export interface ExportDIDRequest {
+    /**
+     * The DID document to export
+     */
+    document: any;
+}
+
+export interface ExportDIDResponse {
+    /**
+     * The DID document as formatted JSON string
+     */
+    json: string;
 }
 
 export interface ExplorerSearchInformationItem {

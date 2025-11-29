@@ -5,12 +5,13 @@
 const Path = require("path");
 const FS = require("fs");
 const SwaggerGenerator = require("@asanrom/express-swagger-generator");
+const Swagger2Postman = require("swagger2-to-postmanv2");
 
 const SwaggerDefinition = SwaggerGenerator({ use: () => { } }, {
     swaggerDefinition: {
         info: {
             description: 'API documentation',
-            title: "Generator",
+            title: "hackaton",
             version: '1.0.0',
         },
         host: 'localhost',
@@ -843,8 +844,19 @@ function main() {
     generateDefinitions(Path.resolve(__dirname, "..", "..", "frontend", "src", "api", "definitions.ts"));
     generateAPIBindings(Path.resolve(__dirname, "..", "..", "frontend", "src", "api"), "@asanrom/request-browser", "browser");
 
-    generateDefinitions(Path.resolve(__dirname, "..", "..", "..", "mobile-application", "src", "api", "definitions.ts"));
-    generateAPIBindings(Path.resolve(__dirname, "..", "..", "..", "mobile-application", "src", "api"), "@asanrom/request-browser", "mobile");
+        Swagger2Postman.convert({ type: 'json', data: SwaggerDefinition}, {} ,(err, result) => {
+        if (err) {
+            console.error('Error converting to Postman:', err);
+          } else {
+            const folder = Path.resolve(__dirname, "../postman-collections")
+            if(!FS.existsSync(folder)){
+                FS.mkdirSync(folder, { recursive: true });
+            }
+
+            const destFile = Path.resolve(__dirname , "../postman-collections/postman_collection.json");
+            FS.writeFileSync(destFile, JSON.stringify(result.output[0].data))
+          }
+    })
 }
 
 main();

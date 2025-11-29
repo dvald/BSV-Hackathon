@@ -211,6 +211,49 @@ const routes: (RouteRecordRaw & {
             name: "bsv-storage",
             path: "/storage",
             component: () => import("@/components/routes/storage/BsvStoragePage.vue"),
+        },
+        /* Sections */
+
+        {
+            name: "dashboard",
+            path: "/dashboard",
+            component: () => import("@/components/routes/HomePage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        {
+            name: "people",
+            path: "/people",
+            component: () => import("@/components/sections/PersonasPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        {
+            name: "services",
+            path: "/services",
+            component: () => import("@/components/sections/ServiciosPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        {
+            name: "activity",
+            path: "/activity",
+            component: () => import("@/components/sections/ActividadPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        {
+            name: "permissions",
+            path: "/permissions",
+            component: () => import("@/components/sections/PermisosPage.vue"),
             meta: {
                 sidebarSticky: true,
             },

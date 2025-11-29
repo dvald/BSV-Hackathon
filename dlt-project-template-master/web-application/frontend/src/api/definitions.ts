@@ -579,6 +579,288 @@ export interface BsvStorageConfigResponse {
     retentionMinutes: number;
 
     buckets: string[];
+export interface ServiceEndpoint {
+    /**
+     * Service ID 
+     */
+    id: string;
+
+    /**
+     * Service type 
+     */
+    type: string;
+
+    /**
+     * Service endpoint URL 
+     */
+    serviceEndpoint: string;
+}
+
+export interface CreateDIDRequest {
+    /**
+     * Private key in hex format (optional, will generate random if not provided)
+     */
+    privateKey?: string;
+
+    services?: ServiceEndpoint[];
+}
+
+export interface CreateDIDResponse {
+    /**
+     * The created DID identifier 
+     */
+    did: string;
+
+    /**
+     * Transaction ID on BSV blockchain
+     */
+    txid: string;
+
+    /**
+     * The complete DID document
+     */
+    document: any;
+}
+
+export interface ResolveDIDResponse {
+    /**
+     * The resolved DID document
+     */
+    didDocument: any;
+
+    /**
+     * Metadata about the DID document
+     */
+    didDocumentMetadata: any;
+
+    /**
+     * Verification results
+     */
+    verification: any;
+}
+
+export interface GenerateRandomDIDRequest {
+    services?: ServiceEndpoint[];
+}
+
+export interface GenerateRandomDIDResponse {
+    /**
+     * The generated DID identifier
+     */
+    did: string;
+
+    /**
+     * The generated private key (KEEP SECURE!)
+     */
+    privateKey: string;
+
+    /**
+     * Transaction ID on BSV blockchain
+     */
+    txid: string;
+
+    /**
+     * The complete DID document
+     */
+    document: any;
+}
+
+export interface ValidateDIDRequest {
+    /**
+     * The DID document to validate
+     */
+    document: any;
+}
+
+export interface ValidateDIDResponse {
+    /**
+     * Whether the document is valid
+     */
+    valid: boolean;
+
+    errors?: string[];
+}
+
+export interface ExportDIDRequest {
+    /**
+     * The DID document to export
+     */
+    document: any;
+}
+
+export interface ExportDIDResponse {
+    /**
+     * The DID document as formatted JSON string
+     */
+    json: string;
+}
+
+export interface RequestCredentialRequest {
+    /**
+     * User's DID identifier
+     */
+    userDID: string;
+
+    /**
+     * Type of credential (e.g., "DriversLicense", "MedicalCertificate")
+     */
+    credentialType: string;
+
+    /**
+     * Data for this credential type (dynamic)
+     */
+    requestData: any;
+}
+
+export interface RequestCredentialResponse {
+    /**
+     * The request ID
+     */
+    requestId: string;
+
+    /**
+     * Status (PENDING)
+     */
+    status: string;
+}
+
+export interface GetPendingRequestsResponse {
+    requests: any[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface ApproveRequestRequest {
+    /**
+     * The request ID to approve
+     */
+    requestId: string;
+
+    /**
+     * Issuer's private key in hex format
+     */
+    issuerPrivateKey: string;
+
+    /**
+     * Optional expiration date (ISO 8601)
+     */
+    expirationDate?: string;
+}
+
+export interface ApproveRequestResponse {
+    /**
+     * The issued credential ID
+     */
+    credentialId: string;
+
+    /**
+     * Blockchain anchor transaction ID
+     */
+    txid: string;
+
+    /**
+     * The complete credential
+     */
+    credential: any;
+}
+
+export interface RejectRequestRequest {
+    /**
+     * The request ID to reject
+     */
+    requestId: string;
+
+    /**
+     * Issuer's DID
+     */
+    issuerDID: string;
+
+    /**
+     * Reason for rejection
+     */
+    reason: string;
+}
+
+export interface RejectRequestResponse {
+    /**
+     * Whether rejection was successful
+     */
+    success: boolean;
+}
+
+export interface GetUserCredentialsResponse {
+    credentials: any[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface GetRequestStatusResponse {
+    /**
+     * Request ID
+     */
+    requestId: string;
+
+    /**
+     * User's DID
+     */
+    userDID: string;
+
+    /**
+     * Credential type
+     */
+    credentialType: string;
+
+    /**
+     * Request data
+     */
+    requestData: any;
+
+    /**
+     * Status (PENDING, APPROVED, REJECTED)
+     */
+    status: string;
+
+    /**
+     * Timestamp
+     */
+    requestedAt: number;
+
+    /**
+     * Credential ID (if approved)
+     */
+    credentialId?: string;
+
+    /**
+     * Rejection reason (if rejected)
+     */
+    rejectionReason?: string;
+}
+
+export interface VerifyCredentialRequest {
+    /**
+     * The credential to verify
+     */
+    credential: any;
+}
+
+export interface VerifyCredentialResponse {
+    /**
+     * Whether credential is valid
+     */
+    valid: boolean;
+
+    errors?: string[];
+
+    /**
+     * Individual checks
+     */
+    checks: any;
 }
 
 export interface ExplorerSearchInformationItem {

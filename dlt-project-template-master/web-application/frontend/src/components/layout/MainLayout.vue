@@ -1,9 +1,7 @@
 <template>
     <div
-        class="main-layout"
+        class="main-layout sidebar-hidden"
         :class="{
-            'sidebar-hidden': !sidebarExpanded,
-            'sidebar-non-sticky': !sidebarSticky,
             'dark-theme': isDarkTheme,
             'light-theme': !isDarkTheme,
         }"
@@ -11,9 +9,7 @@
         <a href="#" @click="skipMainContent" class="skip-main-content">
             <span>{{ $t("Skip to main content") }}</span>
         </a>
-        <TopBar @toggle-menu="toggleMenu" @openModal="openModal"></TopBar>
-        <MenuSideBar v-model:expanded="sidebarExpanded"></MenuSideBar>
-        <div v-if="sidebarExpanded" class="side-bar-overlay" @click="closeSideBar"></div>
+        <TopBar @openModal="openModal"></TopBar>
         <AuthLoadingOverlay :display="loadingAuth"></AuthLoadingOverlay>
         <router-view v-if="!loadingAuth"></router-view>
         <LoadingOverlay v-if="loadingRoute"></LoadingOverlay>
@@ -75,7 +71,6 @@
 import { defineComponent } from "vue";
 
 import TopBar from "@/components/layout/TopBar.vue";
-import MenuSideBar from "@/components/layout/MenuSideBar.vue";
 import LoadingOverlay from "@/components/layout/LoadingOverlay.vue";
 import AuthLoadingOverlay from "@/components/layout/AuthLoadingOverlay.vue";
 import SnackBar from "@/components/layout/SnackBar.vue";
@@ -105,7 +100,6 @@ import { getCookiePreference, getTheme } from "@/control/app-preferences";
 export default defineComponent({
     components: {
         TopBar,
-        MenuSideBar,
         LoadingOverlay,
         AuthLoadingOverlay,
         SnackBar,
@@ -124,15 +118,11 @@ export default defineComponent({
     setup: function () {
         return {
             confirmationCallback: null,
-            resizeObserver: null as ResizeObserver,
         };
     },
     data: function () {
         return {
             loadingRoute: false,
-
-            sidebarExpanded: window.innerWidth >= 1000,
-            sidebarSticky: true,
 
             isDarkTheme: false,
             loadingAuth: AuthController.Loading && !AuthController.FirstTimeLoaded,
@@ -177,20 +167,12 @@ export default defineComponent({
             this.displayDropdownSelectWallet = false;
         },
 
-        closeSideBar: function () {
-            this.sidebarExpanded = false;
-        },
-
         onAuthLoadingChanged: function () {
             this.loadingAuth = AuthController.Loading && !AuthController.FirstTimeLoaded;
         },
 
         onThemeChanged: function () {
             this.isDarkTheme = getTheme() === "dark";
-        },
-
-        toggleMenu: function () {
-            this.sidebarExpanded = !this.sidebarExpanded;
         },
 
         skipMainContent: function (event) {
@@ -237,18 +219,6 @@ export default defineComponent({
         },
 
         onRouteChanged: function () {
-            if (this.$route && this.$route.meta && typeof this.$route.meta === "object") {
-                this.sidebarSticky = !!this.$route.meta.sidebarSticky;
-                if (this.sidebarSticky) {
-                    this.sidebarExpanded = window.innerWidth >= 1000;
-                } else {
-                    this.sidebarExpanded = false;
-                }
-            } else {
-                this.sidebarExpanded = false;
-                this.sidebarSticky = false;
-            }
-
             const cookiePref = getCookiePreference();
 
             if (!cookiePref && (!this.$route || !(this.$route.name in { terms: 1, privacy: 1, cookies: 1 }))) {
@@ -276,10 +246,6 @@ export default defineComponent({
             this.profileModalUser = uid;
             this.displayProfileModal = true;
         },
-
-        onPageResize: function () {
-            this.sidebarExpanded = window.innerWidth >= 1000;
-        },
     },
     mounted: function () {
         this.$listenOnAppEvent("auth-status-changed", this.onAuthStatusUpdate.bind(this));
@@ -298,16 +264,6 @@ export default defineComponent({
         this.onAuthStatusUpdate();
 
         this.onRouteChanged();
-
-        if (window.ResizeObserver) {
-            this.resizeObserver = new ResizeObserver(this.onPageResize.bind(this));
-            this.resizeObserver.observe(this.$el);
-        }
-    },
-    beforeUnmount: function () {
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-        }
     },
     watch: {
         $route: function () {

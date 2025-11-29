@@ -1,4 +1,4 @@
-/* Main layout style */
+/* Main layout style - MiCiudadID */
 
 .main-layout {
     position: fixed;
@@ -7,7 +7,6 @@
     width: 100%;
     height: 100%;
     --top-bar-size: 76px;
-    --side-bar-size: 240px;
 }
 
 /* Skip link */
