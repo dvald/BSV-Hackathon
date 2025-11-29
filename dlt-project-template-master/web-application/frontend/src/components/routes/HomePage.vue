@@ -18,25 +18,32 @@
 
         <main id="main-content">
             <!-- Alertas/Avisos importantes -->
-            <section 
-                v-if="pendingValidations > 0" 
-                class="a11y-alert a11y-alert-warning" 
+            <div 
+                v-if="showAlert && pendingValidations > 0" 
+                class="alert-banner alert-warning" 
                 role="alert"
                 aria-live="polite"
             >
-                <i class="mdi mdi-alert a11y-alert-icon" aria-hidden="true"></i>
-                <div class="a11y-alert-content">
-                    <p class="a11y-alert-title">{{ $t("Pending validations") }}</p>
-                    <p>{{ pendingValidations }} {{ $t("credentials waiting for validation") }}</p>
-                </div>
+                <i class="mdi mdi-alert-circle alert-icon" aria-hidden="true"></i>
+                <span class="alert-text">
+                    <strong>{{ pendingValidations }}</strong> {{ $t("credentials waiting for validation") }}
+                </span>
                 <router-link 
                     to="/permissions" 
-                    class="a11y-btn"
+                    class="alert-action"
                     :aria-label="$t('Go to pending validations')"
                 >
                     {{ $t("Review") }}
                 </router-link>
-            </section>
+                <button 
+                    type="button" 
+                    class="alert-close" 
+                    @click="dismissAlert"
+                    :aria-label="$t('Dismiss alert')"
+                >
+                    <i class="mdi mdi-close" aria-hidden="true"></i>
+                </button>
+            </div>
 
             <!-- Estadísticas principales -->
             <section aria-labelledby="stats-heading">
@@ -44,7 +51,7 @@
                     {{ $t("Platform statistics") }}
                 </h2>
                 
-                <div class="stats-grid a11y-grid a11y-grid-3">
+                <div class="stats-grid">
                     <!-- Ciudadanos registrados -->
                     <article class="stat-card a11y-card" aria-labelledby="stat-citizens">
                         <i class="mdi mdi-account-group stat-icon" aria-hidden="true"></i>
@@ -216,24 +223,26 @@
                             <i :class="'mdi ' + event.icon + ' timeline-icon'" aria-hidden="true"></i>
                             <div class="timeline-content">
                                 <p class="timeline-title">{{ $t(event.title) }}</p>
-                                <p class="timeline-desc a11y-text-secondary">{{ event.description }}</p>
+                                <p class="timeline-desc">{{ event.description }}</p>
+                            </div>
+                            <div class="timeline-meta">
                                 <time 
                                     class="timeline-time" 
                                     :datetime="event.timestamp"
                                 >
                                     {{ formatTime(event.timestamp) }}
                                 </time>
+                                <a 
+                                    v-if="event.txId" 
+                                    :href="getBlockchainExplorerUrl(event.txId)" 
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="timeline-link"
+                                    :aria-label="$t('View transaction on blockchain explorer')"
+                                >
+                                    <i class="mdi mdi-open-in-new"></i>
+                                </a>
                             </div>
-                            <a 
-                                v-if="event.txId" 
-                                :href="getBlockchainExplorerUrl(event.txId)" 
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="timeline-link a11y-btn a11y-btn-secondary a11y-btn-icon"
-                                :aria-label="$t('View transaction on blockchain explorer')"
-                            >
-                                <i class="mdi mdi-link-variant"></i>
-                            </a>
                         </li>
                     </ul>
                 </div>
@@ -251,6 +260,7 @@ export default defineComponent({
     name: "HomePage",
     data: function () {
         return {
+            showAlert: true,
             pendingValidations: 5,
             stats: {
                 totalCitizens: 12547,
@@ -347,6 +357,9 @@ export default defineComponent({
             // TODO: Configurar URL del explorador BSV
             return `/block-explorer/transaction/${txId}`;
         },
+        dismissAlert(): void {
+            this.showAlert = false;
+        },
     },
     mounted: function () {
         // TODO: Cargar datos reales del API
@@ -357,6 +370,74 @@ export default defineComponent({
 
 <style scoped>
 
+/* Alert Banner compacto */
+.alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.alert-warning {
+    background-color: #fff8e6;
+    border: 1px solid #f0c36d;
+    color: #8a6d3b;
+}
+
+.alert-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.alert-text {
+    flex: 1;
+}
+
+.alert-text strong {
+    font-weight: 600;
+}
+
+.alert-action {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #b8860b !important;
+    text-decoration: none;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid #b8860b;
+    border-radius: 4px;
+    background: transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.alert-action:hover {
+    background: #b8860b;
+    color: #fff !important;
+}
+
+.alert-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #8a6d3b;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.alert-close:hover {
+    background: rgba(0,0,0,0.1);
+}
 
 .dashboard-header {
     margin-bottom: var(--a11y-spacing-xl);
@@ -368,48 +449,57 @@ export default defineComponent({
     gap: var(--a11y-spacing-sm);
 }
 
-/* Stats Grid */
+/* Stats Grid - 2 filas de 3 */
 .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
     margin-bottom: var(--a11y-spacing-lg);
 }
 
 .stat-card {
     display: flex;
     align-items: center;
-    gap: var(--a11y-spacing-md);
-    padding: var(--a11y-spacing-lg);
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
 }
 
 .stat-icon {
-    font-size: 2.5rem;
+    font-size: 1.5rem;
+    color: var(--a11y-primary, #004d99);
     flex-shrink: 0;
 }
 
 .stat-content {
     flex: 1;
+    min-width: 0;
 }
 
 .stat-value {
-    font-size: var(--a11y-font-size-xlarge);
+    font-size: 1.25rem;
     font-weight: 700;
-    color: var(--a11y-primary);
+    color: var(--a11y-primary, #004d99);
     margin: 0;
     line-height: 1.2;
 }
 
 .stat-label {
-    font-size: var(--a11y-font-size-base);
+    font-size: 0.875rem;
     font-weight: 500;
-    color: var(--a11y-text-secondary);
+    color: var(--a11y-text-secondary, #666);
     margin: 0;
-    margin-top: var(--a11y-spacing-xs);
+    margin-top: 0.125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stat-trend {
-    font-size: var(--a11y-font-size-small);
+    font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--a11y-border-radius);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    flex-shrink: 0;
 }
 
 .trend-up {
@@ -498,10 +588,11 @@ export default defineComponent({
 }
 
 .timeline-item {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--a11y-spacing-sm);
-    padding: var(--a11y-spacing-md) 0;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: var(--a11y-spacing-sm, 0.75rem);
+    padding: var(--a11y-spacing-md, 1rem) 0;
     border-bottom: 1px solid #e0e0e0;
 }
 
@@ -511,31 +602,49 @@ export default defineComponent({
 
 .timeline-icon {
     font-size: 1.5rem;
-    flex-shrink: 0;
+    color: var(--a11y-primary, #004d99);
 }
 
 .timeline-content {
-    flex: 1;
+    min-width: 0;
 }
 
 .timeline-title {
     font-weight: 600;
     margin: 0;
-    margin-bottom: var(--a11y-spacing-xs);
+    margin-bottom: var(--a11y-spacing-xs, 0.25rem);
 }
 
 .timeline-desc {
     margin: 0;
-    margin-bottom: var(--a11y-spacing-xs);
+    color: var(--a11y-text-secondary, #555);
+}
+
+.timeline-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
 }
 
 .timeline-time {
-    font-size: var(--a11y-font-size-small);
-    color: var(--a11y-text-secondary);
+    font-size: var(--a11y-font-size-small, 0.875rem);
+    color: #595959; /* Contraste 7:1 con blanco - cumple WCAG AAA */
+    font-style: italic;
+    white-space: nowrap;
 }
 
 .timeline-link {
-    flex-shrink: 0;
+    color: var(--a11y-primary, #004d99);
+    font-size: 1.25rem;
+    text-decoration: none;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.timeline-link:hover {
+    background: rgba(0,77,153,0.1);
 }
 
 /* Quick Actions */
@@ -568,14 +677,24 @@ export default defineComponent({
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 768px) {
     .miciudad-dashboard {
         padding: var(--a11y-spacing-md);
     }
     
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
     .stat-card {
-        flex-direction: column;
-        text-align: center;
+        flex-direction: row;
+        text-align: left;
     }
     
     .service-stats {

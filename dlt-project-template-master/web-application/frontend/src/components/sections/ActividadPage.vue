@@ -41,7 +41,7 @@
                         <div class="stat-content">
                             <span class="stat-value">{{ formatNumber(stats.credentialsIssued) }}</span>
                             <span class="stat-label">{{ $t("Credentials issued") }}</span>
-                            <span class="stat-period">{{ $t("This month") }}</span>
+                            
                         </div>
                     </article>
                     
@@ -50,7 +50,6 @@
                         <div class="stat-content">
                             <span class="stat-value">{{ formatNumber(stats.verificationsToday) }}</span>
                             <span class="stat-label">{{ $t("Verifications") }}</span>
-                            <span class="stat-period">{{ $t("Today") }}</span>
                         </div>
                     </article>
                     
@@ -59,7 +58,6 @@
                         <div class="stat-content">
                             <span class="stat-value">{{ formatNumber(stats.blockchainTx) }}</span>
                             <span class="stat-label">{{ $t("Blockchain transactions") }}</span>
-                            <span class="stat-period">{{ $t("Total") }}</span>
                         </div>
                     </article>
                     
@@ -68,7 +66,6 @@
                         <div class="stat-content">
                             <span class="stat-value">{{ stats.revocations }}</span>
                             <span class="stat-label">{{ $t("Revocations") }}</span>
-                            <span class="stat-period">{{ $t("This month") }}</span>
                         </div>
                     </article>
                 </div>
@@ -277,7 +274,7 @@
                             <tbody>
                                 <tr v-for="event in paginatedEvents" :key="event.id">
                                     <td>
-                                        <time :datetime="event.timestamp">
+                                        <time :datetime="event.timestamp" class="table-time">
                                             {{ formatDateTimeShort(event.timestamp) }}
                                         </time>
                                     </td>
@@ -689,46 +686,56 @@ export default defineComponent({
     gap: var(--a11y-spacing-sm);
 }
 
-/* Stats Cards */
+/* Stats Cards - Consistente con Dashboard */
 .activity-stats {
     margin-bottom: var(--a11y-spacing-lg);
 }
 
 .stats-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--a11y-spacing-md);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
 }
 
 .stat-card {
     display: flex;
     align-items: center;
-    gap: var(--a11y-spacing-md);
-    padding: var(--a11y-spacing-lg);
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
 }
 
 .stat-icon {
-    font-size: 2.5rem;
+    font-size: 1.5rem;
+    color: var(--a11y-primary, #004d99);
+    flex-shrink: 0;
 }
 
 .stat-content {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-width: 0;
 }
 
 .stat-value {
-    font-size: var(--a11y-font-size-xlarge);
+    font-size: 1.25rem;
     font-weight: 700;
-    color: var(--a11y-primary);
+    color: var(--a11y-primary, #004d99);
+    margin: 0;
+    line-height: 1.2;
 }
 
 .stat-label {
+    font-size: 0.875rem;
     font-weight: 500;
+    color: var(--a11y-text-secondary, #666);
+    margin: 0;
 }
 
 .stat-period {
-    font-size: var(--a11y-font-size-small);
-    color: var(--a11y-text-secondary);
+    font-size: 0.75rem;
+    color: var(--a11y-text-secondary, #595959);
+    margin-top: 0.125rem;
 }
 
 /* Filters */
@@ -837,7 +844,8 @@ export default defineComponent({
 
 .event-time {
     font-size: var(--a11y-font-size-small);
-    color: var(--a11y-text-secondary);
+    font-style: italic;
+    color: #595959; /* Contraste 7:1 - WCAG AAA */
 }
 
 .event-body {
@@ -932,6 +940,12 @@ export default defineComponent({
     text-overflow: ellipsis;
 }
 
+.table-time {
+    font-style: italic;
+    color: #595959; /* Contraste 7:1 - WCAG AAA */
+    white-space: nowrap;
+}
+
 .event-type-cell {
     display: flex;
     align-items: center;
@@ -1013,6 +1027,12 @@ export default defineComponent({
 }
 
 /* Responsive */
+@media (max-width: 1200px) {
+    .stats-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 1024px) {
     .filters-grid {
         grid-template-columns: repeat(2, 1fr);

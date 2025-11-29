@@ -1033,3 +1033,25 @@
     transition: width 0.3s ease;
 }
 
+/* ==========================================================================
+   TIMESTAMPS - Formato global para tiempos/fechas
+   Contraste mínimo 4.5:1 (WCAG AA) - #595959 sobre blanco = 7:1
+   ========================================================================== */
+.a11y-timestamp,
+.a11y-time,
+time.a11y-timestamp {
+    font-size: var(--mci-font-size-sm, 0.875rem);
+    font-style: italic;
+    color: #595959; /* Contraste 7:1 con blanco - cumple WCAG AAA */
+    white-space: nowrap;
+}
+
+/* Variante para tablas/listas - alineado a la derecha */
+.a11y-timestamp-end {
+    font-size: var(--mci-font-size-sm, 0.875rem);
+    font-style: italic;
+    color: #595959;
+    white-space: nowrap;
+    text-align: right;
+}
+
