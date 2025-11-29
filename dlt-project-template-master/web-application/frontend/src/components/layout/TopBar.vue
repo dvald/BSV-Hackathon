@@ -64,13 +64,6 @@
         </div>
 
         <div class="top-bar-user-td" v-if="!loggedIn">
-            <button type="button" class="top-bar-button" :title="$t('Select your language')" @click="selectLanguage">
-                <i class="fas fa-language"></i>
-            </button>
-            <button type="button" class="top-bar-button" :title="$t('Change theme')" @click="invertTheme">
-                <i v-if="theme === 'dark'" class="fas fa-sun"></i>
-                <i v-else class="fas fa-moon"></i>
-            </button>
             <button type="button" @click="login" class="btn btn-primary btn-top-bar-login">
                 <i class="fas fa-sign-in"></i> {{ $t("Login") }}
             </button>
@@ -79,7 +72,6 @@
 </template>
 
 <script lang="ts">
-import { ColorThemeName, getTheme, setTheme } from "@/control/app-preferences";
 import { AuthController } from "@/control/auth";
 import { defineComponent } from "vue";
 import { RouterLink } from "vue-router";
@@ -95,21 +87,12 @@ export default defineComponent({
             platformName: import.meta.env.VITE__PLATFORM_NAME || "Platform",
             loggedIn: AuthController.isAuthenticated(),
             profileImage: AuthController.ProfileImage,
-            theme: getTheme(),
             profileName: AuthController.ProfileName || AuthController.Username || "",
         };
     },
     methods: {
         openUserSettings: function () {
             this.$emit("openModal", "account-settings");
-        },
-
-        selectLanguage: function () {
-            this.$emit("openModal", "change-language-modal");
-        },
-
-        invertTheme: function () {
-            setTheme(this.theme === "dark" ? "light" : "dark");
         },
 
         login: function () {
@@ -126,17 +109,12 @@ export default defineComponent({
             this.profileImage = AuthController.ProfileImage;
         },
 
-        onThemeChanged: function (t: ColorThemeName) {
-            this.theme = t;
-        },
-
         renderName: function (name: string): string {
             return ((name + "").split(" ")[0] + "").split(",")[0] || "???";
         },
     },
     mounted: function () {
         this.$listenOnAppEvent("auth-status-changed", this.onAuthChanged.bind(this));
-        this.$listenOnAppEvent("theme-changed", this.onThemeChanged.bind(this));
     },
     beforeUnmount: function () {},
 });

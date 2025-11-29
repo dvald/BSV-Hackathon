@@ -46,17 +46,6 @@
                             <i class="fas fa-angle-right"></i>
                         </div>
                     </div>
-
-                    <div class="settings-list-item" tabindex="0" @keydown="clickOnEnter" @click="openSelectTheme">
-                        <div class="settings-list-item-icon">
-                            <i class="fas fa-sun" v-if="!isDarkTheme"></i>
-                            <i class="fas fa-moon" v-if="isDarkTheme"></i>
-                        </div>
-                        <div class="settings-list-item-caption">{{ $t("Theme") }}: {{ renderTheme(isDarkTheme) }}</div>
-                        <div class="settings-list-item-arrow">
-                            <i class="fas fa-angle-right"></i>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -170,7 +159,6 @@ import { FocusTrap } from "@/utils/focus-trap";
 import { AVAILABLE_LANGUAGES } from "@/i18n";
 import { getLanguage } from "@/i18n";
 import { WalletsController } from "@/control/wallets";
-import { getTheme } from "@/control/app-preferences";
 
 const REQUIRED_ADMIN_PERMISSIONS = ["mod.users", "admin.roles"];
 
@@ -196,7 +184,6 @@ export default defineComponent({
                 return { id: l.id, name: l.name };
             }),
             lang: getLanguage(),
-            isDarkTheme: getTheme() === "dark",
 
             walletId: WalletsController.CurrentWalletId,
             walletName: WalletsController.CurrentWalletName,
@@ -210,7 +197,6 @@ export default defineComponent({
         open: function () {
             this.displayStatus = true;
             this.lang = getLanguage();
-            this.isDarkTheme = getTheme() === "dark";
         },
 
         close: function () {
@@ -259,19 +245,6 @@ export default defineComponent({
         openSelectLanguage: function () {
             this.close();
             this.$emit("openModal", "change-language");
-        },
-
-        renderTheme: function (isDark) {
-            if (isDark) {
-                return this.$t("Dark");
-            } else {
-                return this.$t("Light");
-            }
-        },
-
-        openSelectTheme: function () {
-            this.close();
-            this.$emit("openModal", "change-theme");
         },
 
         openSelectWallet: function () {

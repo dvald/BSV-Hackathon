@@ -77,12 +77,27 @@ a.settings-list-item:visited {
 }
 
 .settings-list-item:hover {
-    background: var(--hover-color);
+    background-color: var(--a11y-primary, #004d99);
+    color: #ffffff !important;
 }
 
-/*CONTRAST LINE: add to contrast with primary & secondary color */
-.settings-list-item:hover {
-    color: var(--background-light) !important;
+.settings-list-item:hover .settings-list-item-icon,
+.settings-list-item:hover .settings-list-item-caption,
+.settings-list-item:hover .settings-list-item-arrow {
+    color: #ffffff;
+}
+
+.settings-list-item:focus-visible {
+    outline: 3px solid var(--a11y-primary, #004d99);
+    outline-offset: -3px;
+    background-color: var(--a11y-primary, #004d99);
+    color: #ffffff !important;
+}
+
+.settings-list-item:focus-visible .settings-list-item-icon,
+.settings-list-item:focus-visible .settings-list-item-caption,
+.settings-list-item:focus-visible .settings-list-item-arrow {
+    color: #ffffff;
 }
 
 .settings-list-item-icon {
