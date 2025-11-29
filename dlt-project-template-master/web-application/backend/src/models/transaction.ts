@@ -2,7 +2,7 @@
 
 "use strict";
 
-import { DataModel, enforceType, TypedRow, DataSource, DataFinder } from "tsbean-orm";
+import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter } from "tsbean-orm";
 
 const DATA_SOURCE = DataSource.DEFAULT;
 const TABLE = "transaction";
@@ -11,6 +11,10 @@ const PRIMARY_KEY = "txHash";
 export class Transaction extends DataModel {
 
     public static finder = new DataFinder<Transaction, string>(DATA_SOURCE, TABLE, PRIMARY_KEY, (data: TypedRow<Transaction>) => { return new Transaction(data) });
+
+    public static async countAll(): Promise<number> {
+        return Transaction.finder.count(DataFilter.any());
+    }
 
     /* db-type: VARCHAR */
     public txHash: string;

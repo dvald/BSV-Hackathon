@@ -2,7 +2,7 @@
 
 "use strict";
 
-import { DataModel, enforceType, TypedRow, DataSource, DataFinder } from "tsbean-orm";
+import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter } from "tsbean-orm";
 
 const DATA_SOURCE = DataSource.DEFAULT;
 const TABLE = "service";
@@ -11,6 +11,10 @@ const PRIMARY_KEY = "id";
 export class Service extends DataModel {
 
     public static finder = new DataFinder<Service, string>(DATA_SOURCE, TABLE, PRIMARY_KEY, (data: TypedRow<Service>) => { return new Service(data) });
+
+    public static async countAll(): Promise<number> {
+        return Service.finder.count(DataFilter.any());
+    }
 
     /* db-type: VARCHAR */
     public id: string;
