@@ -205,6 +205,44 @@ const routes: (RouteRecordRaw & {
             }
         },
 
+        /* Sections */
+
+        {
+            name: "people",
+            path: "/people",
+            component: () => import("@/components/sections/PersonasPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        {
+            name: "services",
+            path: "/services",
+            component: () => import("@/components/sections/ServiciosPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        {
+            name: "activity",
+            path: "/activity",
+            component: () => import("@/components/sections/ActividadPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        {
+            name: "permissions",
+            path: "/permissions",
+            component: () => import("@/components/sections/PermisosPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
         /* Admin */
 
         {
