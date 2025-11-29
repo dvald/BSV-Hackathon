@@ -506,7 +506,7 @@ export default defineComponent({
             activeTab: "emit",
             tabs: [
                 { id: "emit", label: "Issue", icon: "mdi-file-document-edit", count: 0 },
-                { id: "pending", label: "Pending", icon: "mdi-clock-outline", count: 5 },
+                { id: "pending", label: "Pending", icon: "mdi-clock-outline", count: 2 },
                 { id: "revocations", label: "Revocations", icon: "mdi-cancel", count: 0 },
             ],
             // Emit form
