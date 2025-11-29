@@ -208,6 +208,15 @@ const routes: (RouteRecordRaw & {
         /* Sections */
 
         {
+            name: "dashboard",
+            path: "/dashboard",
+            component: () => import("@/components/routes/HomePage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        {
             name: "people",
             path: "/people",
             component: () => import("@/components/sections/PersonasPage.vue"),

@@ -33,13 +33,13 @@
 }
 
 .account-settings-username {
-    font-weight: bold;
-    font-size: x-large;
+    font-weight: 600;
+    font-size: var(--font-size-xl, 1.5rem);
 }
 
 .account-settings-logout-link {
     padding-top: 0.5rem;
-    font-size: small;
+    font-size: var(--font-size-min, 1rem);
 }
 
 .modal-body.no-padding {
@@ -87,7 +87,7 @@ a.settings-list-item:visited {
 
 .settings-list-item-icon {
     padding: 0.5rem;
-    font-size: 16px;
+    font-size: var(--font-size-min, 1rem);
     width: 40px;
     display: flex;
     justify-content: center;
@@ -98,7 +98,8 @@ a.settings-list-item:visited {
     padding: 0.5rem;
     flex: 1;
     min-width: 0;
-    font-size: 14px;
+    font-family: inherit;
+    font-size: var(--font-size-min, 1rem);
     display: flex;
     flex-direction: column;
 }
@@ -126,6 +127,6 @@ a.settings-list-item:visited {
 
 .select-wallet-opt,
 .select-wallet-addr {
-    font-size: small;
+    font-size: var(--font-size-min, 1rem);
     padding-top: 0.5rem;
 }

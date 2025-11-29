@@ -1,16 +1,38 @@
 .global-variables {
-    --background-dark: #3f3a4a;
-    --background-dark-soft: #534d5f;
-    --background-light: #f5f9fc;
-    --background-light-soft: #e8eef3;
-    --primary-color: #188b9a;
-    --secondary-color: #096773;
-    --tertiary-color: #a1b1bf;
+    /* ===== PALETA INSTITUCIONAL MICIUDADID ===== */
+    /* Azules institucionales */
+    --background-dark: #003366;
+    --background-dark-soft: #004080;
+    --background-light: #f5f7fa;
+    --background-light-soft: #ffffff;
+    
+    /* Colores primarios institucionales */
+    --primary-color: #004d99;
+    --secondary-color: #003366;
+    --tertiary-color: #6b7c8a;
 
-    --danger-color: red;
-    --danger-color-hover: darkred;
-    --success-color: green;
-    --success-color-hover: darkgreen;
-    --warning-color: orange;
-    --warning-color-hover: darkorange;
+    /* Colores semánticos */
+    --danger-color: #c82333;
+    --danger-color-hover: #a71d2a;
+    --success-color: #238b4a;
+    --success-color-hover: #1e6f3d;
+    --warning-color: #d39e00;
+    --warning-color-hover: #b38600;
+    
+    /* ===== TIPOGRAFÍA LECTURA FÁCIL ===== */
+    --font-family-base: 'Segoe UI', Verdana, Arial, sans-serif;
+    --font-size-min: 1rem;        /* 16px mínimo absoluto */
+    --font-size-base: 1.125rem;   /* 18px - base Lectura Fácil */
+    --font-size-lg: 1.25rem;      /* 20px */
+    --font-size-xl: 1.5rem;       /* 24px */
+    --font-size-2xl: 1.75rem;     /* 28px */
+    --font-size-3xl: 2rem;        /* 32px */
+    --line-height-base: 1.6;
+    --letter-spacing: 0.01em;
+    
+    /* ===== ESPACIADO Y MÁRGENES ===== */
+    --page-padding-x: 4rem;     /* 40px padding horizontal */
+    --page-padding-y: 4rem;       /* 32px padding vertical */
+    --page-max-width: 1400px;
+    --content-gap: 1.5rem;
 }

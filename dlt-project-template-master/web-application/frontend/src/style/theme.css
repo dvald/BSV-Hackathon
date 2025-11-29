@@ -1,4 +1,4 @@
-/* Theme colors */
+/* Theme colors - MiCiudadID Institucional */
 
 .dark-theme {
     background: var(--background-dark-soft);
@@ -8,14 +8,14 @@
     --bg-color-hard: var(--background-dark);
     --text-color: var(--background-light);
 
-    --theme-border-color: rgba(255, 255, 255, 0.1);
+    --theme-border-color: rgba(255, 255, 255, 0.15);
     --theme-btn-hover-color: var(--background-light);
     --theme-btn-color: var(--text-color);
-    --modal-overlay-bg-color: rgba(0, 0, 0, 0.4);
+    --modal-overlay-bg-color: rgba(0, 0, 0, 0.5);
     --modal-bg-color: var(--background-dark);
     --bar-bg-color: var(--background-dark);
 
-    --hover-color: var(--secondary-color);
+    --hover-color: rgba(255, 255, 255, 0.1);
     --selected-color: var(--primary-color);
 
     --switch-color: var(--background-light);
@@ -50,46 +50,46 @@
 }
 
 .light-theme {
-    background: var(--background-light-soft);
-    color: var(--background-dark);
+    background: var(--background-light);
+    color: #1a1a1a;
 
-    --bg-color: var(--background-light-soft);
-    --bg-color-hard: var(--background-light);
-    --text-color: var(--background-dark);
+    --bg-color: var(--background-light);
+    --bg-color-hard: var(--background-light-soft);
+    --text-color: #1a1a1a;
 
-    --theme-border-color: rgba(255, 255, 255, 0.1);
-    --theme-btn-hover-color: var(--background-dark);
+    --theme-border-color: #d0d5db;
+    --theme-btn-hover-color: var(--secondary-color);
     --theme-btn-color: var(--text-color);
     --modal-overlay-bg-color: rgba(0, 0, 0, 0.4);
-    --modal-bg-color: var(--background-light);
-    --bar-bg-color: var(--background-light);
+    --modal-bg-color: var(--background-light-soft);
+    --bar-bg-color: var(--background-light-soft);
 
-    --hover-color: var(--secondary-color);
+    --hover-color: #e8eef3;
     --selected-color: var(--primary-color);
 
     --switch-color: var(--background-dark);
-    --switch-shadow-color: rgba(0, 0, 0, 0.33);
+    --switch-shadow-color: rgba(0, 0, 0, 0.2);
     --switch-shadow-toggled-color: var(--primary-color);
     --switch-disabled-color: var(--tertiary-color);
 
     --button-primary-bg: var(--primary-color);
     --button-primary-bg-hover: var(--secondary-color);
-    --button-primary-text: var(--background-light);
+    --button-primary-text: #ffffff;
 
     --button-login-bg: var(--primary-color);
     --button-login-bg-hover: var(--secondary-color);
-    --button-login-text: var(--background-light);
+    --button-login-text: #ffffff;
 
     --button-danger-bg: var(--danger-color);
     --button-danger-bg-hover: var(--danger-color-hover);
-    --button-danger-text: var(--background-light);
+    --button-danger-text: #ffffff;
 
     --button-submit-bg: var(--success-color);
     --button-submit-bg-hover: var(--success-color-hover);
-    --button-submit-text: var(--background-light);
+    --button-submit-text: #ffffff;
 
-    --input-bg-color: var(--background-light-soft);
-    --input-autocomplete-bg-color: var(--background-light-soft);
+    --input-bg-color: #ffffff;
+    --input-autocomplete-bg-color: #ffffff;
 
     --user-profile-image-background: var(--tertiary-color);
 
@@ -99,9 +99,14 @@
 }
 
 .dark-theme a {
-    color: lightskyblue;
+    color: #7cb3ff;
 }
 
 .dark-theme a:visited {
-    color: lightpink;
+    color: #c9a0dc;
+}
+
+
+.light-theme a:visited {
+    color: var(--secondary-color);
 }
