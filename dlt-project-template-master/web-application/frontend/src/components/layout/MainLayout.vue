@@ -12,7 +12,6 @@
             <span>{{ $t("Skip to main content") }}</span>
         </a>
         <TopBar @toggle-menu="toggleMenu" @openModal="openModal"></TopBar>
-        <MenuSideBar v-model:expanded="sidebarExpanded"></MenuSideBar>
         <div v-if="sidebarExpanded" class="side-bar-overlay" @click="closeSideBar"></div>
         <AuthLoadingOverlay :display="loadingAuth"></AuthLoadingOverlay>
         <router-view v-if="!loadingAuth"></router-view>
