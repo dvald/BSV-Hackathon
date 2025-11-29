@@ -108,7 +108,7 @@ export default defineComponent({
 
             try {
                 // Try listing from crowdfunding basket first
-                const baskets = ['crowdfunding', 'main', 'inbox'];
+                const baskets = ['crowdfunding', 'mandala-tokens', 'main', 'inbox'];
                 
                 for (const basket of baskets) {
                     try {

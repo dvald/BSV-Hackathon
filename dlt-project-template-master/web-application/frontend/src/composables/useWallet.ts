@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, getCurrentInstance } from 'vue';
 import { WalletClient } from '@bsv/sdk';
 
 // Shared state to persist connection across components
@@ -39,12 +39,14 @@ export function useWallet() {
         }
     };
 
-    onMounted(() => {
-        // Auto-connect if not connected
-        if (!isConnected.value) {
-            connect();
-        }
-    });
+    if (getCurrentInstance()) {
+        onMounted(() => {
+            // Auto-connect if not connected
+            if (!isConnected.value) {
+                connect();
+            }
+        });
+    }
 
     return {
         wallet,
