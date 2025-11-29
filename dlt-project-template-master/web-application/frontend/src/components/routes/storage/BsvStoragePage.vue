@@ -5,15 +5,7 @@
         <div class="storage-container" v-if="!loading">
             <div class="header-section">
                 <h1>{{ $t("File Storage with BSV Hash Anchor") }}</h1>
-                <p class="subtitle">{{ $t("Upload files and anchor SHA256 hash on BSV blockchain") }}</p>
-                <div class="wallet-status">
-                    <button v-if="!isConnected" class="btn btn-outline-primary btn-sm" @click="connect">
-                        <i class="fas fa-wallet"></i> {{ $t("Connect Wallet") }}
-                    </button>
-                    <span v-else class="badge badge-success">
-                        <i class="fas fa-check-circle"></i> {{ $t("Wallet Connected") }}
-                    </span>
-                </div>
+                <p class="subtitle">{{ $t("Upload files - SHA256 hash is automatically anchored on BSV blockchain") }}</p>
             </div>
 
             <!-- Storage Config Info -->
@@ -107,7 +99,7 @@
                     >
                         <i class="fas fa-upload" v-if="!uploading"></i>
                         <i class="fas fa-spinner fa-spin" v-else></i>
-                        {{ uploading ? $t("Uploading...") : $t("Upload & Get Hash") }}
+                        {{ uploading ? $t("Uploading & Anchoring...") : $t("Upload & Anchor on BSV") }}
                     </button>
                 </div>
 
@@ -116,7 +108,7 @@
                     <div class="progress-bar-container">
                         <div class="progress-bar indeterminate"></div>
                     </div>
-                    <p class="progress-text">{{ $t("Uploading and calculating hash...") }}</p>
+                    <p class="progress-text">{{ $t("Uploading, hashing and anchoring on BSV blockchain...") }}</p>
                 </div>
 
                 <!-- Upload Result -->
@@ -159,23 +151,6 @@
                         {{ $t("This SHA256 hash serves as cryptographic proof of file integrity. You can verify the file has not been modified by recalculating its hash.") }}
                     </div>
 
-                    <!-- Anchor on BSV Section -->
-                    <div class="anchor-section" v-if="!uploadResult.txid">
-                        <button 
-                            class="btn btn-success btn-lg" 
-                            @click="anchorOnBsv" 
-                            :disabled="anchoring || !isConnected"
-                        >
-                            <i class="fas fa-link" v-if="!anchoring"></i>
-                            <i class="fas fa-spinner fa-spin" v-else></i>
-                            {{ anchoring ? $t("Anchoring...") : $t("Anchor Hash on BSV Blockchain") }}
-                        </button>
-                        <small v-if="!isConnected" class="connect-hint">
-                            <i class="fas fa-exclamation-circle"></i>
-                            {{ $t("Connect your BSV wallet to anchor this hash on-chain") }}
-                        </small>
-                    </div>
-
                     <!-- BSV Transaction Result -->
                     <div class="txid-result" v-if="uploadResult.txid">
                         <h5><i class="fas fa-cube"></i> {{ $t("Anchored on BSV!") }}</h5>
@@ -186,11 +161,19 @@
                                 <button class="btn-copy" @click="copyToClipboard(uploadResult.txid)" :title="$t('Copy')">
                                     <i class="fas fa-copy"></i>
                                 </button>
-                                <a :href="'https://whatsonchain.com/tx/' + uploadResult.txid" target="_blank" class="btn-external" :title="$t('View on WhatsOnChain')">
-                                    <i class="fas fa-external-link-alt"></i>
-                                </a>
                             </div>
                         </div>
+                        <div class="result-item blockchain-link">
+                            <span class="label">{{ $t("View on Blockchain") }}:</span>
+                            <a :href="'https://whatsonchain.com/tx/' + uploadResult.txid" target="_blank" class="whatsonchain-link">
+                                <i class="fas fa-external-link-alt"></i>
+                                {{ 'https://whatsonchain.com/tx/' + uploadResult.txid }}
+                            </a>
+                        </div>
+                    </div>
+                    <!-- No BSV Transaction -->
+                    <div class="no-anchor-result" v-else>
+                        <p><i class="fas fa-exclamation-triangle"></i> {{ $t("BSV anchoring not available or failed. Check backend logs.") }}</p>
                     </div>
                 </div>
             </div>
@@ -210,6 +193,7 @@
                                 <th>{{ $t("File") }}</th>
                                 <th>{{ $t("Hash (truncated)") }}</th>
                                 <th>{{ $t("Size") }}</th>
+                                <th>{{ $t("BSV TX") }}</th>
                                 <th>{{ $t("Actions") }}</th>
                             </tr>
                         </thead>
@@ -223,6 +207,12 @@
                                     <code class="hash-truncated">{{ truncateHash(file.hash) }}</code>
                                 </td>
                                 <td>{{ formatFileSize(file.size) }}</td>
+                                <td>
+                                    <a v-if="file.txid" :href="'https://whatsonchain.com/tx/' + file.txid" target="_blank" class="tx-link" :title="file.txid">
+                                        <i class="fas fa-cube"></i> {{ file.txid.substring(0, 8) }}...
+                                    </a>
+                                    <span v-else class="no-tx">-</span>
+                                </td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-primary" @click="copyToClipboard(file.hash)" :title="$t('Copy Hash')">
                                         <i class="fas fa-fingerprint"></i>
@@ -244,8 +234,6 @@
 import { defineComponent, ref, onMounted } from "vue";
 import ComponentLoader from "@/components/utils/ComponentLoader.vue";
 import { getApiUrl } from "@/api/utils";
-import { useWallet } from "@/composables/useWallet";
-import { Script } from "@bsv/sdk";
 
 // Tipo para resultado de upload
 interface FileUploadResult {
@@ -268,6 +256,7 @@ interface StorageHistoryItem {
     hash: string;
     url: string;
     uploadedAt: number;
+    txid?: string;
 }
 
 export default defineComponent({
@@ -278,10 +267,6 @@ export default defineComponent({
     setup() {
         const loading = ref(false);
         const uploading = ref(false);
-        const anchoring = ref(false);
-        
-        // Wallet connection
-        const { wallet, isConnected, connect } = useWallet();
         
         const buckets = ref<string[]>(['documents', 'images', 'media', 'other']);
         const selectedBucket = ref("documents");
@@ -342,6 +327,7 @@ export default defineComponent({
                 });
 
                 const data = await response.json();
+                console.log('[Upload] Response data:', data);
 
                 if (!response.ok) {
                     throw new Error(data.message || "Upload failed");
@@ -361,6 +347,7 @@ export default defineComponent({
                     hash: result.hash,
                     url: result.url,
                     uploadedAt: result.timestamp,
+                    txid: result.txid,
                 };
                 uploadedFiles.value.unshift(historyItem);
                 saveToHistory(historyItem);
@@ -440,83 +427,6 @@ export default defineComponent({
             }
         };
 
-        /**
-         * Anchor the file hash on BSV blockchain using OP_RETURN
-         */
-        const anchorOnBsv = async () => {
-            if (!uploadResult.value || !isConnected.value || !wallet.value) {
-                message.value = "Please upload a file and connect your wallet first.";
-                messageType.value = "error";
-                return;
-            }
-
-            anchoring.value = true;
-            message.value = "Creating blockchain transaction...";
-            messageType.value = "info";
-
-            try {
-                // Build OP_RETURN data: FILE_HASH_ANCHOR | hash | filename | timestamp
-                const anchorData = [
-                    "FILE_HASH_ANCHOR",
-                    uploadResult.value.hash,
-                    uploadResult.value.fileName,
-                    uploadResult.value.timestamp.toString()
-                ];
-
-                // Create OP_RETURN script using ASM format
-                // OP_FALSE OP_RETURN <data1> <data2> ...
-                // Convert data to hex for ASM format
-                const toHex = (str: string): string => {
-                    return Array.from(new TextEncoder().encode(str))
-                        .map(b => b.toString(16).padStart(2, '0'))
-                        .join('');
-                };
-                
-                const asmParts = ['OP_FALSE', 'OP_RETURN'];
-                for (const data of anchorData) {
-                    asmParts.push(toHex(data));
-                }
-                const opReturnScript = Script.fromASM(asmParts.join(' '));
-
-                // Create transaction using wallet
-                const result = await wallet.value.createAction({
-                    outputs: [{
-                        lockingScript: opReturnScript.toHex(),
-                        satoshis: 0, // OP_RETURN outputs have 0 satoshis
-                        outputDescription: 'File hash anchor'
-                    }],
-                    description: `Anchor file hash: ${uploadResult.value.fileName}`,
-                    options: { randomizeOutputs: false }
-                });
-
-                if (result.txid) {
-                    uploadResult.value.txid = result.txid;
-                    message.value = `Hash anchored on BSV! TX: ${result.txid}`;
-                    messageType.value = "success";
-
-                    // Update history with txid
-                    const historyIndex = uploadedFiles.value.findIndex(
-                        f => f.hash === uploadResult.value?.hash
-                    );
-                    if (historyIndex >= 0) {
-                        uploadedFiles.value[historyIndex] = {
-                            ...uploadedFiles.value[historyIndex],
-                            txid: result.txid
-                        } as any;
-                        localStorage.setItem('file-storage-history', JSON.stringify(uploadedFiles.value));
-                    }
-                } else {
-                    throw new Error("Transaction created but no txid returned");
-                }
-            } catch (err: any) {
-                console.error('Anchor error:', err);
-                message.value = "Anchor failed: " + (err.message || 'Unknown error');
-                messageType.value = "error";
-            } finally {
-                anchoring.value = false;
-            }
-        };
-
         onMounted(() => {
             loadHistory();
         });
@@ -524,7 +434,6 @@ export default defineComponent({
         return {
             loading,
             uploading,
-            anchoring,
             buckets,
             selectedBucket,
             isPublic,
@@ -545,10 +454,6 @@ export default defineComponent({
             truncateHash,
             formatFileSize,
             getFileIcon,
-            // Wallet & BSV
-            isConnected,
-            connect,
-            anchorOnBsv,
         };
     }
 });
@@ -948,61 +853,46 @@ export default defineComponent({
     color: var(--theme-text-secondary);
 }
 
-/* Wallet Status */
-.wallet-status {
-    margin-top: 1rem;
-}
-
-.wallet-status .badge {
+/* TX link in table */
+.tx-link {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 999px;
-    font-size: 0.9rem;
-}
-
-.wallet-status .badge-success {
+    gap: 0.35rem;
+    color: #059669;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-family: monospace;
+    padding: 0.25rem 0.5rem;
     background: #d1fae5;
-    color: #065f46;
-}
-
-/* Anchor Section */
-.anchor-section {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #a7f3d0;
-    text-align: center;
-}
-
-.anchor-section .btn-success {
-    background: #10b981;
-    border: none;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
+    border-radius: 4px;
     transition: all 0.2s;
 }
 
-.anchor-section .btn-success:hover:not(:disabled) {
-    background: #059669;
+.tx-link:hover {
+    background: #10b981;
+    color: white;
 }
 
-.anchor-section .btn-success:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+.tx-link i {
+    font-size: 0.75rem;
 }
 
-.connect-hint {
-    display: block;
-    margin-top: 0.75rem;
-    color: #6b7280;
-    font-size: 0.85rem;
+.no-tx {
+    color: #9ca3af;
+}
+
+/* No anchor warning */
+.no-anchor-result {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 4px;
+    color: #92400e;
+}
+
+.no-anchor-result i {
+    margin-right: 0.5rem;
 }
 
 /* Transaction Result */
@@ -1030,6 +920,30 @@ export default defineComponent({
     word-break: break-all;
     flex: 1;
     font-family: monospace;
+}
+
+.blockchain-link {
+    margin-top: 0.75rem;
+}
+
+.whatsonchain-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #059669;
+    text-decoration: none;
+    font-size: 0.85rem;
+    word-break: break-all;
+    padding: 0.5rem 0.75rem;
+    background: #d1fae5;
+    border-radius: 4px;
+    border: 1px solid #10b981;
+    transition: all 0.2s;
+}
+
+.whatsonchain-link:hover {
+    background: #10b981;
+    color: white;
 }
 
 .btn-external {

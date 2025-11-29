@@ -31,6 +31,7 @@ interface FileUploadResult {
     hash: string;
     url: string;
     timestamp: number;
+    txid?: string; // BSV transaction ID
 }
 
 /**
@@ -100,9 +101,9 @@ export class FileStorageController extends Controller {
                 // Read file for hash calculation
                 const fileBuffer = readFileSync(tempPath);
 
-                // Calculate SHA256 hash
+                // Calculate SHA256 hash AND anchor on BSV automatically
                 const hashService = BsvHashAnchorService.getInstance();
-                const hashResult = hashService.hashFile(fileBuffer, {
+                const hashResult = await hashService.hashAndAnchor(fileBuffer, {
                     fileName: originalName,
                     mimeType: uploadedFile.mimetype,
                 });
@@ -121,6 +122,7 @@ export class FileStorageController extends Controller {
                     hash: hashResult.hash,
                     url: fileUrl,
                     timestamp: Date.now(),
+                    txid: hashResult.txid, // Include BSV transaction ID if anchored
                 };
 
                 sendApiResult(request, response, result);
