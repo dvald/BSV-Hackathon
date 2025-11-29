@@ -251,12 +251,14 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onScanMock }) =>
 
 export default function WebWalletApp() {
   // Estados de la aplicación
-  // 'home' | 'camera' | 'success' | 'credential'
+  // 'home' | 'camera' | 'success' | 'credential' | 'share_selection' | 'sharing' | 'share_success'
   const [viewState, setViewState] = useState('home');
   const [showKeys, setShowKeys] = useState(false);
 
   // Array de credenciales (soporta múltiples credenciales)
   const [credentials, setCredentials] = useState<CredentialData[]>([]);
+  // Índice de la credencial seleccionada para compartir
+  const [selectedCredentialIndex, setSelectedCredentialIndex] = useState<number | null>(null);
 
   // Datos simulados (Mock Data)
   const walletData = {
@@ -297,16 +299,42 @@ export default function WebWalletApp() {
         setCredentials(prev => [...prev, credentialData]);
         setViewState('credential');
 
-        // Liberar el bloqueo después de cambiar de vista
-        // (Opcional, ya que al volver a 'camera' se montará de nuevo, pero es buena práctica)
+        // Liberar el bloqueo
         isProcessingScan.current = false;
       }, 2000);
+    } else if (scannedContent === "https://pollito.com") {
+      // Bloquear procesamiento adicional
+      isProcessingScan.current = true;
+
+      // Ir a la pantalla de selección de credenciales
+      setViewState('share_selection');
+      console.log("QR de compartir reconocido.", scannedContent);
+
+      // Liberar el bloqueo inmediatamente ya que cambiamos de vista
+      isProcessingScan.current = false;
     } else {
       // Si el QR no es válido, cerrar la cámara y mostrar el error
       setViewState('home');
-      alert("QR no reconocido. Prueba con 'www.example.com'");
+      alert("QR no reconocido. Prueba con 'www.example.com' o 'https://pollito.com'");
     }
   }, [credentialData]);
+
+  const handleShareCredential = () => {
+    if (selectedCredentialIndex === null) return;
+
+    setViewState('sharing');
+
+    // Simular proceso de compartir
+    setTimeout(() => {
+      setViewState('share_success');
+
+      // Volver a la lista de credenciales después del éxito
+      setTimeout(() => {
+        setViewState('credential');
+        setSelectedCredentialIndex(null);
+      }, 2000);
+    }, 2000);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-blue-100">
@@ -427,6 +455,73 @@ export default function WebWalletApp() {
               <CheckCircle size={16} className="mt-0.5 shrink-0" />
               <p>Estas credenciales han sido firmadas criptográficamente por el Gobierno y ancladas en BSV.</p>
             </div>
+          </div>
+        )}
+
+        {/* --- VISTA: SELECCIÓN PARA COMPARTIR --- */}
+        {viewState === 'share_selection' && (
+          <div className="w-full flex flex-col gap-6 items-center animate-in slide-in-from-bottom-20 duration-500">
+            <div className="w-full flex justify-start">
+              <button onClick={() => setViewState('home')} className="text-gray-500 hover:text-gray-800 flex items-center gap-1 text-sm">
+                ← Cancelar
+              </button>
+            </div>
+
+            <div className="text-center mb-2">
+              <h2 className="text-xl font-bold text-gray-800">Compartir Credencial</h2>
+              <p className="text-sm text-gray-500">Selecciona la credencial que deseas compartir</p>
+            </div>
+
+            {/* Lista de credenciales seleccionables */}
+            <div className="w-full flex flex-col gap-4 max-h-[50vh] overflow-y-auto pb-20">
+              {credentials.length === 0 ? (
+                <p className="text-center text-gray-400 py-8">No tienes credenciales para compartir</p>
+              ) : (
+                credentials.map((credential, index) => (
+                  <div
+                    key={index}
+                    onClick={() => setSelectedCredentialIndex(index)}
+                    className={`relative cursor-pointer transition-all duration-200 transform ${selectedCredentialIndex === index ? 'scale-105 ring-4 ring-blue-400 rounded-xl' : 'hover:scale-102 opacity-80 hover:opacity-100'}`}
+                  >
+                    {selectedCredentialIndex === index && (
+                      <div className="absolute -top-3 -right-3 bg-blue-600 text-white rounded-full p-1 z-20 shadow-lg">
+                        <CheckCircle size={24} />
+                      </div>
+                    )}
+                    <CredentialCard data={credential} />
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Botón de compartir fijo abajo */}
+            <div className="fixed bottom-6 left-0 right-0 px-6 flex justify-center z-20">
+              <PrimaryButton
+                onClick={handleShareCredential}
+                className={`w-full max-w-md shadow-xl ${selectedCredentialIndex === null ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Compartir Credencial
+              </PrimaryButton>
+            </div>
+          </div>
+        )}
+
+        {/* --- VISTA: COMPARTIENDO (Loading) --- */}
+        {viewState === 'sharing' && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center animate-in fade-in duration-300 backdrop-blur-sm">
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-white font-medium text-lg">Compartiendo credencial...</p>
+          </div>
+        )}
+
+        {/* --- VISTA: SHARE SUCCESS --- */}
+        {viewState === 'share_success' && (
+          <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
+            <div className="transform scale-150 text-green-500 mb-6 animate-bounce">
+              <CheckCircle size={80} fill="currentColor" className="text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">¡Compartido!</h2>
+            <p className="text-gray-500">Credencial compartida con éxito</p>
           </div>
         )}
 
