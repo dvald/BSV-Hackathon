@@ -770,6 +770,21 @@
     border-color: var(--mci-primary-800);
 }
 
+/* Asegurar estilos para enlaces con clase de botón primario */
+a.a11y-btn-primary,
+a.a11y-btn-primary:link,
+a.a11y-btn-primary:visited {
+    background-color: var(--mci-primary-700);
+    color: var(--mci-white);
+    border-color: var(--mci-primary-700);
+    text-decoration: none;
+}
+a.a11y-btn-primary:hover {
+    background-color: var(--mci-primary-800);
+    border-color: var(--mci-primary-800);
+    color: var(--mci-white);
+}
+
 .a11y-btn-secondary {
     background-color: var(--mci-white);
     color: var(--mci-primary-700);
@@ -777,6 +792,20 @@
 }
 .a11y-btn-secondary:hover {
     background-color: var(--mci-primary-50);
+}
+
+/* Asegurar estilos para enlaces con clase de botón secundario */
+a.a11y-btn-secondary,
+a.a11y-btn-secondary:link,
+a.a11y-btn-secondary:visited {
+    background-color: var(--mci-white);
+    color: var(--mci-primary-700);
+    border-color: var(--mci-primary-700);
+    text-decoration: none;
+}
+a.a11y-btn-secondary:hover {
+    background-color: var(--mci-primary-50);
+    color: var(--mci-primary-700);
 }
 
 .a11y-btn-success {

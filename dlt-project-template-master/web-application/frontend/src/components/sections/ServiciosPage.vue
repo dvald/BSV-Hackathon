@@ -529,6 +529,7 @@ export default defineComponent({
 .service-card {
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .service-inactive {
@@ -537,14 +538,16 @@ export default defineComponent({
 
 .service-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--a11y-spacing-sm);
     margin-bottom: var(--a11y-spacing-md);
+    padding-right: 5rem; /* Espacio para el badge */
 }
 
 .service-icon {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
     flex-shrink: 0;
+    line-height: 1;
 }
 
 .service-title-group {
@@ -555,7 +558,13 @@ export default defineComponent({
     font-size: var(--a11y-font-size-large);
     font-weight: 600;
     margin: 0;
-    margin-bottom: var(--a11y-spacing-xs);
+}
+
+/* Badge de estado en esquina superior derecha */
+.service-title-group .a11y-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
 }
 
 .service-body {

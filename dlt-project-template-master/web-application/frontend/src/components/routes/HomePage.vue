@@ -130,7 +130,6 @@
             <!-- Servicios destacados -->
             <section aria-labelledby="services-heading" class="a11y-mt-lg">
                 <h2 id="services-heading" class="a11y-heading-2">
-                    <i class="mdi mdi-star" aria-hidden="true"></i>
                     {{ $t("Featured services") }}
                 </h2>
                 
@@ -205,7 +204,6 @@
             <section aria-labelledby="activity-heading" class="a11y-mt-lg">
                 <div class="section-header">
                     <h2 id="activity-heading" class="a11y-heading-2">
-                        <i class="mdi mdi-clipboard-text-clock" aria-hidden="true"></i>
                         {{ $t("Recent activity") }}
                     </h2>
                     <router-link to="/activity" class="a11y-btn a11y-btn-secondary">
