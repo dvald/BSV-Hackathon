@@ -33,7 +33,47 @@
                 :to="{ name: 'tokens' }"
             >
                 <div class="side-bar-option-icon"><i class="fas fa-coins"></i></div>
-                <div class="side-bar-option-text">{{ $t("My Tokens") }}</div>
+                <div class="side-bar-option-text">{{ $t("Crowdfunding Tokens") }}</div>
+            </router-link>
+
+            <router-link
+                class="side-bar-option"
+                :class="{ selected: page === 'tokens-create' }"
+                :title="$t('Create Token')"
+                :to="{ name: 'tokens-create' }"
+            >
+                <div class="side-bar-option-icon"><i class="fas fa-plus-circle"></i></div>
+                <div class="side-bar-option-text">{{ $t("Create Token") }}</div>
+            </router-link>
+
+            <router-link
+                class="side-bar-option"
+                :class="{ selected: page === 'tokens-manage' }"
+                :title="$t('Manage Tokens')"
+                :to="{ name: 'tokens-manage' }"
+            >
+                <div class="side-bar-option-icon"><i class="fas fa-tasks"></i></div>
+                <div class="side-bar-option-text">{{ $t("Manage Tokens") }}</div>
+            </router-link>
+
+            <router-link
+                class="side-bar-option"
+                :class="{ selected: page === 'tokens-transfer' }"
+                :title="$t('Transfer Tokens')"
+                :to="{ name: 'tokens-transfer' }"
+            >
+                <div class="side-bar-option-icon"><i class="fas fa-paper-plane"></i></div>
+                <div class="side-bar-option-text">{{ $t("Transfer Tokens") }}</div>
+            </router-link>
+
+            <router-link
+                class="side-bar-option"
+                :class="{ selected: page === 'tokens-explorer' }"
+                :title="$t('Token Explorer')"
+                :to="{ name: 'tokens-explorer' }"
+            >
+                <div class="side-bar-option-icon"><i class="fas fa-search"></i></div>
+                <div class="side-bar-option-text">{{ $t("Token Explorer") }}</div>
             </router-link>
 
             <div class="side-bar-separator"></div>

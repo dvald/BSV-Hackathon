@@ -200,8 +200,49 @@ const routes: (RouteRecordRaw & {
             name: "tokens",
             component: () => import("@/components/routes/crowdfunding/MyTokensPage.vue"),
             meta: {
-                title: "My Tokens",
-                requiresAuth: false
+                title: "Crowdfunding Tokens",
+                requiresAuth: true,
+                sidebarSticky: true,
+            }
+        },
+        {
+            path: "/tokens/create",
+            name: "tokens-create",
+            component: () => import("@/components/routes/tokens/TokenCreationPage.vue"),
+            meta: {
+                title: "Create Token",
+                requiresAuth: true,
+                sidebarSticky: true,
+            }
+        },
+        {
+            path: "/tokens/manage",
+            name: "tokens-manage",
+            component: () => import("@/components/routes/tokens/TokenManagementPage.vue"),
+            meta: {
+                title: "Manage Tokens",
+                requiresAuth: true,
+                sidebarSticky: true,
+            }
+        },
+        {
+            path: "/tokens/transfer",
+            name: "tokens-transfer",
+            component: () => import("@/components/routes/tokens/TokenTransferPage.vue"),
+            meta: {
+                title: "Transfer Tokens",
+                requiresAuth: true,
+                sidebarSticky: true,
+            }
+        },
+        {
+            path: "/tokens/explorer",
+            name: "tokens-explorer",
+            component: () => import("@/components/routes/tokens/TokenExplorerPage.vue"),
+            meta: {
+                title: "Token Explorer",
+                requiresAuth: false,
+                sidebarSticky: true,
             }
         },
 
