@@ -33,8 +33,8 @@ interface CredentialCardProps {
 }
 
 const CredentialCard: React.FC<CredentialCardProps> = ({ data }) => (
-  <div className="w-full max-w-sm bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl shadow-2xl overflow-hidden text-white transform transition-all duration-500 animate-in fade-in slide-in-from-bottom-10">
-    <div className="p-6 relative">
+  <div className="w-full max-w-sm bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-2xl overflow-hidden text-white transform transition-all duration-500 animate-in fade-in slide-in-from-bottom-10">
+    <div className="p-6 relative rounded-xl">
       {/* Patrón de fondo decorativo */}
       <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
 
@@ -443,9 +443,6 @@ export default function WebWalletApp() {
             <div className="w-full flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
               {credentials.map((credential, index) => (
                 <div key={index} className="relative">
-                  <div className="absolute -top-2 -left-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center z-10">
-                    {index + 1}
-                  </div>
                   <CredentialCard data={credential} />
                 </div>
               ))}
@@ -473,24 +470,31 @@ export default function WebWalletApp() {
             </div>
 
             {/* Lista de credenciales seleccionables */}
-            <div className="w-full flex flex-col gap-4 max-h-[50vh] overflow-y-auto pb-20">
+            <div className="w-full max-h-[50vh] overflow-y-auto pb-20 px-1">
               {credentials.length === 0 ? (
                 <p className="text-center text-gray-400 py-8">No tienes credenciales para compartir</p>
               ) : (
-                credentials.map((credential, index) => (
-                  <div
-                    key={index}
-                    onClick={() => setSelectedCredentialIndex(index)}
-                    className={`relative cursor-pointer transition-all duration-200 transform ${selectedCredentialIndex === index ? 'scale-105 ring-4 ring-blue-400 rounded-xl' : 'hover:scale-102 opacity-80 hover:opacity-100'}`}
-                  >
-                    {selectedCredentialIndex === index && (
-                      <div className="absolute -top-3 -right-3 bg-blue-600 text-white rounded-full p-1 z-20 shadow-lg">
-                        <CheckCircle size={24} />
+                <div className="flex flex-wrap justify-center gap-4">
+                  {credentials.map((credential, index) => (
+                    <div
+                      key={index}
+                      onClick={() => setSelectedCredentialIndex(index)}
+                      className={`relative cursor-pointer transition-all duration-200 transform rounded-xl border-2 max-w-xs w-full ${selectedCredentialIndex === index
+                        ? 'scale-105 border-blue-500 shadow-lg ring-2 ring-blue-200 bg-blue-50'
+                        : 'border-transparent hover:scale-102 opacity-80 hover:opacity-100 hover:bg-gray-50'
+                        }`}
+                    >
+                      {selectedCredentialIndex === index && (
+                        <div className="absolute -top-3 -right-3 bg-blue-600 text-white rounded-full p-1 z-20 shadow-lg animate-in zoom-in">
+                          <CheckCircle size={24} />
+                        </div>
+                      )}
+                      <div className="transform scale-95 pointer-events-none">
+                        <CredentialCard data={credential} />
                       </div>
-                    )}
-                    <CredentialCard data={credential} />
-                  </div>
-                ))
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
