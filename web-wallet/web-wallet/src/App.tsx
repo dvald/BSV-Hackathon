@@ -94,6 +94,9 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onScanMock }) =>
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(true);
 
+  // Ref para evitar múltiples detecciones del mismo QR
+  const hasScannedRef = useRef(false);
+
   useEffect(() => {
     let stream: MediaStream | null = null;
     let animationFrameId: number;
@@ -115,14 +118,19 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onScanMock }) =>
     };
 
     const scanQRCode = async () => {
-      if (!scanning) return;
+      // Si ya escaneamos un QR, no continuar
+      if (hasScannedRef.current) return;
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
       if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
         const context = canvas.getContext('2d');
-        if (!context) return;
+        if (!context) {
+          // Continuar escaneando si no hay contexto
+          animationFrameId = requestAnimationFrame(scanQRCode);
+          return;
+        }
 
         // Ajustar canvas al tamaño del video
         canvas.height = video.videoHeight;
@@ -144,14 +152,24 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onScanMock }) =>
 
         if (code && code.data) {
           console.log("QR detectado:", code.data);
+          // Marcar que ya escaneamos para evitar múltiples detecciones
+          hasScannedRef.current = true;
           setScanning(false);
+
+          // Cancelar el siguiente frame antes de llamar al callback
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+          }
+
           onScanMock(code.data);
           return;
         }
       }
 
-      // Continuar escaneando
-      animationFrameId = requestAnimationFrame(scanQRCode);
+      // Continuar escaneando solo si no hemos escaneado aún
+      if (!hasScannedRef.current) {
+        animationFrameId = requestAnimationFrame(scanQRCode);
+      }
     };
 
     startCamera();
@@ -173,7 +191,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onScanMock }) =>
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [onScanMock, scanning]);
+  }, [onScanMock]);
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center animate-in zoom-in-95 duration-300">
@@ -237,6 +255,9 @@ export default function WebWalletApp() {
   const [viewState, setViewState] = useState('home');
   const [showKeys, setShowKeys] = useState(false);
 
+  // Array de credenciales (soporta múltiples credenciales)
+  const [credentials, setCredentials] = useState<CredentialData[]>([]);
+
   // Datos simulados (Mock Data)
   const walletData = {
     address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
@@ -251,23 +272,41 @@ export default function WebWalletApp() {
     expiry: "11/2030"
   };
 
+  // Ref para evitar procesamiento múltiple de escaneos
+  const isProcessingScan = useRef(false);
+
   // Función simulada de lectura de QR
-  const handleScanMock = (scannedContent: string) => {
+  const handleScanMock = React.useCallback((scannedContent: string) => {
+    // Si ya estamos procesando un escaneo, ignorar
+    if (isProcessingScan.current) return;
+
     console.log("Escaneado:", scannedContent);
 
     // LÓGICA HARDCODEADA SOLICITADA
     if (scannedContent === "http://example.com") {
+      // Bloquear procesamiento adicional
+      isProcessingScan.current = true;
+
+      // Cerrar la cámara INMEDIATAMENTE
       setViewState('success');
       console.log("QR reconocido. Prueba con 'www.example.com'", scannedContent);
 
       // Esperar 2 segundos mostrando el tick verde antes de mostrar la tarjeta
       setTimeout(() => {
+        // Agregar nueva credencial al array
+        setCredentials(prev => [...prev, credentialData]);
         setViewState('credential');
+
+        // Liberar el bloqueo después de cambiar de vista
+        // (Opcional, ya que al volver a 'camera' se montará de nuevo, pero es buena práctica)
+        isProcessingScan.current = false;
       }, 2000);
     } else {
+      // Si el QR no es válido, cerrar la cámara y mostrar el error
+      setViewState('home');
       alert("QR no reconocido. Prueba con 'www.example.com'");
     }
-  };
+  }, [credentialData]);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-blue-100">
@@ -311,10 +350,27 @@ export default function WebWalletApp() {
               </button>
             </div>
 
-            {/* Sección de Credenciales (Vacía inicialmente) */}
-            <div className="text-center p-8 border-2 border-dashed border-gray-200 rounded-xl">
-              <p className="text-gray-400 text-sm">No tienes credenciales activas</p>
-            </div>
+            {/* Sección de Credenciales */}
+            {credentials.length === 0 ? (
+              <div className="text-center p-8 border-2 border-dashed border-gray-200 rounded-xl">
+                <p className="text-gray-400 text-sm">No tienes credenciales activas</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-bold text-gray-800">Tus Credenciales ({credentials.length})</h2>
+                  <button
+                    onClick={() => setViewState('credential')}
+                    className="text-blue-600 text-sm hover:underline"
+                  >
+                    Ver todas →
+                  </button>
+                </div>
+
+                {/* Mostrar solo la última credencial en home */}
+                <CredentialCard data={credentials[credentials.length - 1]} />
+              </div>
+            )}
 
           </div>
         )}
@@ -347,14 +403,29 @@ export default function WebWalletApp() {
               </button>
             </div>
 
-            <h2 className="text-xl font-bold text-gray-800 self-start">Tus Credenciales</h2>
+            <div className="w-full flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Tus Credenciales ({credentials.length})</h2>
+              <PrimaryButton onClick={() => setViewState('camera')} className="!py-2 !px-4 text-sm">
+                <Camera size={16} />
+                Escanear Otra
+              </PrimaryButton>
+            </div>
 
-            {/* Componente Tarjeta */}
-            <CredentialCard data={credentialData} />
+            {/* Lista de todas las credenciales */}
+            <div className="w-full flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
+              {credentials.map((credential, index) => (
+                <div key={index} className="relative">
+                  <div className="absolute -top-2 -left-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center z-10">
+                    {index + 1}
+                  </div>
+                  <CredentialCard data={credential} />
+                </div>
+              ))}
+            </div>
 
-            <div className="bg-green-50 text-green-800 px-4 py-3 rounded-lg text-sm flex gap-2 items-start">
+            <div className="bg-green-50 text-green-800 px-4 py-3 rounded-lg text-sm flex gap-2 items-start w-full">
               <CheckCircle size={16} className="mt-0.5 shrink-0" />
-              <p>Esta credencial ha sido firmada criptográficamente por el Gobierno y anclada en BSV.</p>
+              <p>Estas credenciales han sido firmadas criptográficamente por el Gobierno y ancladas en BSV.</p>
             </div>
           </div>
         )}
