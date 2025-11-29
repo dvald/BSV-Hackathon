@@ -252,6 +252,15 @@ const routes: (RouteRecordRaw & {
             },
         },
 
+        {
+            name: "benefits",
+            path: "/benefits",
+            component: () => import("@/components/sections/BeneficiosPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
         /* Admin */
 
         {

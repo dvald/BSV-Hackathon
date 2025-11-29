@@ -53,6 +53,15 @@
                 <i class="mdi mdi-clipboard-text-clock nav-icon" aria-hidden="true"></i>
                 <span class="nav-text">{{ $t("Activity") }}</span>
             </RouterLink>
+            <RouterLink 
+                :to="{name: 'benefits'}" 
+                class="top-bar-nav-link"
+                tabindex="0"
+                aria-label="Ir a la sección de Mis Beneficios"
+            >
+                <i class="mdi mdi-trophy nav-icon" aria-hidden="true"></i>
+                <span class="nav-text">{{ $t("Benefits") }}</span>
+            </RouterLink>
         </nav>
 
         <div class="top-bar-user-td" v-if="loggedIn">
