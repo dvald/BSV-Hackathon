@@ -12,7 +12,7 @@
                 {{ $t("Control Panel") }}
             </h1>
             <p class="a11y-text-secondary">
-                {{ $t("Welcome to MiCiudadID management panel") }}
+                {{ $t("Overview of citizens, credentials and recent activity") }}
             </p>
         </header>
 
