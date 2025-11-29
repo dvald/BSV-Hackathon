@@ -12,9 +12,9 @@
                     <i class="mdi mdi-account-group" aria-hidden="true"></i>
                     {{ $t("Citizens") }}
                 </h1>
-                <p class="a11y-text-secondary">
-                    {{ $t("Citizen management and their digital identities") }}
-                </p>
+            <p class="a11y-text-secondary">
+                {{ $t("Query, register and manage citizens and their verifiable credentials") }}
+            </p>
             </div>
             <div class="header-actions">
                 <button 
@@ -340,12 +340,7 @@
                                     <i :class="'mdi ' + getCredentialIcon(cred.type) + ' cred-icon'" aria-hidden="true"></i>
                                     <div class="cred-info">
                                         <h4 class="cred-type">{{ $t(cred.type) }}</h4>
-                                        <span 
-                                            class="a11y-badge"
-                                            :class="getCredentialClass(cred.status)"
-                                        >
-                                            {{ $t(cred.status) }}
-                                        </span>
+                                        
                                     </div>
                                 </div>
                                 <div class="cred-details">
@@ -529,6 +524,59 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal de confirmación de revocación -->
+        <div 
+            v-if="showRevokeConfirmModal"
+            class="modal-overlay"
+            @click.self="cancelRevokeCredential"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="revoke-confirm-title"
+        >
+            <div class="modal-content a11y-card modal-sm">
+                <header class="modal-header">
+                    <h2 id="revoke-confirm-title" class="a11y-heading-2">
+                        <i class="mdi mdi-alert-circle revoke-warning-icon" aria-hidden="true"></i>
+                        {{ $t("Confirm revocation") }}
+                    </h2>
+                </header>
+                
+                <div class="modal-body">
+                    <p class="a11y-text">
+                        {{ $t("Are you sure you want to revoke this credential?") }}
+                    </p>
+                    <div v-if="credentialToRevoke" class="revoke-credential-info">
+                        <p><strong>{{ $t("Type") }}:</strong> {{ $t(credentialToRevoke.type) }}</p>
+                        <p><strong>{{ $t("Issued") }}:</strong> {{ formatDate(credentialToRevoke.issuedAt) }}</p>
+                    </div>
+                    <div class="a11y-alert a11y-alert-warning">
+                        <i class="mdi mdi-alert a11y-alert-icon" aria-hidden="true"></i>
+                        <div class="a11y-alert-content">
+                            <p>{{ $t("This action cannot be undone. The credential will be permanently revoked and registered on blockchain.") }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="modal-footer">
+                    <button 
+                        type="button"
+                        @click="cancelRevokeCredential"
+                        class="a11y-btn a11y-btn-secondary"
+                    >
+                        {{ $t("Cancel") }}
+                    </button>
+                    <button 
+                        type="button"
+                        @click="confirmRevokeCredential"
+                        class="a11y-btn a11y-btn-danger"
+                    >
+                        <i class="mdi mdi-close-circle" aria-hidden="true"></i>
+                        {{ $t("Revoke credential") }}
+                    </button>
+                </footer>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -576,6 +624,8 @@ export default defineComponent({
             searchTimeout: null as ReturnType<typeof setTimeout> | null,
             selectedCitizen: null as Citizen | null,
             showNewCitizenModal: false,
+            showRevokeConfirmModal: false,
+            credentialToRevoke: null as Credential | null,
             newCitizen: {
                 name: "",
                 nationalId: "",
@@ -792,10 +842,10 @@ export default defineComponent({
             return "Bronze";
         },
         getEcoLevelClass(points: number): string {
-            if (points >= 5000) return "a11y-badge-info";
-            if (points >= 2000) return "a11y-badge-warning";
-            if (points >= 500) return "a11y-badge-success";
-            return "a11y-badge-info";
+            if (points >= 5000) return "a11y-badge-platinum";
+            if (points >= 2000) return "a11y-badge-gold";
+            if (points >= 500) return "a11y-badge-silver";
+            return "a11y-badge-bronze";
         },
         getBlockchainUrl(txId: string): string {
             return `/block-explorer/transaction/${txId}`;
@@ -824,8 +874,27 @@ export default defineComponent({
             this.$router.push(`/permissions?tab=emit&citizen=${citizen.id}`);
         },
         revokeCredential(credential: Credential) {
-            // TODO: Mostrar modal de confirmación y revocar
-            console.log("Revoke credential:", credential.id);
+            this.credentialToRevoke = credential;
+            this.showRevokeConfirmModal = true;
+        },
+        confirmRevokeCredential() {
+            if (this.credentialToRevoke && this.selectedCitizen) {
+                // Buscar la credencial en el ciudadano seleccionado y cambiar su estado
+                const credIndex = this.selectedCitizen.credentials.findIndex(
+                    (c) => c.id === this.credentialToRevoke!.id
+                );
+                if (credIndex !== -1) {
+                    // Eliminar la credencial del array
+                    this.selectedCitizen.credentials.splice(credIndex, 1);
+                    // TODO: Llamar al API para revocar en blockchain
+                    console.log("Credential revoked:", this.credentialToRevoke.id);
+                }
+            }
+            this.cancelRevokeCredential();
+        },
+        cancelRevokeCredential() {
+            this.showRevokeConfirmModal = false;
+            this.credentialToRevoke = null;
         },
         exportData() {
             // TODO: Exportar datos en CSV
@@ -1143,6 +1212,10 @@ export default defineComponent({
     max-width: 800px;
 }
 
+.modal-sm {
+    max-width: 450px;
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -1152,6 +1225,9 @@ export default defineComponent({
 
 .modal-header h2 {
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
 }
 
 .modal-footer {
@@ -1160,6 +1236,22 @@ export default defineComponent({
     gap: var(--a11y-spacing-sm);
     padding-top: var(--a11y-spacing-md);
     border-top: 1px solid #e0e0e0;
+}
+
+/* Revoke Credential Info */
+.revoke-credential-info {
+    background-color: #f8f9fa;
+    padding: var(--a11y-spacing-md);
+    border-radius: var(--a11y-border-radius);
+    margin: var(--a11y-spacing-md) 0;
+}
+
+.revoke-credential-info p {
+    margin: var(--a11y-spacing-xs) 0;
+}
+
+.revoke-warning-icon {
+    color: var(--mci-error-600, #dc2626);
 }
 
 /* Citizen Detail Modal */

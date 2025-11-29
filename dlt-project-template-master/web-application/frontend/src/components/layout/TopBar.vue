@@ -2,9 +2,8 @@
     <div class="top-bar" tabindex="-1">
         <div class="top-bar-logo-td">
             <RouterLink :to="{name: 'home'}" class="logo-link" aria-label="Ir al inicio - MiCiudadID">
-                <i class="mdi mdi-city nav-icon logo-icon" aria-hidden="true"></i>
+                <img src="@/assets/logo.png" alt="MiCiudadID" class="logo-image" />
                 <span class="top-bar-title">MiCiudadID</span>
-                <span class="top-bar-title-min">MCI</span>
             </RouterLink>
         </div>
         <nav class="top-bar-navigation" role="navigation" aria-label="Navegación principal de administración">
@@ -125,7 +124,7 @@ export default defineComponent({
 .logo-link {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.15rem;
     text-decoration: none;
     color: inherit;
 }
@@ -135,7 +134,7 @@ export default defineComponent({
 }
 
 .logo-icon {
-    font-size: 1.5rem;
+    font-size: 3rem !important;
 }
 
 /* Navigation */
