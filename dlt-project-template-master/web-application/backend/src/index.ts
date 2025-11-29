@@ -8,10 +8,8 @@ import Cluster from "cluster";
 import FS from "fs";
 import Path from "path";
 import { DatabaseConfig } from "./config/config-database";
-import { BlockchainConfig } from "./config/config-blockchain";
 import { CrashGuard } from "./crash-guard";
 import { Monitor } from "./monitor";
-import { BlockchainEventsScanner } from "./services/blockchain-events-scan";
 import { WorkerProcess } from "./worker";
 import { Config } from "./config/config";
 import { UsersService } from "./services/users-service";
@@ -98,11 +96,11 @@ async function main() {
         });
 
         // Run blockchain sync
-        if (BlockchainConfig.getInstance().sync) {
-            BlockchainEventsScanner.getInstance().start().catch(err => {
-                Monitor.exception(err);
-            });
-        }
+        // if (BlockchainConfig.getInstance().sync) {
+        //     BlockchainEventsScanner.getInstance().start().catch(err => {
+        //         Monitor.exception(err);
+        //     });
+        // }
 
         // Master process
 

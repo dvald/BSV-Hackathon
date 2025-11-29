@@ -33,6 +33,9 @@ async function getOrCreateBackendWallet(): Promise<{ wallet: Wallet, publicKey: 
   }
 
   const publicKey = privateKey.toPublicKey()
+
+  console.log(publicKey.toString(), privateKey.toHex())
+
   const address = publicKey.toAddress()
   const keyDeriver = new KeyDeriver(privateKey)
   const storageManager = new WalletStorageManager(keyDeriver.identityKey)

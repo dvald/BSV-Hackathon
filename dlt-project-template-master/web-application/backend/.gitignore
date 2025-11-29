@@ -21,3 +21,5 @@ locales/conf/*.txt
 temp
 data
 certbot
+
+postman_collections
