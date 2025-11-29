@@ -4,7 +4,7 @@
 
 import { RequestErrorHandler, RequestParams, CommonAuthenticatedErrorHandler, CommonErrorHandler } from "@asanrom/request-axios";
 import { getApiUrl } from "./utils";
-import { AuthenticationContext, LoginResponse, LoginRequest, ThirdPartyLoginService, ThirdPartyLoginResponse, ThirdPartyLoginBody, SignupTPResponse, SignupTPRequest, TFALoginRequest, SignupResponse, SignupRequest, EmailVerifyResponse, EmailVerifyRequest, ForgotPasswordResponse, ForgotPasswordRequest, ResetPasswordRequest, WalletLoginResponse } from "./definitions";
+import { AuthenticationContext, LoginResponse, LoginRequest, ThirdPartyLoginService, ThirdPartyLoginResponse, ThirdPartyLoginBody, SignupTPResponse, SignupTPRequest, TFALoginRequest, SignupResponse, SignupRequest, EmailVerifyResponse, EmailVerifyRequest, ForgotPasswordResponse, ForgotPasswordRequest, ResetPasswordRequest, WalletLoginResponse, WalletLoginRequest } from "./definitions";
 
 export class ApiAuth {
     /**
@@ -282,14 +282,20 @@ export class ApiAuth {
      * Method: POST
      * Path: /auth/login-wallet
      * Login or register with BSV Wallet (Metanet Desktop)
+     * @param body Body parameters
      * @returns The request parameters
      */
-    public static LoginWithWallet(): RequestParams<WalletLoginResponse, LoginWithWalletErrorHandler> {
+    public static LoginWithWallet(body: WalletLoginRequest): RequestParams<WalletLoginResponse, LoginWithWalletErrorHandler> {
         return {
             method: "POST",
             url: getApiUrl(`/auth/login-wallet`),
+            json: body,
             handleError: (err, handler) => {
                 new RequestErrorHandler()
+                    .add(500, "INTERNAL_ERROR", handler.serverErrorInternalError)
+                    .add(403, "USER_BANNED", handler.forbiddenUserBanned)
+                    .add(403, "*", handler.forbidden)
+                    .add(400, "NO_IDENTITY_KEY", handler.badRequestNoIdentityKey)
                     .add(400, "*", handler.badRequest)
                     .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
                     .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
@@ -579,6 +585,26 @@ export type LoginWithWalletErrorHandler = CommonErrorHandler & {
      * General handler for status = 400
      */
     badRequest: () => void;
+
+    /**
+     * Handler for status = 400 and code = NO_IDENTITY_KEY
+     */
+    badRequestNoIdentityKey: () => void;
+
+    /**
+     * General handler for status = 403
+     */
+    forbidden: () => void;
+
+    /**
+     * Handler for status = 403 and code = USER_BANNED
+     */
+    forbiddenUserBanned: () => void;
+
+    /**
+     * Handler for status = 500 and code = INTERNAL_ERROR
+     */
+    serverErrorInternalError: () => void;
 };
 
 /**

@@ -1664,11 +1664,11 @@ export interface WalletLoginResponse {
     session_id: string;
 }
 
-export interface WalletLoginError {
+export interface WalletLoginRequest {
     /**
-     * Error codes:\n - WALLET_NOT_CONFIGURED: BSV wallet not available\n - NO_IDENTITY_KEY: Could not extract identity key from request\n - INTERNAL_ERROR: Server error
+     * Identity key
      */
-    code: string;
+    identityKey: string;
 }
 
 export interface LinkWalletError {

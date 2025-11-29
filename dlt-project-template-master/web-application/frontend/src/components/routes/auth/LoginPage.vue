@@ -1,6 +1,7 @@
 <template>
     <div class="modal-container modal-container-login modal-container-opaque no-transition" tabindex="-1" role="dialog">
-        <form @submit="submit" class="modal-dialog modal-md" role="document">
+        <form class="modal-dialog modal-md" role="document">
+        <!-- <form @submit="submit" class="modal-dialog modal-md" role="document"> -->
             <div class="modal-header">
                 <div class="modal-title no-close">{{ $t("Login") }}</div>
                 <button type="button" class="modal-close-btn" :title="$t('Select your language')" @click="selectLanguage">
@@ -42,11 +43,11 @@
                     <button type="submit" :disabled="busy" class="btn btn-login"><i class="fas fa-sign-in"></i> {{ $t("Login") }}</button>
                 </div> -->
                 <div class="form-error" v-if="error">{{ error }}</div>
-                <div class="tp-services-group" v-if="tpServices.length > 0">
+                <!-- <div class="tp-services-group" v-if="tpServices.length > 0">
                     <p v-for="tp of tpServices" :key="tp.id">
                         <a :href="tp.url"> {{ $t("Login with") }} {{ tp.name }} </a>
                     </p>
-                </div>
+                </div> -->
                 
                 <!-- BSV Wallet Login -->
                 <div class="wallet-login-section">
