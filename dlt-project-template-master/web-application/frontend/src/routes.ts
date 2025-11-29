@@ -205,6 +205,17 @@ const routes: (RouteRecordRaw & {
             }
         },
 
+        /* BSV Storage */
+
+        {
+            name: "bsv-storage",
+            path: "/storage",
+            component: () => import("@/components/routes/storage/BsvStoragePage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
         /* Admin */
 
         {
