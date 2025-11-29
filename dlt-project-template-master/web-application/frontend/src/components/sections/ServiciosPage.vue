@@ -165,14 +165,17 @@
                         </div>
 
                         <footer class="service-footer">
-                            <button 
+                            <button v-if="!isAdmin" @click="requestService(service)" class="a11y-btn a11y-btn-primary">
+                                {{ $t("Request service") }}
+                            </button>
+                            <button v-if="isAdmin || isServiceAdmin(service.id)"
                                 @click="viewServiceDetails(service)"
                                 class="a11y-btn a11y-btn-secondary"
                             >
                                 {{ $t("View details") }}
                             </button>
                             <button 
-                                v-if="isAdmin || isServiceAdmin(service.id)"
+                                v-if="isAdmin"
                                 @click="editService(service)"
                                 class="a11y-btn a11y-btn-primary"
                             >
@@ -307,12 +310,120 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal para solicitar servicio -->
+        <div 
+            v-if="showRequestServiceModal && selectedService" 
+            class="modal-overlay"
+            @click.self="closeRequestModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="request-service-title"
+        >
+            <div class="modal-content a11y-card request-service-modal">
+                <header class="modal-header">
+                    <h2 id="request-service-title" class="a11y-heading-2">
+                        {{ $t("Request Service") }}
+                    </h2>
+                    <button 
+                        @click="closeRequestModal"
+                        class="a11y-btn a11y-btn-icon"
+                        :aria-label="$t('Close')"
+                    >
+                        ✕
+                    </button>
+                </header>
+                
+                <div class="modal-body">
+                    <!-- Información del servicio seleccionado -->
+                    <div class="selected-service-info">
+                        <div class="service-info-header">
+                            <i :class="'mdi ' + selectedService.icon + ' service-info-icon'" aria-hidden="true"></i>
+                            <div>
+                                <h3 class="service-info-title">{{ $t(selectedService.name) }}</h3>
+                                <p class="service-info-desc a11y-text-secondary">
+                                    {{ $t(selectedService.description) }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario de solicitud -->
+                    <form @submit.prevent="submitServiceRequest" class="request-form">
+                        <div class="a11y-form-group">
+                            <label for="request-document" class="a11y-label a11y-label-required">
+                                {{ $t("Upload Identification document") }}
+                            </label>
+                            <div class="file-upload-area" :class="{ 'has-file': serviceRequest.document }">
+                                <input 
+                                    id="request-document"
+                                    type="file"
+                                    @change="handleFileUpload"
+                                    class="file-input"
+                                    accept=".pdf,.doc,.docx"
+                                    required
+                                />
+                                <div class="file-upload-content">
+                                    <i class="mdi mdi-cloud-upload file-upload-icon" aria-hidden="true"></i>
+                                    <p class="file-upload-text" v-if="!serviceRequest.document">
+                                        {{ $t("Click or drag file here") }}
+                                    </p>
+                                    <p class="file-upload-text file-selected" v-else>
+                                        <i class="mdi mdi-file-document" aria-hidden="true"></i>
+                                        {{ serviceRequest.document.name }}
+                                    </p>
+                                    <p class="file-upload-hint a11y-text-secondary">
+                                        {{ $t("PDF, DOC, DOCX(max 10MB)") }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mensaje de error -->
+                        <div v-if="uploadError" class="upload-message upload-error" role="alert">
+                            <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
+                            {{ uploadError }}
+                        </div>
+
+                        <!-- Mensaje de éxito -->
+                        <div v-if="uploadSuccess" class="upload-message upload-success" role="status">
+                            <i class="mdi mdi-check-circle" aria-hidden="true"></i>
+                            {{ $t("Document uploaded successfully!") }}
+                        </div>
+
+                        <footer class="modal-footer">
+                            <button 
+                                type="button"
+                                @click="closeRequestModal"
+                                class="a11y-btn a11y-btn-secondary"
+                                :disabled="uploading"
+                            >
+                                {{ $t("Cancel") }}
+                            </button>
+                            <button 
+                                type="submit"
+                                class="a11y-btn a11y-btn-primary"
+                                :disabled="!serviceRequest.document || uploading || uploadSuccess"
+                            >
+                                <i v-if="uploading" class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                                <i v-else class="mdi mdi-send" aria-hidden="true"></i>
+                                {{ uploading ? $t("Uploading...") : $t("Submit request") }}
+                            </button>
+                        </footer>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
 import { AuthController } from "@/control/auth";
+import { Request } from "@asanrom/request-browser";
+import { ApiFiles } from "@/api/api-group-files";
+import { getUniqueStringId } from "@/utils/unique-id";
+import { Timeouts } from "@/utils/timeout";
 
 interface ServiceMetrics {
     users: number;
@@ -355,6 +466,15 @@ export default defineComponent({
                 search: "",
             },
             showNewServiceModal: false,
+            showRequestServiceModal: false,
+            selectedService: null as Service | null,
+            serviceRequest: {
+                document: null as File | null,
+            },
+            uploadRequestId: getUniqueStringId(),
+            uploading: false,
+            uploadError: "",
+            uploadSuccess: false,
             newService: {
                 name: "",
                 category: "",
@@ -459,7 +579,7 @@ export default defineComponent({
             };
             return labels[status] || status;
         },
-        isServiceAdmin(serviceId: string): boolean {
+        isServiceAdmin(_serviceId: string): boolean {
             // TODO: Verificar si el usuario actual es admin de este servicio
             return false;
         },
@@ -482,11 +602,77 @@ export default defineComponent({
                 adminId: "",
             };
         },
+        requestService(service: Service) {
+            this.selectedService = service;
+            this.serviceRequest = {
+                document: null,
+            };
+            this.uploading = false;
+            this.uploadError = "";
+            this.uploadSuccess = false;
+            this.showRequestServiceModal = true;
+        },
+        handleFileUpload(event: Event) {
+            const target = event.target as HTMLInputElement;
+            if (target.files && target.files.length > 0) {
+                this.serviceRequest.document = target.files[0];
+            }
+        },
+        submitServiceRequest() {
+            if (!this.selectedService || !this.serviceRequest.document) return;
+            
+            this.uploading = true;
+            this.uploadError = "";
+            this.uploadSuccess = false;
+
+            Request.Abort(this.uploadRequestId);
+
+            Request.Pending(this.uploadRequestId, ApiFiles.PostFilesUpload({
+                file: this.serviceRequest.document,
+                bucket: `service-requests/${this.selectedService.id}`,
+                isPublic: false,
+            }))
+                .onSuccess(() => {
+                    this.uploading = false;
+                    this.uploadSuccess = true;
+                    
+                    // Cerrar modal después de éxito
+                    setTimeout(() => {
+                        this.showRequestServiceModal = false;
+                        this.selectedService = null;
+                        this.uploadSuccess = false;
+                    }, 1500);
+                })
+                .onRequestError((err, handleErr) => {
+                    this.uploading = false;
+                    handleErr(err, {
+                        temporalError: () => {
+                            this.uploadError = this.$t("Error uploading file. Please try again.");
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error(err);
+                    this.uploading = false;
+                    this.uploadError = this.$t("Unexpected error occurred.");
+                });
+        },
+        closeRequestModal() {
+            Request.Abort(this.uploadRequestId);
+            this.showRequestServiceModal = false;
+            this.selectedService = null;
+            this.uploading = false;
+            this.uploadError = "";
+            this.uploadSuccess = false;
+        },
     },
     mounted: function () {
         // TODO: Cargar servicios desde el API
     },
-    beforeUnmount: function () {},
+    beforeUnmount: function () {
+        Timeouts.Abort(this.uploadRequestId);
+        Request.Abort(this.uploadRequestId);
+    },
 });
 </script>
 
@@ -696,12 +882,7 @@ export default defineComponent({
     z-index: 1000;
 }
 
-.modal-content {
-    width: 100%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
-}
+
 
 .modal-header {
     display: flex;
@@ -714,16 +895,146 @@ export default defineComponent({
     margin: 0;
 }
 
-.modal-body {
-    margin-bottom: var(--a11y-spacing-lg);
-}
-
 .modal-footer {
     display: flex;
     justify-content: flex-end;
     gap: var(--a11y-spacing-sm);
     padding-top: var(--a11y-spacing-md);
     border-top: 1px solid #e0e0e0;
+}
+
+/* Request Service Modal */
+.request-service-modal {
+    max-width: 500px;
+}
+
+.selected-service-info {
+    background-color: #f8f9fa;
+    border-radius: var(--a11y-border-radius);
+    padding: var(--a11y-spacing-md);
+    margin-bottom: var(--a11y-spacing-lg);
+}
+
+.service-info-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--a11y-spacing-md);
+}
+
+.service-info-icon {
+    font-size: 2rem;
+    color: var(--a11y-primary);
+    flex-shrink: 0;
+}
+
+.service-info-title {
+    margin: 0 0 var(--a11y-spacing-xs) 0;
+    font-size: var(--a11y-font-size-large);
+}
+
+.service-info-desc {
+    margin: 0;
+    font-size: var(--a11y-font-size-small);
+}
+
+/* File Upload Area */
+.file-upload-area {
+    position: relative;
+    border: 2px dashed #ccc;
+    border-radius: var(--a11y-border-radius);
+    padding: var(--a11y-spacing-xl);
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.file-upload-area:hover {
+    border-color: var(--a11y-primary);
+    background-color: rgba(var(--a11y-primary-rgb), 0.05);
+}
+
+.file-upload-area.has-file {
+    border-color: var(--a11y-success);
+    background-color: rgba(var(--a11y-success-rgb), 0.05);
+}
+
+.file-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.file-upload-content {
+    pointer-events: none;
+}
+
+.file-upload-icon {
+    font-size: 3rem;
+    color: var(--a11y-primary);
+    margin-bottom: var(--a11y-spacing-sm);
+}
+
+.file-upload-text {
+    margin: 0 0 var(--a11y-spacing-xs) 0;
+    font-weight: 500;
+}
+
+.file-upload-text.file-selected {
+    color: var(--a11y-success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--a11y-spacing-xs);
+}
+
+.file-upload-hint {
+    margin: 0;
+    font-size: var(--a11y-font-size-small);
+}
+
+/* Upload Messages */
+.upload-message {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-md);
+    border-radius: var(--a11y-border-radius);
+    margin-top: var(--a11y-spacing-md);
+    font-weight: 500;
+}
+
+.upload-error {
+    background-color: var(--a11y-error-bg, #fdecea);
+    color: var(--a11y-error, #d32f2f);
+    border: 1px solid var(--a11y-error, #d32f2f);
+}
+
+.upload-success {
+    background-color: var(--a11y-success-bg, #e8f5e9);
+    color: var(--a11y-success, #2e7d32);
+    border: 1px solid var(--a11y-success, #2e7d32);
+}
+
+.upload-message i {
+    font-size: 1.25rem;
+}
+
+/* Loading spinner */
+.mdi-spin {
+    animation: mdi-spin 1s infinite linear;
+}
+
+@keyframes mdi-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Responsive */

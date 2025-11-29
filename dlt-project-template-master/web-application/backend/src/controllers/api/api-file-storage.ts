@@ -17,6 +17,7 @@ import {
 } from "../../utils/http-utils";
 import { clearTempFile, moveUploadedFileToTempFile } from "../../utils/file-utils";
 import { readFileSync } from "fs";
+import { Document } from "../../models/document";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -32,6 +33,7 @@ interface FileUploadResult {
     url: string;
     timestamp: number;
     txid?: string; // BSV transaction ID
+    documentId: string;
 }
 
 /**
@@ -114,6 +116,14 @@ export class FileStorageController extends Controller {
                 // Get URL
                 const fileUrl = FileStorageService.getInstance().getStaticFileURL(storageKey);
 
+                // Create document record in database
+                const document = await Document.create(
+                    originalName,
+                    storageKey,
+                    uploadedFile.mimetype || "application/octet-stream",
+                    uploadedFile.size
+                );
+
                 const result: FileUploadResult = {
                     fileId: storageKey,
                     fileName: originalName,
@@ -123,6 +133,7 @@ export class FileStorageController extends Controller {
                     url: fileUrl,
                     timestamp: Date.now(),
                     txid: hashResult.txid, // Include BSV transaction ID if anchored
+                    documentId: document.id, // Include document ID from database
                 };
 
                 sendApiResult(request, response, result);

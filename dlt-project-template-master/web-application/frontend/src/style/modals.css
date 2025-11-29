@@ -18,6 +18,12 @@
     }
 }
 
+.modal-content {
+    max-height: calc(100% - var(--top-bar-size));
+    margin-top: var(--top-bar-size);
+    overflow-y: auto;
+} 
+
 .modal-container {
     position: fixed;
     top: 0;
