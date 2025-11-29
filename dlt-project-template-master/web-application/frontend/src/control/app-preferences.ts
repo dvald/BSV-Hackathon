@@ -6,17 +6,12 @@ import { AppEvents } from "./app-events";
 export type ColorThemeName = "light" | "dark";
 
 /**
- * Gets default theme, by checking the browser settings
- * @returns The theme name
+ * Gets default theme - Always returns light theme
+ * @returns The theme name (always "light")
  */
 function defaultBrowserTheme(): ColorThemeName {
-    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        return "dark";
-    } else if (window.matchMedia) {
-        return "light";
-    } else {
-        return "dark";
-    }
+    // Siempre usar modo claro - MiCiudadID solo soporta tema light
+    return "light";
 }
 
 const LS_KEY_THEME = "app-pref-theme";

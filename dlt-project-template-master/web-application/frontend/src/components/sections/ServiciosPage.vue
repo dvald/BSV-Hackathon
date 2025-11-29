@@ -12,9 +12,9 @@
                     <i class="mdi mdi-domain" aria-hidden="true"></i>
                     {{ $t("Municipal Services") }}
                 </h1>
-                <p class="a11y-text-secondary">
-                    {{ $t("Manage services and ministry administrators") }}
-                </p>
+            <p class="a11y-text-secondary">
+                {{ $t("Departments and services that issue or verify credentials") }}
+            </p>
             </div>
             <div class="header-actions" v-if="isAdmin">
                 <button 
@@ -33,23 +33,7 @@
             <section class="filters-section a11y-card" aria-labelledby="filters-heading">
                 <h2 id="filters-heading" class="a11y-visually-hidden">{{ $t("Filters") }}</h2>
                 
-                <div class="filters-grid">
-                    <div class="a11y-form-group">
-                        <label for="filter-status" class="a11y-label">
-                            {{ $t("Status") }}
-                        </label>
-                        <select 
-                            id="filter-status" 
-                            v-model="filters.status"
-                            class="a11y-select"
-                        >
-                            <option value="">{{ $t("All") }}</option>
-                            <option value="active">{{ $t("Active") }}</option>
-                            <option value="inactive">{{ $t("Inactive") }}</option>
-                            <option value="maintenance">{{ $t("Maintenance") }}</option>
-                        </select>
-                    </div>
-                    
+                <div class="filters-grid">                    
                     <div class="a11y-form-group">
                         <label for="filter-category" class="a11y-label">
                             {{ $t("Category") }}
@@ -118,7 +102,7 @@
                             <div class="service-metrics">
                                 <div class="metric">
                                     <span class="metric-value">{{ formatNumber(service.metrics.users) }}</span>
-                                    <span class="metric-label">{{ $t("Users") }}</span>
+                                    <span class="metric-label">{{ $t("Citizens") }}</span>
                                 </div>
                                 <div class="metric">
                                     <span class="metric-value">{{ formatNumber(service.metrics.credentials) }}</span>
@@ -163,14 +147,7 @@
                                 </span>
                             </div>
                         </div>
-
                         <footer class="service-footer">
-                            <button 
-                                @click="viewServiceDetails(service)"
-                                class="a11y-btn a11y-btn-secondary"
-                            >
-                                {{ $t("View details") }}
-                            </button>
                             <button 
                                 v-if="isAdmin || isServiceAdmin(service.id)"
                                 @click="editService(service)"
@@ -927,7 +904,6 @@ export default defineComponent({
     gap: var(--a11y-spacing-sm);
     padding-top: var(--a11y-spacing-md);
     margin-top: auto;
-    border-top: 1px solid #e0e0e0;
 }
 
 /* Empty State */

@@ -12,9 +12,9 @@
                     <i class="mdi mdi-clipboard-text-clock" aria-hidden="true"></i>
                     {{ $t("Activity and Traceability") }}
                 </h1>
-                <p class="a11y-text-secondary">
-                    {{ $t("Complete audit trail with blockchain verification") }}
-                </p>
+            <p class="a11y-text-secondary">
+                {{ $t("Review all actions performed: issuance, verification and revocation of credentials") }}
+            </p>
             </div>
             <div class="header-actions">
                 <button 

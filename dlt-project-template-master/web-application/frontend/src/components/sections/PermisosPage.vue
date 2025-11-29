@@ -12,9 +12,9 @@
                     <i class="mdi mdi-certificate" aria-hidden="true"></i>
                     {{ $t("SSI Management") }}
                 </h1>
-                <p class="a11y-text-secondary">
-                    {{ $t("Issue, validate and revoke verifiable credentials") }}
-                </p>
+            <p class="a11y-text-secondary">
+                {{ $t("Manage credential types, pending validations and issued credentials") }}
+            </p>
             </div>
         </header>
 
