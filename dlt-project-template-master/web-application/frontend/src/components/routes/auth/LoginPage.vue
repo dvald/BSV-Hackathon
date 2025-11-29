@@ -11,7 +11,7 @@
                     <i v-else class="fas fa-moon"></i>
                 </button>
             </div>
-            <div class="modal-body">
+            <!-- <div class="modal-body">
                 <div class="form-group">
                     <label>{{ $t("Username") }}:</label>
                     <input
@@ -36,11 +36,11 @@
                 <div class="form-group">
                     <ToggleSwitch v-model:val="remember"></ToggleSwitch>
                 </div>
-            </div>
+            </div> -->
             <div class="modal-footer">
-                <div class="form-group">
+                <!-- <div class="form-group">
                     <button type="submit" :disabled="busy" class="btn btn-login"><i class="fas fa-sign-in"></i> {{ $t("Login") }}</button>
-                </div>
+                </div> -->
                 <div class="form-error" v-if="error">{{ error }}</div>
                 <div class="tp-services-group" v-if="tpServices.length > 0">
                     <p v-for="tp of tpServices" :key="tp.id">
@@ -53,7 +53,7 @@
                     <WalletLoginButton />
                 </div>
                 
-                <p>
+                <!-- <p>
                     <router-link class="link-deco" :to="{ name: 'signup' }">{{ $t("Create an account") }}</router-link>
                 </p>
                 <p>
@@ -61,7 +61,7 @@
                 </p>
                 <p>
                     <router-link class="link-deco" :to="{ name: 'home' }">{{ $t("Continue without an account") }}</router-link>
-                </p>
+                </p> -->
                 <p>
                     <a class="link-deco" href="javascript:;" @click="openCookiesModal">{{ $t("Change cookies preferences") }}</a>
                 </p>
