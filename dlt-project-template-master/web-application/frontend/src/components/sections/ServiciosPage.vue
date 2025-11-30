@@ -947,7 +947,8 @@ export default defineComponent({
 .modal-content {
     width: 100%;
     max-width: 700px;
-    max-height: 90vh;
+    max-height: calc(100% - var(--top-bar-size));
+    margin-top: var(--top-bar-size);
     overflow-y: auto;
 }
 
@@ -963,7 +964,7 @@ export default defineComponent({
 }
 
 .modal-body {
-    margin-bottom: var(--a11y-spacing-lg);
+    margin-bottom: 0;
 }
 
 .modal-footer {
@@ -1095,10 +1096,8 @@ export default defineComponent({
 
 /* Form Fieldset */
 .form-fieldset {
-    border: 1px solid #e0e0e0;
-    border-radius: var(--a11y-border-radius);
-    padding: var(--a11y-spacing-lg);
-    margin-bottom: var(--a11y-spacing-lg);
+    border: none;
+    padding: 0;
 }
 
 .form-fieldset:disabled {
@@ -1111,7 +1110,8 @@ export default defineComponent({
     gap: var(--a11y-spacing-xs);
     font-weight: 600;
     font-size: var(--a11y-font-size-large);
-    padding: 0 var(--a11y-spacing-sm);
+    padding: 0;
+    margin-bottom: var(--a11y-spacing-md);
 }
 
 .fieldset-description {

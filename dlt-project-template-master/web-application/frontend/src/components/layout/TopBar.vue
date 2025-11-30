@@ -53,6 +53,7 @@
                 <span class="nav-text">{{ $t("Activity") }}</span>
             </RouterLink>
             <RouterLink 
+                v-if="!isAdmin"
                 :to="{name: 'benefits'}" 
                 class="top-bar-nav-link"
                 tabindex="0"
@@ -96,6 +97,7 @@ export default defineComponent({
             loggedIn: AuthController.isAuthenticated(),
             profileImage: AuthController.ProfileImage,
             profileName: AuthController.ProfileName || AuthController.Username || "",
+            isAdmin: AuthController.hasPermission("mod.users") || AuthController.hasPermission("admin.roles"),
         };
     },
     methods: {
@@ -115,6 +117,7 @@ export default defineComponent({
             this.loggedIn = AuthController.isAuthenticated();
             this.profileName = AuthController.ProfileName || AuthController.Username || "";
             this.profileImage = AuthController.ProfileImage;
+            this.isAdmin = AuthController.hasPermission("mod.users") || AuthController.hasPermission("admin.roles");
         },
 
         renderName: function (name: string): string {

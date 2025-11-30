@@ -22,18 +22,6 @@
                 </div>
             </div>
 
-            <div class="modal-body no-padding border-top">
-                <div class="settings-list">
-                    <RouterLink class="settings-list-item" :to="{ name: 'profile', params: { username: '@' + username } }" @click="close">
-                        <div class="settings-list-item-icon">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="settings-list-item-caption">
-                            {{ $t("My profile") }}
-                        </div>
-                    </RouterLink>
-                </div>
-            </div>
 
             <div class="modal-body no-padding border-top">
                 <div class="settings-list">

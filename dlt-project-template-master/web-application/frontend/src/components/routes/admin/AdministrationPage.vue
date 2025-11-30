@@ -1,47 +1,15 @@
 <template>
-    <div class="page-content" tabindex="-1">
-        <VerticalMenuPageLayout
-            :title="$t('Administration and moderation')"
-            v-model:current="current"
-            :groups="[
-                {
-                    id: 'g-users',
-                    disabled: !canUsers,
-                    name: $t('Users'),
-                    options: [
-                        {
-                            id: 'users',
-                            name: $t('Find users'),
-                            icon: 'fas fa-users',
-                        },
-                    ],
-                },
-                {
-                    id: 'g-roles',
-                    name: $t('Roles and permissions'),
-                    disabled: !canRoles,
-                    options: [
-                        {
-                            id: 'roles',
-                            name: $t('Roles'),
-                            icon: 'fas fa-user-gear',
-                        },
-                    ],
-                },
-            ]"
-        >
-            <UsersPage v-if="current === 'users'"></UsersPage>
-            <RolesPage v-else-if="current === 'roles'"></RolesPage>
-            <NotFoundContent v-else></NotFoundContent>
-        </VerticalMenuPageLayout>
+    <div class="page-content admin-page" tabindex="-1">
+        <div class="admin-container">
+            <h1 class="admin-title">{{ $t('Administration and moderation') }}</h1>
+            <UsersPage></UsersPage>
+        </div>
     </div>
 </template>
 
 <script lang="ts">
 import { defineAsyncComponent, defineComponent } from "vue";
 
-import VerticalMenuPageLayout from "@/components/layout/VerticalMenuPageLayout.vue";
-import NotFoundContent from "@/components/utils/NotFoundContent.vue";
 import { AuthController } from "@/control/auth";
 import { HOME_ROUTE } from "@/app-events-plugin";
 import ComponentLoader from "@/components/utils/ComponentLoader.vue";
@@ -52,26 +20,15 @@ const UsersPage = defineAsyncComponent({
     delay: 1000,
 });
 
-const RolesPage = defineAsyncComponent({
-    loader: () => import("./RolesPage.vue"),
-    loadingComponent: ComponentLoader,
-    delay: 1000,
-});
-
 const REQUIRED_PERMISSIONS = ["mod.users", "admin.roles"];
 
 export default defineComponent({
     components: {
-        VerticalMenuPageLayout,
-        NotFoundContent,
         UsersPage,
-        RolesPage,
     },
     name: "AdministrationPage",
     data: function () {
         return {
-            current: (this.$route.query.tab || "users") + "",
-
             canUsers: AuthController.hasPermission("mod.users"),
             canRoles: AuthController.hasPermission("admin.roles"),
         };
@@ -105,12 +62,23 @@ export default defineComponent({
         this.checkPermission();
     },
     beforeUnmount: function () {},
-    watch: {
-        $route: function () {
-            this.current = (this.$route.query.tab || "users") + "";
-        },
-    },
 });
 </script>
 
-<style></style>
+<style scoped>
+.admin-page {
+    padding: 1.5rem;
+}
+
+.admin-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.admin-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--mci-text-primary, #1a1a1a);
+    margin-bottom: 1.5rem;
+}
+</style>
