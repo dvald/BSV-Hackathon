@@ -482,7 +482,7 @@ export default function WebWalletApp() {
     console.log("Escaneado:", scannedContent);
 
     // LÓGICA HARDCODEADA SOLICITADA
-    if (scannedContent === "http://example.com") {
+    if (scannedContent === import.meta.env.VITE_GET_CREDENTIALS_URL) {
       // Bloquear procesamiento adicional
       isProcessingScan.current = true;
 
@@ -499,7 +499,7 @@ export default function WebWalletApp() {
         // Liberar el bloqueo
         isProcessingScan.current = false;
       }, 2000);
-    } else if (scannedContent === "https://pollito.com") {
+    } else if (scannedContent === import.meta.env.VITE_GET_PRESENTATION_URL) {
       // Bloquear procesamiento adicional
       isProcessingScan.current = true;
 
@@ -512,7 +512,7 @@ export default function WebWalletApp() {
     } else {
       // Si el QR no es válido, cerrar la cámara y mostrar el error
       setViewState('home');
-      alert("QR no reconocido. Prueba con 'www.example.com' o 'https://pollito.com'");
+      alert("QR no reconocido.");
     }
   }, [credentialData]);
 
