@@ -6,6 +6,8 @@ import Express from "express";
 import { Controller } from "../controller";
 import { TokenService } from "../../services/token-service";
 import { BsvService } from "../../services/bsv-service";
+import { TokenTransaction } from "../../models/tokens/token-transaction";
+import { DataFilter } from "tsbean-orm";
 import crypto from "crypto";
 import { 
     BAD_REQUEST, 
@@ -73,6 +75,8 @@ export class GamificationController extends Controller {
         application.get(prefix + "/gamification/payment-address", noCache(this.getPaymentAddress.bind(this)));
         application.get(prefix + "/gamification/status/:userId", noCache(this.getStatus.bind(this)));
         application.get(prefix + "/gamification/status", noCache(this.getMyStatus.bind(this)));
+        application.get(prefix + "/gamification/transactions", noCache(this.getTransactions.bind(this)));
+        application.get(prefix + "/gamification/all-transactions", noCache(this.getAllTransactions.bind(this)));
     }
 
     // ==========================================
@@ -760,6 +764,142 @@ export class GamificationController extends Controller {
         } catch (e: any) {
             request.logger.error(e);
             sendApiError(request, response, INTERNAL_SERVER_ERROR, "STATUS_ERROR", e.message);
+        }
+    }
+
+    /**
+     * Get user transaction history
+     * Returns token transactions for the authenticated user with real BSV txids
+     * @route GET /api/v1/gamification/transactions
+     * @group gamification - Loyalty system operations
+     * @param {string} x-bsv-identity-key.header.required - User identity key
+     * @returns {TransactionsResponse.model} 200 - Transaction list
+     * @returns {GamificationErrorResponse.model} 400 - Missing identity key
+     * @security AuthToken
+     */
+    private async getTransactions(request: Express.Request, response: Express.Response) {
+        try {
+            const userId = request.headers['x-bsv-identity-key'] as string;
+
+            if (!userId) {
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY_KEY", "Missing x-bsv-identity-key header");
+                return;
+            }
+
+            request.logger.info("Fetching transactions for user", { userId: userId.substring(0, 16) + '...' });
+
+            // Find transactions where user is sender or receiver
+            const transactions = await TokenTransaction.finder.find(
+                DataFilter.or(
+                    DataFilter.equals("toIdentityKey", userId),
+                    DataFilter.equals("fromIdentityKey", userId)
+                )
+            );
+
+            // Sort by timestamp descending (newest first)
+            transactions.sort((a, b) => b.timestamp - a.timestamp);
+
+            // Map to event format for frontend, limit to 50 most recent
+            const events = transactions.slice(0, 50).map(tx => ({
+                id: tx.id,
+                type: this.mapTransactionType(tx.type),
+                description: tx.notes || this.generateDescription(tx),
+                timestamp: new Date(tx.timestamp).toISOString(),
+                txId: tx.txid && tx.txid.length > 10 ? tx.txid : null, // Only include real txids
+                amount: tx.amount,
+                tokenId: tx.tokenId,
+                verified: !!(tx.txid && tx.txid.length > 10),
+                actor: "System",
+                service: this.getServiceFromToken(tx.tokenId)
+            }));
+
+            request.logger.info("Returning transactions", { count: events.length });
+
+            sendApiResult(request, response, { 
+                events,
+                total: transactions.length
+            });
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TRANSACTIONS_ERROR", e.message);
+        }
+    }
+
+    // Helper method to map transaction types to event types
+    private mapTransactionType(type: string): string {
+        const typeMap: Record<string, string> = {
+            'genesis': 'token_created',
+            'mint': 'token_issued',
+            'burn': 'token_used',
+            'transfer': 'token_transfer'
+        };
+        return typeMap[type] || 'token_operation';
+    }
+
+    // Helper to generate description if notes is empty
+    private generateDescription(tx: TokenTransaction): string {
+        switch (tx.type) {
+            case 'mint':
+                return `${tx.amount} tokens credited`;
+            case 'burn':
+                return `${tx.amount} tokens used`;
+            case 'transfer':
+                return `${tx.amount} tokens transferred`;
+            case 'genesis':
+                return 'Token created';
+            default:
+                return 'Token operation';
+        }
+    }
+
+    // Helper to get service name from tokenId
+    private getServiceFromToken(tokenId: string): string {
+        if (!tokenId) return 'Token Service';
+        if (tokenId.includes('SERVICE') || tokenId.toLowerCase().includes('service')) {
+            return 'Service Tokens';
+        }
+        if (tokenId.includes('LOYALTY') || tokenId.toLowerCase().includes('loyalty')) {
+            return 'Loyalty Program';
+        }
+        return 'Token Service';
+    }
+
+    // Debug endpoint to see ALL transactions (for hackathon demo)
+    private async getAllTransactions(request: Express.Request, response: Express.Response) {
+        try {
+            request.logger.info("Fetching ALL transactions (debug)");
+
+            // Get all transactions without filtering by user
+            const transactions = await TokenTransaction.finder.find(
+                DataFilter.notEquals("id", "") // Get all
+            );
+
+            // Sort by timestamp descending (newest first)
+            transactions.sort((a, b) => b.timestamp - a.timestamp);
+
+            // Return raw data for debugging
+            const events = transactions.slice(0, 100).map(tx => ({
+                id: tx.id,
+                type: tx.type,
+                notes: tx.notes,
+                timestamp: new Date(tx.timestamp).toISOString(),
+                txId: tx.txid || null,
+                amount: tx.amount,
+                tokenId: tx.tokenId,
+                toIdentityKey: tx.toIdentityKey ? tx.toIdentityKey.substring(0, 20) + '...' : null,
+                fromIdentityKey: tx.fromIdentityKey ? tx.fromIdentityKey.substring(0, 20) + '...' : null,
+            }));
+
+            request.logger.info("Returning ALL transactions", { count: events.length, total: transactions.length });
+
+            sendApiResult(request, response, { 
+                events,
+                total: transactions.length,
+                message: "Debug endpoint - shows all transactions in database"
+            });
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TRANSACTIONS_ERROR", e.message);
         }
     }
 }

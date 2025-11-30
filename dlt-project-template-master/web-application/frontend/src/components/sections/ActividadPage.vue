@@ -383,6 +383,8 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import { useWallet } from "@/composables/useWallet";
+import { getApiUrl } from "@/api/utils";
 
 interface AuditEvent {
     id: string;
@@ -394,16 +396,22 @@ interface AuditEvent {
     service?: string;
     txId?: string;
     verified: boolean;
+    amount?: number;
 }
 
 export default defineComponent({
     components: {},
     name: "ActividadPage",
+    setup() {
+        const { identityKey } = useWallet();
+        return { identityKey };
+    },
     data: function () {
         return {
             viewMode: "timeline" as "timeline" | "table",
             currentPage: 1,
             pageSize: 10,
+            loading: false,
             filters: {
                 type: "",
                 service: "",
@@ -414,131 +422,11 @@ export default defineComponent({
             stats: {
                 credentialsIssued: 234,
                 verificationsToday: 1456,
-                blockchainTx: 89234,
+                blockchainTx: 0,
                 revocations: 12,
             },
-            events: [
-                {
-                    id: "evt-001",
-                    type: "credential_issued",
-                    description: "Credencial de Discapacidad emitida a ciudadano ****4521",
-                    timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-                    actor: "Admin María García",
-                    subject: "Ciudadano ****4521",
-                    service: "Administration",
-                    txId: "8a7b6c5d4e3f2g1h0i9j8k7l6m5n4o3p2q1r0s9t8u7v6w5x4y3z2a1b",
-                    verified: true,
-                },
-                {
-                    id: "evt-002",
-                    type: "credential_verified",
-                    description: "Presentación verificada para acceso a Parking PMR Centro",
-                    timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
-                    actor: "Sistema Parking PMR",
-                    subject: "Ciudadano ****7834",
-                    service: "PMR Parking",
-                    txId: "1z2y3x4w5v6u7t8s9r0q1p2o3n4m5l6k7j8i9h0g1f2e3d4c5b6a7z8y",
-                    verified: true,
-                },
-                {
-                    id: "evt-003",
-                    type: "token_issued",
-                    description: "50 EcoPuntos acreditados por reciclaje en Punto Limpio Norte",
-                    timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
-                    actor: "Sistema EcoPuntos",
-                    subject: "Ciudadano ****2156",
-                    service: "EcoPoints",
-                    txId: "9b8a7c6d5e4f3g2h1i0j9k8l7m6n5o4p3q2r1s0t9u8v7w6x5y4z3a2b1",
-                    verified: true,
-                },
-                {
-                    id: "evt-004",
-                    type: "token_used",
-                    description: "Uso de plaza PMR registrado - Plaza Mayor",
-                    timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
-                    actor: "Sistema Parking PMR",
-                    subject: "Ciudadano ****4521",
-                    service: "PMR Parking",
-                    txId: null,
-                    verified: false,
-                },
-                {
-                    id: "evt-005",
-                    type: "user_registered",
-                    description: "Nuevo ciudadano registrado y DID creado",
-                    timestamp: new Date(Date.now() - 60 * 60000).toISOString(),
-                    actor: "Admin Carlos López",
-                    subject: "Ciudadano ****9087",
-                    service: "Administration",
-                    txId: "2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0",
-                    verified: true,
-                },
-                {
-                    id: "evt-006",
-                    type: "credential_revoked",
-                    description: "Credencial de Empadronamiento revocada por cambio de domicilio",
-                    timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
-                    actor: "Admin María García",
-                    subject: "Ciudadano ****3456",
-                    service: "Administration",
-                    txId: "5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4",
-                    verified: true,
-                },
-                {
-                    id: "evt-007",
-                    type: "presentation_created",
-                    description: "Presentación verificable generada para solicitud de bonificación",
-                    timestamp: new Date(Date.now() - 3 * 3600000).toISOString(),
-                    actor: "Ciudadano ****7834",
-                    service: "EcoPoints",
-                    txId: "7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6",
-                    verified: true,
-                },
-                {
-                    id: "evt-008",
-                    type: "token_issued",
-                    description: "30 usos mensuales de parking PMR renovados",
-                    timestamp: new Date(Date.now() - 24 * 3600000).toISOString(),
-                    actor: "Sistema Automático",
-                    subject: "Ciudadano ****4521",
-                    service: "PMR Parking",
-                    txId: "0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9",
-                    verified: true,
-                },
-                {
-                    id: "evt-009",
-                    type: "credential_issued",
-                    description: "Credencial de Familia Numerosa emitida a ciudadano ****8765",
-                    timestamp: new Date(Date.now() - 20 * 60000).toISOString(),
-                    actor: "Admin Ana Martínez",
-                    subject: "Ciudadano ****8765",
-                    service: "Family Services",
-                    txId: "fam123abc456def789ghi012jkl345mno678pqr901stu234vwx567yz",
-                    verified: true,
-                },
-                {
-                    id: "evt-010",
-                    type: "credential_verified",
-                    description: "Familia Numerosa verificada para parking con descuento",
-                    timestamp: new Date(Date.now() - 40 * 60000).toISOString(),
-                    actor: "Sistema Parking Familiar",
-                    subject: "Ciudadano ****8765",
-                    service: "Family Parking",
-                    txId: "fam456parking789xyz012abc345def678ghi901jkl234mno567pqr",
-                    verified: true,
-                },
-                {
-                    id: "evt-011",
-                    type: "token_used",
-                    description: "Uso de plaza parking familiar - Centro Comercial",
-                    timestamp: new Date(Date.now() - 50 * 60000).toISOString(),
-                    actor: "Sistema Parking Familiar",
-                    subject: "Ciudadano ****8765",
-                    service: "Family Parking",
-                    txId: "fam789use012abc345def678ghi901jkl234mno567pqr890stu123vwx",
-                    verified: true,
-                },
-            ] as AuditEvent[],
+            // Events will be loaded from API and combined with hardcoded credentials
+            events: [] as AuditEvent[],
         };
     },
     computed: {
@@ -674,7 +562,9 @@ export default defineComponent({
             return "a11y-badge-info";
         },
         getBlockchainUrl(txId: string): string {
-            return `/block-explorer/transaction/${txId}`;
+            // Real WhatsonChain URL for BSV mainnet
+            if (!txId || txId.length < 10) return '#';
+            return `https://whatsonchain.com/tx/${txId}`;
         },
         copyTxId(txId: string) {
             navigator.clipboard.writeText(txId);
@@ -684,6 +574,97 @@ export default defineComponent({
             // TODO: Exportar en CSV/JSON
             console.log("Export audit log");
         },
+        // Get hardcoded credential events (kept as requested)
+        getHardcodedCredentialEvents(): AuditEvent[] {
+            return [
+                {
+                    id: "cred-001",
+                    type: "credential_issued",
+                    description: "Credencial de Familia Numerosa emitida",
+                    timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
+                    actor: "Admin Sistema",
+                    subject: "Ciudadano ****8765",
+                    service: "Administration",
+                    txId: undefined,
+                    verified: false
+                },
+                {
+                    id: "cred-002",
+                    type: "credential_verified",
+                    description: "Credencial de Discapacidad verificada en Parking PMR",
+                    timestamp: new Date(Date.now() - 4 * 3600000).toISOString(),
+                    actor: "Sistema Parking",
+                    subject: "Ciudadano ****4521",
+                    service: "PMR Parking",
+                    txId: undefined,
+                    verified: false
+                },
+                {
+                    id: "cred-003",
+                    type: "user_registered",
+                    description: "Nuevo ciudadano registrado con DID creado",
+                    timestamp: new Date(Date.now() - 24 * 3600000).toISOString(),
+                    actor: "Admin Carlos López",
+                    subject: "Ciudadano ****9087",
+                    service: "Administration",
+                    txId: undefined,
+                    verified: false
+                }
+            ];
+        },
+        // Load real transactions from backend
+        async loadTransactions() {
+            this.loading = true;
+            try {
+                // Try user-specific transactions first, fallback to all transactions for demo
+                let response = await fetch(getApiUrl('/api/v1/gamification/transactions'), {
+                    headers: { 
+                        'x-bsv-identity-key': this.identityKey || 'anonymous',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                let data = await response.json();
+                
+                // If no user-specific transactions, load all for demo purposes
+                if (response.ok && (!data.events || data.events.length === 0)) {
+                    console.log('No user transactions, loading all for demo...');
+                    response = await fetch(getApiUrl('/api/v1/gamification/all-transactions'));
+                    data = response.ok ? await response.json() : data;
+                }
+
+                if (data && data.events) {
+                    console.log('Loaded transactions:', data);
+
+                    // Map token events to audit events
+                    const tokenEvents: AuditEvent[] = (data.events || []).map((e: any) => ({
+                        id: e.id,
+                        type: e.type,
+                        description: e.description || `${e.amount} tokens`,
+                        timestamp: e.timestamp,
+                        actor: e.actor || "System",
+                        service: e.service || "Token Service",
+                        txId: e.txId,
+                        verified: e.verified || false,
+                        amount: e.amount
+                    }));
+
+                    // Get hardcoded credential events
+                    const credentialEvents = this.getHardcodedCredentialEvents();
+
+                    // Combine and sort by timestamp (newest first)
+                    this.events = [...tokenEvents, ...credentialEvents]
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+                    // Update stats with real blockchain tx count
+                    this.stats.blockchainTx = tokenEvents.filter((e: AuditEvent) => e.txId && e.txId.length > 10).length;
+                }
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
     },
     watch: {
         filters: {
@@ -692,9 +673,20 @@ export default defineComponent({
                 this.currentPage = 1;
             },
         },
+        identityKey: {
+            immediate: true,
+            handler(newVal: string) {
+                if (newVal) {
+                    this.loadTransactions();
+                }
+            }
+        }
     },
     mounted: function () {
-        // TODO: Cargar eventos desde el API
+        // Load transactions if identity key is already available
+        if (this.identityKey) {
+            this.loadTransactions();
+        }
     },
     beforeUnmount: function () {},
 });
