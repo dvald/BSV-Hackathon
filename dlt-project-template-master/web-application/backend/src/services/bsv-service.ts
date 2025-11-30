@@ -46,17 +46,30 @@ export class BsvService {
      */
     private async initializeWallet() {
         const config = BsvConfig.getInstance();
-        const privateKeyHex = config.privateKey;
+        const privateKeyStr = config.privateKey;
         const network = (config.network || 'main') as Chain;
 
-        if (!privateKeyHex) {
+        if (!privateKeyStr) {
             Monitor.error("BSV_PRIVATE_KEY not set. BSV Service will not function correctly.");
             return;
         }
 
         try {
-            const privateKey = PrivateKey.fromHex(privateKeyHex);
+            // Support both WIF and HEX formats
+            let privateKey: PrivateKey;
+            if (privateKeyStr.startsWith('K') || privateKeyStr.startsWith('L') || privateKeyStr.startsWith('5')) {
+                // WIF format (mainnet compressed starts with K or L, uncompressed with 5)
+                Monitor.info("[BsvService] Detected WIF format private key");
+                privateKey = PrivateKey.fromWif(privateKeyStr);
+            } else {
+                // HEX format
+                Monitor.info("[BsvService] Detected HEX format private key");
+                privateKey = PrivateKey.fromHex(privateKeyStr);
+            }
+            
             this.address = privateKey.toAddress().toString();
+            Monitor.info(`[BsvService] Derived address: ${this.address}`);
+            
             const keyDeriver = new KeyDeriver(privateKey);
             this.identityKey = keyDeriver.identityKey;
 
@@ -108,6 +121,103 @@ export class BsvService {
      */
     public getAddress(): string {
         return this.address;
+    }
+
+    /**
+     * Gets the BRC-29 derived address where funds are actually received
+     * Extracts the address from the first funded output's locking script
+     */
+    public async getFundedAddress(): Promise<string | null> {
+        if (!this.wallet) {
+            return null;
+        }
+
+        try {
+            // List outputs with locking scripts to find actual addresses
+            const result = await this.wallet.listOutputs({
+                basket: 'default',
+                include: 'locking scripts',
+                limit: 10
+            });
+
+            Monitor.info(`[getFundedAddress] Found ${result?.outputs?.length || 0} outputs`);
+
+            if (result && result.outputs && result.outputs.length > 0) {
+                // Find the first output with satoshis and extract the address
+                for (const output of result.outputs) {
+                    Monitor.info(`[getFundedAddress] Output: ${output.satoshis} sats, lockingScript: ${output.lockingScript?.substring(0, 50)}...`);
+                    
+                    if (output.satoshis && output.satoshis > 0 && output.lockingScript) {
+                        try {
+                            // Parse P2PKH script to extract address
+                            // P2PKH format: OP_DUP OP_HASH160 <20 bytes pubkeyhash> OP_EQUALVERIFY OP_CHECKSIG
+                            // Hex: 76a914<40 hex chars>88ac
+                            const scriptHex = output.lockingScript;
+                            if (scriptHex.startsWith('76a914') && scriptHex.endsWith('88ac')) {
+                                const pubKeyHash = scriptHex.substring(6, 46); // Extract 20 bytes (40 hex chars)
+                                // Convert pubKeyHash to address using base58check
+                                const address = this.pubKeyHashToAddress(pubKeyHash);
+                                Monitor.info(`[getFundedAddress] Derived address: ${address}`);
+                                return address;
+                            }
+                        } catch (e) {
+                            Monitor.error(`[getFundedAddress] Error parsing script: ${e}`);
+                        }
+                    }
+                }
+            }
+            
+            return null;
+        } catch (error: any) {
+            Monitor.error(`[getFundedAddress] Error: ${error.message}`);
+            return null;
+        }
+    }
+
+    /**
+     * Converts a public key hash (hex) to a Bitcoin address
+     */
+    private pubKeyHashToAddress(pubKeyHashHex: string): string {
+        const crypto = require('crypto');
+        
+        // Add version byte (0x00 for mainnet)
+        const versionedPayload = '00' + pubKeyHashHex;
+        const payloadBuffer = Buffer.from(versionedPayload, 'hex');
+        
+        // Double SHA256 for checksum
+        const hash1 = crypto.createHash('sha256').update(payloadBuffer).digest();
+        const hash2 = crypto.createHash('sha256').update(hash1).digest();
+        const checksum = hash2.slice(0, 4);
+        
+        // Concatenate and encode in base58
+        const fullPayload = Buffer.concat([payloadBuffer, checksum]);
+        return this.base58Encode(fullPayload);
+    }
+
+    /**
+     * Base58 encoding for Bitcoin addresses
+     */
+    private base58Encode(buffer: Buffer): string {
+        const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+        let num = BigInt('0x' + buffer.toString('hex'));
+        let result = '';
+        
+        while (num > 0) {
+            const remainder = Number(num % 58n);
+            num = num / 58n;
+            result = ALPHABET[remainder] + result;
+        }
+        
+        // Add leading zeros
+        for (const byte of buffer) {
+            if (byte === 0) {
+                result = '1' + result;
+            } else {
+                break;
+            }
+        }
+        
+        return result;
     }
 
     /**
@@ -323,6 +433,70 @@ export class BsvService {
      */
     private stringToHex(str: string): string {
         return Buffer.from(str, "utf8").toString("hex");
+    }
+
+    /**
+     * Gets the wallet balance using the SDK's listOutputs
+     * This gets the real balance from BRC-29 derived outputs
+     * @returns Balance in satoshis and BSV, plus output count
+     */
+    public async getBalance(): Promise<{ satoshis: number; bsv: number; address: string; outputCount: number }> {
+        if (!this.wallet) {
+            throw new Error("Wallet not initialized");
+        }
+
+        try {
+            Monitor.info(`[getBalance] Fetching wallet balance using SDK listOutputs...`);
+            
+            // List all spendable outputs from the wallet
+            const result = await this.wallet.listOutputs({
+                basket: 'default',
+                include: 'locking scripts',
+                limit: 1000
+            });
+            
+            // Sum up all spendable satoshis
+            let totalSatoshis = 0;
+            const outputCount = result?.outputs?.length || 0;
+            
+            if (result && result.outputs) {
+                for (const output of result.outputs) {
+                    if (output.satoshis) {
+                        totalSatoshis += output.satoshis;
+                    }
+                }
+            }
+            
+            Monitor.info(`[getBalance] SDK balance: ${totalSatoshis} satoshis from ${outputCount} outputs`);
+            
+            // If SDK returns 0, also check the base address as fallback
+            if (totalSatoshis === 0 && this.address) {
+                try {
+                    const wocResponse = await fetch(`https://api.whatsonchain.com/v1/bsv/main/address/${this.address}/balance`);
+                    if (wocResponse.ok) {
+                        const wocData = await wocResponse.json();
+                        const wocBalance = (wocData.confirmed || 0) + (wocData.unconfirmed || 0);
+                        if (wocBalance > 0) {
+                            Monitor.info(`[getBalance] WhatsonChain fallback: ${wocBalance} satoshis`);
+                            totalSatoshis = wocBalance;
+                        }
+                    }
+                } catch (e) {
+                    // Ignore fallback errors
+                }
+            }
+            
+            return {
+                satoshis: totalSatoshis,
+                bsv: totalSatoshis / 100000000,
+                address: this.address || 'Wallet',
+                outputCount: outputCount
+            };
+        } catch (error: any) {
+            Monitor.error(`[getBalance] Error: ${error.message}`);
+            Monitor.error(`[getBalance] Stack: ${error.stack}`);
+            throw error;
+        }
     }
 
     /**
