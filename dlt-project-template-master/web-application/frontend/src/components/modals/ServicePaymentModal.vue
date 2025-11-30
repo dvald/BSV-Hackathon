@@ -26,70 +26,6 @@
                         <h3>{{ serviceActionTitle }}</h3>
                     </div>
 
-                    <!-- Payment Method Tabs -->
-                    <div class="payment-method-tabs four-tabs">
-                        <!-- Tab 1: Use existing SERVICE_TOKEN -->
-                        <button 
-                            type="button"
-                            class="tab-btn tokens-tab"
-                            :class="{ active: paymentMethod === 'tokens', 'has-tokens': serviceBalance >= cost }"
-                            @click="paymentMethod = 'tokens'"
-                        >
-                            <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
-                            {{ $t("Tokens") }}
-                            <span v-if="serviceBalance > 0" class="tokens-badge">{{ serviceBalance }}</span>
-                        </button>
-                        <!-- Tab 2: Pay with Card (Stripe) -->
-                        <button 
-                            type="button"
-                            class="tab-btn stripe-tab"
-                            :class="{ active: paymentMethod === 'stripe' }"
-                            @click="paymentMethod = 'stripe'"
-                        >
-                            <i class="mdi mdi-credit-card" aria-hidden="true"></i>
-                            {{ $t("Card") }}
-                        </button>
-                        <!-- Tab 3: Buy with Wallet -->
-                        <button 
-                            type="button"
-                            class="tab-btn"
-                            :class="{ active: paymentMethod === 'auto' }"
-                            @click="paymentMethod = 'auto'"
-                        >
-                            <i class="mdi mdi-wallet" aria-hidden="true"></i>
-                            {{ $t("Wallet") }}
-                        </button>
-                        <!-- Tab 4: Redeem LOYALTY points -->
-                        <button 
-                            type="button"
-                            class="tab-btn loyalty-tab"
-                            :class="{ active: paymentMethod === 'loyalty', 'has-points': loyaltyBalance >= 100 }"
-                            @click="paymentMethod = 'loyalty'"
-                        >
-                            <i class="mdi mdi-star" aria-hidden="true"></i>
-                            {{ $t("Points") }}
-                            <span v-if="loyaltyBalance > 0" class="points-badge">{{ loyaltyBalance }}</span>
-                        </button>
-                    </div>
-                    
-                    <!-- Payment Details (for BSV direct payment: TXID and Wallet) -->
-                    <div v-if="paymentMethod === 'stripe' || paymentMethod === 'auto'" class="payment-details">
-                        <div class="detail-row bsv-row">
-                            <span class="detail-label">{{ $t("Parking Cost") }}:</span>
-                            <span class="detail-value cost bsv-cost">
-                                <i class="mdi mdi-bitcoin" aria-hidden="true"></i>
-                                {{ satoshiCost }} sats
-                            </span>
-                        </div>
-                        <div class="detail-row service-row">
-                            <span class="detail-label">{{ $t("Service") }}:</span>
-                            <span class="detail-value service">👨‍👩‍👧‍👦 {{ $t("Family Parking Reservation") }}</span>
-                        </div>
-                        <div class="detail-row reward-row">
-                            <span class="detail-label">{{ $t("Loyalty Bonus") }}:</span>
-                            <span class="detail-value reward">+{{ reward }} {{ $t("Points") }}</span>
-                        </div>
-                    </div>
                     <!-- ========================================== -->
                     <!-- FREE SERVICE VIEW (Accessible Parking) -->
                     <!-- ========================================== -->
@@ -192,38 +128,6 @@
                                 </div>
                             </div>
 
-                            <!-- Payment Tabs for Subscription -->
-                            <div class="payment-method-tabs three-tabs">
-                                <button 
-                                    type="button"
-                                    class="tab-btn tokens-tab"
-                                    :class="{ active: paymentMethod === 'tokens', 'has-tokens': serviceBalance >= cost }"
-                                    @click="paymentMethod = 'tokens'"
-                                >
-                                    <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
-                                    {{ $t("Tokens") }}
-                                    <span v-if="serviceBalance > 0" class="tokens-badge">{{ serviceBalance }}</span>
-                                </button>
-                                <button 
-                                    type="button"
-                                    class="tab-btn"
-                                    :class="{ active: paymentMethod === 'manual' }"
-                                    @click="paymentMethod = 'manual'"
-                                >
-                                    <i class="mdi mdi-form-textbox" aria-hidden="true"></i>
-                                    {{ $t("TXID") }}
-                                </button>
-                                <button 
-                                    type="button"
-                                    class="tab-btn"
-                                    :class="{ active: paymentMethod === 'auto' }"
-                                    @click="paymentMethod = 'auto'"
-                                >
-                                    <i class="mdi mdi-wallet" aria-hidden="true"></i>
-                                    {{ $t("Wallet") }}
-                                </button>
-                            </div>
-
                             <!-- Token Payment for Subscription -->
                             <div v-if="paymentMethod === 'tokens'" class="subscription-tokens-view">
                                 <div class="tokens-balance-display compact">
@@ -246,7 +150,7 @@
                                 <div v-if="serviceBalance < cost && !isUsingTokens" class="not-enough-tokens">
                                     <i class="mdi mdi-alert-circle-outline" aria-hidden="true"></i>
                                     <span>{{ $t("Not enough tokens.") }} {{ $t("You need") }} {{ cost - serviceBalance }} {{ $t("more.") }}</span>
-                                    <p class="buy-hint">{{ $t("Buy more tokens in the TXID or Wallet tab.") }}</p>
+                                    <p class="buy-hint">{{ $t("Buy more tokens in the Card or Wallet tab.") }}</p>
                                 </div>
                             </div>
 
@@ -284,15 +188,15 @@
                                 {{ $t("Tokens") }}
                                 <span v-if="serviceBalance > 0" class="tokens-badge">{{ serviceBalance }}</span>
                             </button>
-                            <!-- Tab 2: Buy with TXID -->
+                            <!-- Tab 2: Pay with Card (Stripe) -->
                             <button 
                                 type="button"
-                                class="tab-btn"
-                                :class="{ active: paymentMethod === 'manual' }"
-                                @click="paymentMethod = 'manual'"
+                                class="tab-btn stripe-tab"
+                                :class="{ active: paymentMethod === 'stripe' }"
+                                @click="paymentMethod = 'stripe'"
                             >
-                                <i class="mdi mdi-form-textbox" aria-hidden="true"></i>
-                                {{ $t("TXID") }}
+                                <i class="mdi mdi-credit-card" aria-hidden="true"></i>
+                                {{ $t("Card") }}
                             </button>
                             <!-- Tab 3: Buy with Wallet -->
                             <button 
@@ -317,8 +221,8 @@
                             </button>
                         </div>
                         
-                        <!-- Payment Details (for BSV direct payment: TXID and Wallet) -->
-                        <div v-if="paymentMethod === 'manual' || paymentMethod === 'auto'" class="payment-details">
+                        <!-- Payment Details (for BSV direct payment: Card and Wallet) -->
+                        <div v-if="paymentMethod === 'stripe' || paymentMethod === 'auto'" class="payment-details">
                             <div class="detail-row bsv-row">
                                 <span class="detail-label">{{ $t("Service Cost") }}:</span>
                                 <span class="detail-value cost bsv-cost">
@@ -389,7 +293,7 @@
                             <div v-if="serviceBalance < cost && !isUsingTokens" class="not-enough-tokens">
                                 <i class="mdi mdi-alert-circle-outline" aria-hidden="true"></i>
                                 <span>{{ $t("Not enough tokens.") }} {{ $t("You need") }} {{ cost - serviceBalance }} {{ $t("more.") }}</span>
-                                <p class="buy-hint">{{ $t("Buy more tokens in the TXID or Wallet tab.") }}</p>
+                                <p class="buy-hint">{{ $t("Buy more tokens in the Card or Wallet tab.") }}</p>
                             </div>
                         </div>
 

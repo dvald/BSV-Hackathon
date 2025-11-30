@@ -1205,6 +1205,7 @@ export default defineComponent({
                 if (response.ok) {
                     const data = await response.json();
                     userServiceTokenBalance.value = data.balances?.serviceToken || 0;
+                    serviceTokenBalance.value = data.balances?.serviceToken || 0;
                     console.log('[ServiciosPage] User balance loaded:', userServiceTokenBalance.value);
                 }
             } catch (error) {
@@ -1322,6 +1323,7 @@ export default defineComponent({
                 if (response.ok) {
                     const data = await response.json();
                     serviceTokenBalance.value = data.balances?.serviceToken || 0;
+                    userServiceTokenBalance.value = data.balances?.serviceToken || 0;
                 }
             } catch (error) {
                 console.error('Error loading balance:', error);
