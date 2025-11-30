@@ -105,3 +105,49 @@ CREATE TABLE `wallets` (
 );
 
 CREATE INDEX `ix_wallets_s_1` ON `wallets`(`uid`);
+
+CREATE TABLE `tokens` (
+    `id` VARCHAR(255) PRIMARY KEY,
+    `name` VARCHAR(255),
+    `symbol` VARCHAR(255),
+    `decimals` INT,
+    `totalSupply` BIGINT,
+    `maxSupply` BIGINT,
+    `creatorIdentityKey` VARCHAR(255),
+    `createdAt` BIGINT,
+    `metadataJson` TEXT,
+    `genesisTxid` VARCHAR(255),
+    `genesisVout` INT
+);
+
+CREATE INDEX `ix_tokens_s_1` ON `tokens`(`creatorIdentityKey` ASC);
+CREATE INDEX `ix_tokens_s_2` ON `tokens`(`symbol` ASC);
+
+CREATE TABLE `token_holders` (
+    `id` VARCHAR(255) PRIMARY KEY,
+    `tokenId` VARCHAR(255),
+    `holderIdentityKey` VARCHAR(255),
+    `balance` BIGINT,
+    `lastUpdated` BIGINT
+);
+
+CREATE INDEX `ix_token_holders_s_1` ON `token_holders`(`tokenId` ASC);
+CREATE INDEX `ix_token_holders_s_2` ON `token_holders`(`holderIdentityKey` ASC);
+
+CREATE TABLE `token_transactions` (
+    `id` VARCHAR(255) PRIMARY KEY,
+    `tokenId` VARCHAR(255),
+    `type` VARCHAR(255),
+    `fromIdentityKey` VARCHAR(255),
+    `toIdentityKey` VARCHAR(255),
+    `amount` BIGINT,
+    `txid` VARCHAR(255),
+    `vout` INT,
+    `timestamp` BIGINT,
+    `notes` TEXT,
+    `spentBy` VARCHAR(255)
+);
+
+CREATE INDEX `ix_token_transactions_s_1` ON `token_transactions`(`tokenId` ASC);
+CREATE INDEX `ix_token_transactions_s_2` ON `token_transactions`(`toIdentityKey` ASC);
+CREATE INDEX `ix_token_transactions_s_3` ON `token_transactions`(`txid` ASC);
