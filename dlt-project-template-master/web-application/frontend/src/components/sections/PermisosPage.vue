@@ -464,6 +464,138 @@
                 </div>
             </section>
         </main>
+
+        <!-- Modal de detalles de solicitud -->
+        <div 
+            v-if="showDetailsModal && selectedRequest" 
+            class="modal-overlay"
+            @click.self="closeDetailsModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="request-details-title"
+        >
+            <div class="modal-content a11y-card">
+                <header class="modal-header">
+                    <h2 id="request-details-title" class="a11y-heading-2">
+                        {{ $t("Request Details") }}
+                    </h2>
+                    <button 
+                        @click="closeDetailsModal"
+                        class="a11y-btn a11y-btn-icon"
+                        :aria-label="$t('Close')"
+                    >
+                        ✕
+                    </button>
+                </header>
+                
+                <div class="modal-body">
+                    <!-- Información de la solicitud -->
+                    <fieldset class="form-fieldset">
+                        <legend class="form-legend">
+                            {{ $t("Request Information") }}
+                        </legend>
+                        
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">{{ $t("Request ID") }}:</span>
+                                <span class="detail-value">{{ selectedRequest.id }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">{{ $t("Citizen") }}:</span>
+                                <span class="detail-value">{{ selectedRequest.citizenName }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">{{ $t("Credential Type") }}:</span>
+                                <span class="detail-value">{{ $t("Reduced Mobility") }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">{{ $t("Requested At") }}:</span>
+                                <span class="detail-value">{{ formatDate(selectedRequest.requestedAt) }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">{{ $t("Documents") }}:</span>
+                                <span class="detail-value">{{ selectedRequest.documentsCount }} {{ $t("attached") }}</span>
+                            </div>
+                            <div class="detail-item full-width">
+                                <span class="detail-label">{{ $t("Reason") }}:</span>
+                                <span class="detail-value">{{ selectedRequest.reason }}</span>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Datos de la credencial (hardcodeados) -->
+                    <fieldset class="form-fieldset">
+                        <legend class="form-legend">
+                            {{ $t("Credential Data") }}
+                        </legend>
+                        
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">{{ $t("Disability Grade") }}:</span>
+                                <span class="detail-value">65% - 74%</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">{{ $t("Reduced Mobility") }}:</span>
+                                <span class="detail-value">{{ $t("Yes") }}</span>
+                            </div>
+                            <div class="detail-item full-width">
+                                <span class="detail-label">{{ $t("Official Document Number") }}:</span>
+                                <span class="detail-value">CERT-2024-12345</span>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Documento adjunto (hardcodeado) -->
+                    <fieldset class="form-fieldset">
+                        <legend class="form-legend">
+                            {{ $t("Attached Document") }}
+                        </legend>
+                        
+                        <div class="document-preview">
+                            <div class="document-info">
+                                <i class="mdi mdi-file-document document-icon" aria-hidden="true"></i>
+                                <div class="document-details">
+                                    <span class="document-name">certificado_discapacidad.pdf</span>
+                                    <span class="document-size">2.5 MB</span>
+                                </div>
+                                <button 
+                                    type="button"
+                                    class="a11y-btn a11y-btn-secondary"
+                                    @click="downloadDocument"
+                                >
+                                    <i class="mdi mdi-download" aria-hidden="true"></i>
+                                    {{ $t("Download") }}
+                                </button>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <footer class="modal-footer">
+                    <button 
+                        type="button"
+                        @click="closeDetailsModal"
+                        class="a11y-btn a11y-btn-secondary"
+                    >
+                        {{ $t("Close") }}
+                    </button>
+                    <button 
+                        type="button"
+                        @click="rejectRequest(selectedRequest)"
+                        class="a11y-btn a11y-btn-danger"
+                    >
+                        {{ $t("Reject") }}
+                    </button>
+                    <button 
+                        type="button"
+                        @click="approveRequest(selectedRequest)"
+                        class="a11y-btn a11y-btn-success"
+                    >
+                        {{ $t("Approve") }}
+                    </button>
+                </footer>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -578,6 +710,9 @@ export default defineComponent({
                     requestedAt: "2024-06-19T14:45:00Z",
                 },
             ] as PendingRequest[],
+            // Modal de detalles
+            showDetailsModal: false,
+            selectedRequest: null as PendingRequest | null,
             // Revocations
             revokeSearch: "",
             revocationHistory: [
@@ -741,8 +876,16 @@ export default defineComponent({
             }
         },
         viewRequestDetails(request: PendingRequest) {
-            // TODO: Abrir modal con detalles
-            console.log("View request:", request.id);
+            this.selectedRequest = request;
+            this.showDetailsModal = true;
+        },
+        closeDetailsModal() {
+            this.showDetailsModal = false;
+            this.selectedRequest = null;
+        },
+        downloadDocument() {
+            // Simular descarga de documento
+            alert(this.$t("Document download started") as string);
         },
         approveRequest(request: PendingRequest) {
             Request.Do(ApiCredentials.ApproveRequest({
@@ -1317,6 +1460,147 @@ export default defineComponent({
     
     .search-with-btn {
         flex-direction: column;
+    }
+}
+
+/* Modal de detalles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--a11y-spacing-md);
+    z-index: 1000;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--a11y-spacing-lg);
+    padding-bottom: var(--a11y-spacing-md);
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.modal-header h2 {
+    margin: 0;
+}
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--a11y-spacing-sm);
+    padding-top: var(--a11y-spacing-md);
+    border-top: 1px solid #e0e0e0;
+    margin-top: var(--a11y-spacing-lg);
+}
+
+/* Detalles grid */
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--a11y-spacing-md);
+    margin-top: var(--a11y-spacing-md);
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--a11y-spacing-xs);
+}
+
+.detail-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: var(--a11y-text-secondary);
+    font-size: var(--a11y-font-size-small);
+}
+
+.detail-value {
+    color: var(--a11y-text);
+    font-size: var(--a11y-font-size-base);
+}
+
+/* Documento preview */
+.document-preview {
+    margin-top: var(--a11y-spacing-md);
+}
+
+.document-info {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-md);
+    background-color: #f8f9fa;
+    border-radius: var(--a11y-border-radius);
+    margin-bottom: var(--a11y-spacing-md);
+}
+
+.document-icon {
+    font-size: 2.5rem;
+    color: var(--a11y-primary);
+}
+
+.document-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: var(--a11y-spacing-xs);
+}
+
+.document-name {
+    font-weight: 600;
+    color: var(--a11y-text);
+}
+
+.document-size {
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
+}
+
+.document-viewer {
+    width: 100%;
+    height: 600px;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--a11y-border-radius);
+    overflow: hidden;
+}
+
+.document-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .document-viewer {
+        height: 400px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .modal-footer .a11y-btn {
+        width: 100%;
     }
 }
 </style>
