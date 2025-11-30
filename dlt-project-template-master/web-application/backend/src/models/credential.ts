@@ -2,13 +2,15 @@
 
 "use strict";
 
-import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter } from "tsbean-orm";
+import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter, OrderBy } from "tsbean-orm";
+import { createRandomUID } from "../utils/text-utils";
 
 const DATA_SOURCE = DataSource.DEFAULT;
 const TABLE = "credential";
 const PRIMARY_KEY = "did";
 
 export enum CredentialStatus {
+    LOGGED = "LOGGED",
     ACTIVE = "ACTIVE",
     REVOKED = "REVOKED"
 }
@@ -21,6 +23,11 @@ export class Credential extends DataModel {
         return Credential.finder.count(DataFilter.equals("status", CredentialStatus.ACTIVE));
     }
 
+    public static async findLast(): Promise<Credential> {
+        const credentials = await Credential.finder.find(DataFilter.any(), OrderBy.desc("issuedAt"));
+        return credentials[0];
+    }
+
     public static async countIssuedLastDay(): Promise<number> {
         const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
         return Credential.finder.count(DataFilter.greaterThan("issuedAt", oneDayAgo));
@@ -28,6 +35,7 @@ export class Credential extends DataModel {
 
     public static async create(did: string, credentialType: string): Promise<Credential> {
         const credential = new Credential({
+            id: createRandomUID(),
             did: did,
             credentialType: credentialType,
             issuedAt: Date.now(),
@@ -36,6 +44,8 @@ export class Credential extends DataModel {
         await credential.insert();
         return credential;
     }
+
+    public id: string;
 
     /* db-type: VARCHAR */
     public did: string;
@@ -58,6 +68,7 @@ export class Credential extends DataModel {
         // You can also enforce the types if you do not trust the data source
         // In that case you can use the enforceType utility function
 
+        this.id = enforceType(data.id, "string") || '';
         this.did = enforceType(data.did, "string") || '';
         this.credentialType = enforceType(data.credentialType, "string") || '';
         this.issuedAt = enforceType(data.issuedAt, "int") || 0;

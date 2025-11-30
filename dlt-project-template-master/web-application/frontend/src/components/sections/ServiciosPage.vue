@@ -168,9 +168,9 @@
                                     {{ $t("Request") }}
                                 </button>
                                 <button 
+                                    v-if="!canAccessService"
                                     @click="openCredentialQR(category)"
                                     class="a11y-btn a11y-btn-secondary"
-                                    :disabled="category.disabled"
                                     :title="hasApprovedCredentials ? $t('Get your credential QR code') : $t('No approved credentials available')"
                                 >
                                     <i class="mdi mdi-qrcode" aria-hidden="true"></i>
@@ -180,7 +180,7 @@
                                     @click="accessService(category)"
                                     class="a11y-btn"
                                     :class="isCredentialVerified(category.id) ? 'a11y-btn-success' : 'a11y-btn-secondary'"
-                                    :disabled="!isCredentialVerified(category.id)"
+                                    :disabled="!isCredentialVerified(category.id) || !canAccessService"
                                     :title="!isCredentialVerified(category.id) ? $t('Verify your credential to access services') : $t('Access services portal')"
                                 >
                                     <i class="mdi" :class="isCredentialVerified(category.id) ? 'mdi-arrow-right-circle' : 'mdi-lock'" aria-hidden="true"></i>
@@ -603,20 +603,30 @@
                                     </p>
                                 </div>
                             </div>
-                            <td>
-                                <a v-if="txid" :href="'https://whatsonchain.com/tx/' + txid" target="_blank" class="tx-link" :title="txid">
-                                        <i class="fas fa-cube"></i> {{ txid.substring(0, 8) }}...
+                            
+                            <!-- Upload Result Info -->
+                            <div v-if="uploadedFileData" class="upload-result-info">
+                                <div class="result-row">
+                                    <span class="result-label">{{ $t("Hash") }}:</span>
+                                    <code class="result-value hash">{{ uploadedFileData.hash.substring(0, 20) }}...</code>
+                                    <button type="button" class="btn-icon-small" @click="copyToClipboard(uploadedFileData.hash)" :title="$t('Copy Hash')">
+                                        <i class="mdi mdi-fingerprint"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="result-row" v-if="txid">
+                                    <span class="result-label">BSV TX:</span>
+                                    <a :href="'https://whatsonchain.com/tx/' + txid" target="_blank" class="tx-link">
+                                        <i class="mdi mdi-cube-outline"></i> {{ txid.substring(0, 8) }}...
                                     </a>
-                                    <span v-else class="no-tx">-</span>
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary" @click="copyToClipboard(file.hash)" :title="$t('Copy Hash')">
-                                        <i class="fas fa-fingerprint"></i>
+                                </div>
+                                
+                                <div class="result-row" v-if="uploadedFileData.url">
+                                    <button type="button" class="btn-text-link" @click="openFile(uploadedFileData.url)">
+                                        <i class="mdi mdi-open-in-new"></i> {{ $t("Open File") }}
                                     </button>
-                                    <button class="btn btn-sm btn-outline-secondary" @click="openFile(file.url)" :title="$t('Open')">
-                                        <i class="fas fa-external-link-alt"></i>
-                                    </button>
-                                </td>
+                                </div>
+                            </div>
                         </div>
                     </fieldset>
 
@@ -914,7 +924,14 @@ export default defineComponent({
     name: "ServiciosPage",
     setup() {
         const router = useRouter();
+        const canAccessService = ref(false);
         const txid = ref<string | null>(null);
+        const uploadedFileData = ref<{
+            hash: string;
+            url: string;
+            fileName: string;
+        } | null>(null);
+
         // Wallet composable
         const { wallet, identityKey, isConnected, isConnecting, connect } = useWallet();
         
@@ -1232,6 +1249,14 @@ export default defineComponent({
             return new Intl.NumberFormat("es-ES").format(num);
         };
 
+        const copyToClipboard = (text: string) => {
+            navigator.clipboard.writeText(text);
+        };
+
+        const openFile = (url: string) => {
+            window.open(url, '_blank');
+        };
+
         const getStatusBadgeClass = (status: string): string => {
             const classes: Record<string, string> = {
                 active: "a11y-badge-success",
@@ -1254,11 +1279,11 @@ export default defineComponent({
             return false;
         };
 
-        const viewServiceDetails = (service: Service) => {
+        const viewServiceDetails = (service: any) => {
             console.log("View service:", service.id);
         };
 
-        const editService = (service: Service) => {
+        const editService = (service: any) => {
             console.log("Edit service:", service.id);
         };
 
@@ -1286,7 +1311,7 @@ export default defineComponent({
             return labels[category] || category;
         };
         
-        const accessService = (service: Service) => {
+        const accessService = (service: any) => {
             if (!isCredentialVerified(service.id)) {
                 return;
             }
@@ -1294,7 +1319,7 @@ export default defineComponent({
             router.push({ name: 'services-details' });
         };
 
-        const requestService = (service: Service) => {
+        const requestService = (service: any) => {
             // TODO: Implementar logica de solicitud de servicio
             console.log("Request service:", service.id);
             selectedService.value = service;
@@ -1349,7 +1374,7 @@ export default defineComponent({
                     };
 
                     Request.Do(ApiCredentials.RequestCredential(credentialRequest))
-                        .onSuccess((credentialResult) => {
+                        .onSuccess((credentialResult: any) => {
                             txid.value = credentialResult.txid;
                             // Éxito
                             uploading.value = false;
@@ -1512,10 +1537,25 @@ export default defineComponent({
             return approvedCount.value > 0;
         });
 
+        const checkCredentialStatus = () => {
+            Request.Do(ApiCredentials.CheckCredentialStatus())
+                .onSuccess((response) => {
+                    if(response.status === "ACTIVE") {
+                        canAccessService.value = true;
+                    } else {
+                        canAccessService.value = false;
+                    }
+                })
+                .onRequestError((err: any) => {
+                    console.error("Error checking credential status:", err);
+                });
+        };
+
         // Cargar el conteo cuando se monta el componente
         onMounted(() => {
             if (AuthController.isAuthenticated()) {
                 loadApprovedCount();
+                checkCredentialStatus();
             }
         });
 
@@ -1551,6 +1591,9 @@ export default defineComponent({
             credentialExpiry,
             approvedCount,
             hasApprovedCredentials,
+            canAccessService,
+            txid,
+            uploadedFileData,
             
             // Wallet
             wallet,
@@ -1564,6 +1607,8 @@ export default defineComponent({
             filteredCategories,
             
             // Methods
+            copyToClipboard,
+            openFile,
             connectWallet,
             closeModal,
             createService,

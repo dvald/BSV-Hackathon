@@ -11,6 +11,7 @@ import { PrivateKey } from "@bsv/sdk";
 import { UsersService } from "../../services/users-service";
 import { CredentialRequest } from "../../models/credential-request";
 import { BsvConfig } from "../../config/config-bsv";
+import { Credential } from "../../models/credential";
 
 /**
  * Verifiable Credentials API Controller
@@ -21,6 +22,9 @@ export class CredentialsController extends Controller {
 
 
     public registerAPI(prefix: string, application: Express.Express): void {
+        application.post(prefix + "/credentials/close-emssion", ensureObjectBody(this.updateCredentialStatus.bind(this)));
+
+        application.get(prefix + "/credentials/check-status", noCache(this.checkCredentialStatus.bind(this)));
         // Step 1: User requests a credential
         application.post(prefix + "/credentials/request", ensureObjectBody(this.requestCredential.bind(this)));
 
@@ -230,7 +234,7 @@ export class CredentialsController extends Controller {
             if (!credentialRequest) {
                 return sendApiError(request, response, BAD_REQUEST, "REQUEST_NOT_FOUND", "Request not found");
             }
-            credentialRequest.status = "APPROVED";
+            credentialRequest.status = "LOGGED";
             credentialRequest.reviewedAt = Date.now();
             credentialRequest.credentialId = result.credentialId;
             await credentialRequest.save();
@@ -476,4 +480,87 @@ export class CredentialsController extends Controller {
             return sendApiError(request, response, INTERNAL_SERVER_ERROR, "GET_APPROVED_COUNT_FAILED", error.message);
         }
     }
+
+    /**
+     * @typedef UpdateCredentialStatusRequest
+     * @property {string} credentialId.required - The credential ID to update
+     * @property {string} status.required - The new status
+     */
+
+    /**
+     * Update Credential Status
+     * Update the status of a credential
+     * Binding: UpdateCredentialStatus
+     * @route POST /credentials/close-emssion
+     * @group credentials
+     * @param {UpdateCredentialStatusRequest.model} request.body.required - Update parameters
+     * @returns {void} 200 - Credential status updated
+     * @returns {Error} 400 - Invalid request parameters
+     * @returns {Error} 500 - Internal server error
+     */
+    public async updateCredentialStatus(request: Express.Request, response: Express.Response): Promise<void> {
+        const auth = await UsersService.getInstance().auth(request);
+        if (!auth.isRegisteredUser()) {
+            sendUnauthorized(request, response);
+            return;
+        }
+        try {
+            const body = request.body;
+
+            if (!body.credentialId) {
+                return sendApiError(request, response, BAD_REQUEST, "MISSING_CREDENTIAL_ID", "Credential ID is required");
+            }
+
+            const credential = await Credential.finder.findByKey(body.credentialId);
+            if (!credential) {
+                return sendApiError(request, response, BAD_REQUEST, "CREDENTIAL_NOT_FOUND", "Credential not found");
+            }
+
+            if(credential.status !== "LOGGED") {
+                return sendApiResult(request, response, {
+                    success: true,
+                    redirect: "true"
+                });
+            }
+
+            credential.status = "ACTIVE";
+            await credential.save();
+
+            return sendApiResult(request, response, {
+                success: true,
+                redirect: "false"
+            });
+        } catch (error) {
+            Monitor.error(`Error updating credential status: ${error.message}`);
+            return sendApiError(request, response, INTERNAL_SERVER_ERROR, "UPDATE_CREDENTIAL_STATUS_FAILED", error.message);
+        }
+    }
+
+    /**
+     * Check Credential Status
+     * Check the status of a credential
+     * Binding: CheckCredentialStatus
+     * @route GET /credentials/check-status
+     * @group credentials
+     * @returns {CheckCredentialStatusResponse.model} 200 - Credential status
+     * @returns {Error} 400 - Invalid credential ID
+     * @returns {Error} 500 - Internal server error
+     */
+    public async checkCredentialStatus(request: Express.Request, response: Express.Response): Promise<void> {
+        try {
+            const credentialId = request.params.credentialId;
+            const credential = await Credential.findLast();
+            if (!credential) {
+                return sendApiError(request, response, BAD_REQUEST, "CREDENTIAL_NOT_FOUND", "Credential not found");
+            }
+            return sendApiResult(request, response, {
+                status: credential.status
+            });
+
+        } catch (error) {
+            Monitor.error(`Error checking credential status: ${error.message}`);
+            return sendApiError(request, response, INTERNAL_SERVER_ERROR, "CHECK_CREDENTIAL_STATUS_FAILED", error.message);
+        }
+    }
+
 }

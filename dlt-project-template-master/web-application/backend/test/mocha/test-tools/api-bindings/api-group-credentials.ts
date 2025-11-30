@@ -4,7 +4,7 @@
 
 import { RequestErrorHandler, RequestParams, CommonErrorHandler } from "@asanrom/request-axios";
 import { getApiUrl } from "./utils";
-import { RequestCredentialResponse, RequestCredentialRequest, GetPendingRequestsResponse, ApproveRequestResponse, ApproveRequestRequest, RejectRequestResponse, RejectRequestRequest, GetUserCredentialsResponse, GetRequestStatusResponse, VerifyCredentialResponse, VerifyCredentialRequest, GetApprovedCountResponse } from "./definitions";
+import { RequestCredentialResponse, RequestCredentialRequest, GetPendingRequestsResponse, ApproveRequestResponse, ApproveRequestRequest, RejectRequestResponse, RejectRequestRequest, GetUserCredentialsResponse, GetRequestStatusResponse, VerifyCredentialResponse, VerifyCredentialRequest, GetApprovedCountResponse, UpdateCredentialStatusRequest, CheckCredentialStatusResponse } from "./definitions";
 
 export class ApiCredentials {
     /**
@@ -182,6 +182,50 @@ export class ApiCredentials {
             },
         };
     }
+
+    /**
+     * Method: POST
+     * Path: /credentials/close-emssion
+     * Update Credential Status
+     * Update the status of a credential
+     * @param body Body parameters
+     * @returns The request parameters
+     */
+    public static UpdateCredentialStatus(body: UpdateCredentialStatusRequest): RequestParams<void, UpdateCredentialStatusErrorHandler> {
+        return {
+            method: "POST",
+            url: getApiUrl(`/credentials/close-emssion`),
+            json: body,
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(400, "*", handler.badRequest)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
+
+    /**
+     * Method: GET
+     * Path: /credentials/check-status
+     * Check Credential Status
+     * Check the status of a credential
+     * @returns The request parameters
+     */
+    public static CheckCredentialStatus(): RequestParams<CheckCredentialStatusResponse, CheckCredentialStatusErrorHandler> {
+        return {
+            method: "GET",
+            url: getApiUrl(`/credentials/check-status`),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(400, "*", handler.badRequest)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
 }
 
 /**
@@ -252,5 +296,25 @@ export type GetApprovedCountErrorHandler = CommonErrorHandler & {
      * General handler for status = 401
      */
     status401: () => void;
+};
+
+/**
+ * Error handler for UpdateCredentialStatus
+ */
+export type UpdateCredentialStatusErrorHandler = CommonErrorHandler & {
+    /**
+     * General handler for status = 400
+     */
+    badRequest: () => void;
+};
+
+/**
+ * Error handler for CheckCredentialStatus
+ */
+export type CheckCredentialStatusErrorHandler = CommonErrorHandler & {
+    /**
+     * General handler for status = 400
+     */
+    badRequest: () => void;
 };
 

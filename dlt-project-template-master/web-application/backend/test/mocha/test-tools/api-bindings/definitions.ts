@@ -907,6 +907,18 @@ export interface GetApprovedCountResponse {
     count: number;
 }
 
+export interface UpdateCredentialStatusRequest {
+    /**
+     * The credential ID to update
+     */
+    credentialId: string;
+
+    /**
+     * The new status
+     */
+    status: string;
+}
+
 export interface CredentialTypeListResponse {
     credentialTypes: CredentialTypeItem[];
 
