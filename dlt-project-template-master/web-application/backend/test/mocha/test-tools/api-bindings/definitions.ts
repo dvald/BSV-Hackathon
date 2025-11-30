@@ -795,16 +795,6 @@ export interface ApproveRequestRequest {
      * The request ID to approve
      */
     requestId: string;
-
-    /**
-     * Issuer's private key in hex format
-     */
-    issuerPrivateKey: string;
-
-    /**
-     * Optional expiration date (ISO 8601)
-     */
-    expirationDate?: string;
 }
 
 export interface ApproveRequestResponse {
@@ -812,11 +802,6 @@ export interface ApproveRequestResponse {
      * The issued credential ID
      */
     credentialRequestId: string;
-
-    /**
-     * Blockchain anchor transaction ID
-     */
-    txid: string;
 
     /**
      * The complete credential
@@ -829,11 +814,6 @@ export interface RejectRequestRequest {
      * The request ID to reject
      */
     requestId: string;
-
-    /**
-     * Issuer's DID
-     */
-    issuerDID: string;
 
     /**
      * Reason for rejection

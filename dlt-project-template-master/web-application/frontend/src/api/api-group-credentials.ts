@@ -57,7 +57,7 @@ export class ApiCredentials {
      * @param body Body parameters
      * @returns The request parameters
      */
-    public static PostCredentialsApprove(body: ApproveRequestRequest): RequestParams<ApproveRequestResponse, PostCredentialsApproveErrorHandler> {
+    public static ApproveRequest(body: ApproveRequestRequest): RequestParams<ApproveRequestResponse, ApproveRequestErrorHandler> {
         return {
             method: "POST",
             url: getApiUrl(`/credentials/approve`),
@@ -80,7 +80,7 @@ export class ApiCredentials {
      * @param body Body parameters
      * @returns The request parameters
      */
-    public static PostCredentialsReject(body: RejectRequestRequest): RequestParams<RejectRequestResponse, PostCredentialsRejectErrorHandler> {
+    public static RejectRequest(body: RejectRequestRequest): RequestParams<RejectRequestResponse, RejectRequestErrorHandler> {
         return {
             method: "POST",
             url: getApiUrl(`/credentials/reject`),
@@ -174,9 +174,9 @@ export type RequestCredentialErrorHandler = CommonErrorHandler & {
 };
 
 /**
- * Error handler for PostCredentialsApprove
+ * Error handler for ApproveRequest
  */
-export type PostCredentialsApproveErrorHandler = CommonErrorHandler & {
+export type ApproveRequestErrorHandler = CommonErrorHandler & {
     /**
      * General handler for status = 400
      */
@@ -184,9 +184,9 @@ export type PostCredentialsApproveErrorHandler = CommonErrorHandler & {
 };
 
 /**
- * Error handler for PostCredentialsReject
+ * Error handler for RejectRequest
  */
-export type PostCredentialsRejectErrorHandler = CommonErrorHandler & {
+export type RejectRequestErrorHandler = CommonErrorHandler & {
     /**
      * General handler for status = 400
      */

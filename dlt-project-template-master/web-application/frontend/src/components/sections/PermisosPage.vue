@@ -745,16 +745,72 @@ export default defineComponent({
             console.log("View request:", request.id);
         },
         approveRequest(request: PendingRequest) {
-            // TODO: Aprobar solicitud y emitir credencial
-            console.log("Approve request:", request.id);
-            this.pendingRequests = this.pendingRequests.filter(r => r.id !== request.id);
-            this.tabs[1].count--;
+            Request.Do(ApiCredentials.ApproveRequest({
+                requestId: request.id,
+            }))
+                .onSuccess((result) => {
+                    console.log("Request approved:", result);
+                    // Remover de la lista
+                    this.pendingRequests = this.pendingRequests.filter(r => r.id !== request.id);
+                    this.tabs[0].count = this.pendingRequests.length;
+                    this.$showSnackBar(this.$t("Request approved successfully") as string);
+                })
+                .onRequestError((err: any, handleErr: any) => {
+                    handleErr(err, {
+                        badRequest: () => {
+                            alert(this.$t("Error: Invalid request data") as string);
+                        },
+                        serverError: () => {
+                            alert(this.$t("Error: Server error while approving request") as string);
+                        },
+                        temporalError: () => {
+                            alert(this.$t("Error: Temporary error. Please try again") as string);
+                        },
+                        networkError: () => {
+                            alert(this.$t("Error: Network error. Please check your connection") as string);
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error("Error approving request:", err);
+                    alert(this.$t("Unexpected error while approving request") as string);
+                });
         },
         rejectRequest(request: PendingRequest) {
-            // TODO: Rechazar solicitud con razón
-            console.log("Reject request:", request.id);
-            this.pendingRequests = this.pendingRequests.filter(r => r.id !== request.id);
-            this.tabs[1].count--;
+            // Usar cadena vacía como razón
+            const reason = "";
+
+            Request.Do(ApiCredentials.RejectRequest({
+                requestId: request.id,
+                reason: reason,
+            }))
+                .onSuccess((result) => {
+                    console.log("Request rejected:", result);
+                    // Remover de la lista
+                    this.pendingRequests = this.pendingRequests.filter(r => r.id !== request.id);
+                    this.tabs[0].count = this.pendingRequests.length;
+                    this.$showSnackBar(this.$t("Request rejected successfully") as string);
+                })
+                .onRequestError((err: any, handleErr: any) => {
+                    handleErr(err, {
+                        badRequest: () => {
+                            alert(this.$t("Error: Invalid request data") as string);
+                        },
+                        serverError: () => {
+                            alert(this.$t("Error: Server error while rejecting request") as string);
+                        },
+                        temporalError: () => {
+                            alert(this.$t("Error: Temporary error. Please try again") as string);
+                        },
+                        networkError: () => {
+                            alert(this.$t("Error: Network error. Please check your connection") as string);
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error("Error rejecting request:", err);
+                    alert(this.$t("Unexpected error while rejecting request") as string);
+                });
         },
         loadPendingRequests(): void {
             Timeouts.Abort(this.loadRequestId);
