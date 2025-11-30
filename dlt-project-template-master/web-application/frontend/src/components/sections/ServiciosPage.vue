@@ -605,26 +605,31 @@
                             </div>
                             
                             <!-- Upload Result Info -->
-                            <div v-if="uploadedFileData" class="upload-result-info">
-                                <div class="result-row">
-                                    <span class="result-label">{{ $t("Hash") }}:</span>
-                                    <code class="result-value hash">{{ uploadedFileData.hash.substring(0, 20) }}...</code>
-                                    <button type="button" class="btn-icon-small" @click="copyToClipboard(uploadedFileData.hash)" :title="$t('Copy Hash')">
+                            <div v-if="uploadedFileData" class="upload-result-card">
+                                <div class="result-item">
+                                    <div class="result-icon">
                                         <i class="mdi mdi-fingerprint"></i>
+                                    </div>
+                                    <div class="result-content">
+                                        <span class="result-label">SHA256 Hash</span>
+                                        <code class="result-hash">{{ uploadedFileData.hash.substring(0, 20) }}...</code>
+                                    </div>
+                                    <button type="button" class="result-copy-btn" @click="copyToClipboard(uploadedFileData.hash)" :title="$t('Copy')">
+                                        <i class="mdi mdi-content-copy"></i>
                                     </button>
                                 </div>
                                 
-                                <div class="result-row" v-if="txid">
-                                    <span class="result-label">BSV TX:</span>
-                                    <a :href="'https://whatsonchain.com/tx/' + txid" target="_blank" class="tx-link">
-                                        <i class="mdi mdi-cube-outline"></i> {{ txid.substring(0, 8) }}...
-                                    </a>
-                                </div>
-                                
-                                <div class="result-row" v-if="uploadedFileData.url">
-                                    <button type="button" class="btn-text-link" @click="openFile(uploadedFileData.url)">
-                                        <i class="mdi mdi-open-in-new"></i> {{ $t("Open File") }}
-                                    </button>
+                                <div class="result-item" v-if="txid">
+                                    <div class="result-icon bsv">
+                                        <i class="mdi mdi-cube-outline"></i>
+                                    </div>
+                                    <div class="result-content">
+                                        <span class="result-label">BSV Transaction</span>
+                                        <a :href="'https://whatsonchain.com/tx/' + txid" target="_blank" class="result-tx-link">
+                                            {{ txid.substring(0, 12) }}...
+                                            <i class="mdi mdi-open-in-new"></i>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1332,6 +1337,9 @@ export default defineComponent({
             uploading.value = false;
             uploadError.value = "";
             uploadSuccess.value = false;
+            // Reset file upload data
+            uploadedFileData.value = null;
+            txid.value = null;
         };
 
         const handleFileUpload = (event: Event) => {
@@ -1358,6 +1366,20 @@ export default defineComponent({
                 isPublic: false,
             }))
                 .onSuccess((uploadResult: any) => {
+                    console.log("Upload result:", uploadResult);
+                    
+                    // Guardar datos del upload incluyendo hash y txid del anchor BSV
+                    uploadedFileData.value = {
+                        hash: uploadResult.hash || '',
+                        url: uploadResult.url || '',
+                        fileName: uploadResult.fileName || serviceRequest.value.document?.name || 'document',
+                    };
+                    
+                    // Guardar txid del anchor BSV (del upload, no del credential)
+                    if (uploadResult.txid) {
+                        txid.value = uploadResult.txid;
+                    }
+                    
                     const documentId = uploadResult.documentId;
 
                     if (!documentId) {
@@ -1375,7 +1397,10 @@ export default defineComponent({
 
                     Request.Do(ApiCredentials.RequestCredential(credentialRequest))
                         .onSuccess((credentialResult: any) => {
-                            txid.value = credentialResult.txid;
+                            // Si la credencial también devuelve un txid, usar ese (es más reciente)
+                            if (credentialResult.txid) {
+                                txid.value = credentialResult.txid;
+                            }
                             // Éxito
                             uploading.value = false;
                             uploadSuccess.value = true;
@@ -1383,10 +1408,8 @@ export default defineComponent({
                             
                             console.log("Solicitud de credencial creada:", credentialResult);
 
-                            // Cerrar el modal después de un breve delay
-                            setTimeout(() => {
-                                closeRequestModal();
-                            }, 2000);
+                            // NO cerrar el modal automáticamente para que el usuario vea el hash y txid
+                            // El usuario cerrará manualmente
                         })
                         .onRequestError((err: any, handleErr: any) => {
                             uploading.value = false;
@@ -2429,6 +2452,101 @@ export default defineComponent({
     background-color: #d4edda;
     border: 1px solid #28a745;
     color: #155724;
+}
+
+/* Upload Result Card */
+.upload-result-card {
+    margin-top: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-md);
+    background-color: var(--a11y-bg-secondary, #f8f9fa);
+    border: 1px solid var(--a11y-border, #dee2e6);
+    border-radius: var(--a11y-border-radius);
+}
+
+.result-item {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm) 0;
+}
+
+.result-item:not(:last-child) {
+    border-bottom: 1px solid var(--a11y-border, #dee2e6);
+}
+
+.result-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background-color: var(--a11y-primary, #0056b3);
+    color: white;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.result-icon.bsv {
+    background-color: var(--a11y-success, #28a745);
+}
+
+.result-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.result-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--a11y-text-secondary, #6c757d);
+    margin-bottom: 2px;
+}
+
+.result-hash {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.85rem;
+    color: var(--a11y-text, #333);
+    background: none;
+    padding: 0;
+}
+
+.result-tx-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.85rem;
+    color: var(--a11y-success, #28a745);
+    text-decoration: none;
+}
+
+.result-tx-link:hover {
+    text-decoration: underline;
+}
+
+.result-tx-link .mdi-open-in-new {
+    font-size: 0.75rem;
+}
+
+.result-copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--a11y-border, #dee2e6);
+    border-radius: 4px;
+    background-color: white;
+    color: var(--a11y-text-secondary, #6c757d);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.result-copy-btn:hover {
+    background-color: var(--a11y-primary, #0056b3);
+    border-color: var(--a11y-primary, #0056b3);
+    color: white;
 }
 
 /* Checkbox wrapper */

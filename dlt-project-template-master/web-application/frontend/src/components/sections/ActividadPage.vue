@@ -519,6 +519,10 @@ export default defineComponent({
                 credential_revoked: "mdi-cancel",
                 token_issued: "mdi-hand-coin",
                 token_used: "mdi-ticket-confirmation",
+                token_created: "mdi-plus-circle",
+                token_transfer: "mdi-swap-horizontal",
+                token_operation: "mdi-cog",
+                file_uploaded: "mdi-file-check",
                 presentation_created: "mdi-file-document",
                 user_registered: "mdi-account-plus",
             };
@@ -531,6 +535,10 @@ export default defineComponent({
                 credential_revoked: "Credential revoked",
                 token_issued: "Token issued",
                 token_used: "Token used",
+                token_created: "Token created",
+                token_transfer: "Token transfer",
+                token_operation: "Token operation",
+                file_uploaded: "File uploaded",
                 presentation_created: "Presentation created",
                 user_registered: "User registered",
             };
@@ -539,6 +547,7 @@ export default defineComponent({
         getEventCategory(type: string): string {
             if (type.startsWith("credential")) return "Credential";
             if (type.startsWith("token")) return "Token";
+            if (type.startsWith("file")) return "Storage";
             if (type.startsWith("presentation")) return "Presentation";
             if (type.startsWith("user")) return "User";
             return "System";
@@ -616,21 +625,29 @@ export default defineComponent({
         async loadTransactions() {
             this.loading = true;
             try {
-                // Try user-specific transactions first, fallback to all transactions for demo
-                let response = await fetch(getApiUrl('/api/v1/gamification/transactions'), {
-                    headers: { 
-                        'x-bsv-identity-key': this.identityKey || 'anonymous',
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                let data = await response.json();
+                let data: any = null;
                 
-                // If no user-specific transactions, load all for demo purposes
-                if (response.ok && (!data.events || data.events.length === 0)) {
-                    console.log('No user transactions, loading all for demo...');
-                    response = await fetch(getApiUrl('/api/v1/gamification/all-transactions'));
-                    data = response.ok ? await response.json() : data;
+                // If we have an identity key, try user-specific transactions first
+                if (this.identityKey) {
+                    console.log('Loading user transactions for:', this.identityKey.substring(0, 16) + '...');
+                    const response = await fetch(getApiUrl('/api/v1/gamification/transactions'), {
+                        headers: { 
+                            'x-bsv-identity-key': this.identityKey,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (response.ok) {
+                        data = await response.json();
+                    }
+                }
+                
+                // If no user transactions or no identity key, load all for demo
+                if (!data || !data.events || data.events.length === 0) {
+                    console.log('Loading all transactions (demo mode)...');
+                    const response = await fetch(getApiUrl('/api/v1/gamification/all-transactions'));
+                    if (response.ok) {
+                        data = await response.json();
+                    }
                 }
 
                 if (data && data.events) {
@@ -683,10 +700,8 @@ export default defineComponent({
         }
     },
     mounted: function () {
-        // Load transactions if identity key is already available
-        if (this.identityKey) {
-            this.loadTransactions();
-        }
+        // Always load transactions - will use fallback if no identityKey
+        this.loadTransactions();
     },
     beforeUnmount: function () {},
 });

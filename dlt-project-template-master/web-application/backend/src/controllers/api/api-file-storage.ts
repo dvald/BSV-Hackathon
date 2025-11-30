@@ -17,7 +17,9 @@ import {
 } from "../../utils/http-utils";
 import { clearTempFile, moveUploadedFileToTempFile } from "../../utils/file-utils";
 import { readFileSync } from "fs";
+import crypto from "crypto";
 import { Document } from "../../models/document";
+import { TokenTransaction } from "../../models/tokens/token-transaction";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -135,6 +137,25 @@ export class FileStorageController extends Controller {
                     txid: hashResult.txid, // Include BSV transaction ID if anchored
                     documentId: document.id, // Include document ID from database
                 };
+
+                // Register transaction for Activity page
+                const userId = request.headers['x-bsv-identity-key'] as string || 'anonymous';
+                const txId = `file-${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
+                const tx = new TokenTransaction({
+                    id: txId,
+                    tokenId: 'FILE_HASH',  // Special type for file hashes
+                    type: 'genesis',       // File anchor is like creating a proof
+                    fromIdentityKey: null,
+                    toIdentityKey: userId,
+                    amount: 0,
+                    txid: hashResult.txid || '',
+                    vout: 0,
+                    timestamp: Date.now(),
+                    notes: `File hash anchored: ${originalName}`,
+                    spentBy: null
+                } as any);
+                await tx.insert();
+                console.log('[FileStorage] Transaction registered for Activity:', tx.id);
 
                 sendApiResult(request, response, result);
             } finally {

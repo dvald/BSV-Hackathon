@@ -802,7 +802,7 @@ export class GamificationController extends Controller {
             // Map to event format for frontend, limit to 50 most recent
             const events = transactions.slice(0, 50).map(tx => ({
                 id: tx.id,
-                type: this.mapTransactionType(tx.type),
+                type: this.mapTransactionType(tx.type, tx.tokenId),
                 description: tx.notes || this.generateDescription(tx),
                 timestamp: new Date(tx.timestamp).toISOString(),
                 txId: tx.txid && tx.txid.length > 10 ? tx.txid : null, // Only include real txids
@@ -826,7 +826,11 @@ export class GamificationController extends Controller {
     }
 
     // Helper method to map transaction types to event types
-    private mapTransactionType(type: string): string {
+    private mapTransactionType(type: string, tokenId?: string): string {
+        // Special case for file hash anchors
+        if (tokenId === 'FILE_HASH') {
+            return 'file_uploaded';
+        }
         const typeMap: Record<string, string> = {
             'genesis': 'token_created',
             'mint': 'token_issued',
@@ -855,6 +859,9 @@ export class GamificationController extends Controller {
     // Helper to get service name from tokenId
     private getServiceFromToken(tokenId: string): string {
         if (!tokenId) return 'Token Service';
+        if (tokenId === 'FILE_HASH') {
+            return 'File Storage';
+        }
         if (tokenId.includes('SERVICE') || tokenId.toLowerCase().includes('service')) {
             return 'Service Tokens';
         }
@@ -877,17 +884,18 @@ export class GamificationController extends Controller {
             // Sort by timestamp descending (newest first)
             transactions.sort((a, b) => b.timestamp - a.timestamp);
 
-            // Return raw data for debugging
+            // Map to frontend format (same as getTransactions)
             const events = transactions.slice(0, 100).map(tx => ({
                 id: tx.id,
-                type: tx.type,
-                notes: tx.notes,
+                type: this.mapTransactionType(tx.type, tx.tokenId),
+                description: tx.notes || this.generateDescription(tx),
                 timestamp: new Date(tx.timestamp).toISOString(),
-                txId: tx.txid || null,
+                txId: tx.txid && tx.txid.length > 10 ? tx.txid : null,
                 amount: tx.amount,
                 tokenId: tx.tokenId,
-                toIdentityKey: tx.toIdentityKey ? tx.toIdentityKey.substring(0, 20) + '...' : null,
-                fromIdentityKey: tx.fromIdentityKey ? tx.fromIdentityKey.substring(0, 20) + '...' : null,
+                verified: !!(tx.txid && tx.txid.length > 10),
+                actor: "System",
+                service: this.getServiceFromToken(tx.tokenId)
             }));
 
             request.logger.info("Returning ALL transactions", { count: events.length, total: transactions.length });
