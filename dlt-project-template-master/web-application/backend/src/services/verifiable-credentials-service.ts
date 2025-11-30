@@ -10,6 +10,7 @@ import { DataFilter, OrderBy } from "tsbean-orm";
 import { createVerifiableCredentialJwt, verifyCredential as verifyVC, JwtCredentialPayload } from 'did-jwt-vc';
 import { Resolver } from 'did-resolver';
 import Crypto from "crypto";
+import { Credential } from "../models/credential";
 
 /**
  * Verifiable Credentials Service - Request/Approval Flow
@@ -244,6 +245,8 @@ export class VerifiableCredentialsService {
             request.reviewedBy = issuerDID;
             request.credentialId = credentialId;
             await request.save();
+
+            await Credential.create(request.userDID, request.credentialType); // Create credential record
 
             Monitor.info(`Credential approved and issued: ${credentialId}, TXID: ${txid}`);
 

@@ -293,7 +293,7 @@ export class User extends DataModel {
         this.walletProvider = data.walletProvider || null;
         this.walletIdentityKey = data.walletIdentityKey || null;
 
-        this.did = data.did || null;
+        this.did = data.did || "";
 
         this.init();
     }
