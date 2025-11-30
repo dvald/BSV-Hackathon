@@ -264,7 +264,7 @@ const routes: (RouteRecordRaw & {
             }
         },
 
-        /* Sections */
+        /* Sections - Admin */
 
         {
             name: "dashboard",
@@ -306,6 +306,26 @@ const routes: (RouteRecordRaw & {
             name: "permissions",
             path: "/permissions",
             component: () => import("@/components/sections/PermisosPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        /* Sections - Citizen */
+
+        {
+            name: "my-credentials",
+            path: "/my-credentials",
+            component: () => import("@/components/sections/citizen/MisCredencialesPage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+
+        {
+            name: "my-activity",
+            path: "/my-activity",
+            component: () => import("@/components/sections/citizen/MiActividadPage.vue"),
             meta: {
                 sidebarSticky: true,
             },

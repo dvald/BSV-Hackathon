@@ -122,13 +122,9 @@
                         class="bonus-card a11y-card"
                     >
                         <header class="bonus-header">
-                            <div class="bonus-icon-container" :class="'bonus-type-' + bonus.type">
-                                <i :class="bonus.icon" class="bonus-icon" aria-hidden="true"></i>
-                            </div>
-                            <div class="bonus-title-group">
-                                <h3 class="bonus-title">{{ $t(bonus.name) }}</h3>
-                                <span class="a11y-badge a11y-badge-success">{{ $t("Active") }}</span>
-                            </div>
+                            <i :class="bonus.icon + ' bonus-icon'" aria-hidden="true"></i>
+                            <h3 class="bonus-title">{{ $t(bonus.name) }}</h3>
+                            <span class="a11y-badge a11y-badge-success">{{ $t("Active") }}</span>
                         </header>
 
                         <div class="bonus-body">
@@ -483,12 +479,9 @@ export default defineComponent({
             return 0;
         },
         progressPercentage(): number {
-            if (!this.nextLevel) return 100;
-            const currentMin = this.currentLevel.minPoints;
-            const nextMin = this.nextLevel.minPoints;
-            const range = nextMin - currentMin;
-            const progress = this.totalPoints - currentMin;
-            return Math.min(100, Math.max(0, (progress / range) * 100));
+            // Calcular porcentaje global de 0 al nivel maximo (Platino = 5000)
+            const maxPoints = this.levels[this.levels.length - 1].minPoints;
+            return Math.min(100, Math.max(0, (this.totalPoints / maxPoints) * 100));
         },
         progressAriaLabel(): string {
             return `Progress: ${this.totalPoints} points. Current level: ${this.currentLevel.name}. ${this.nextLevel ? `Next level: ${this.nextLevel.name} at ${this.nextLevel.minPoints} points.` : 'Maximum level reached.'}`;
@@ -794,43 +787,21 @@ export default defineComponent({
 .bonus-header {
     display: flex;
     align-items: center;
-    gap: var(--a11y-spacing-md);
+    gap: var(--a11y-spacing-sm);
     margin-bottom: var(--a11y-spacing-md);
 }
 
-.bonus-icon-container {
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--a11y-border-radius);
-    flex-shrink: 0;
-}
-
-.bonus-type-parking {
-    background-color: #e3f2fd;
-    color: #1976d2;
-}
-
-.bonus-type-transport {
-    background-color: #e8f5e9;
-    color: #388e3c;
-}
-
 .bonus-icon {
-    font-size: 2rem;
-}
-
-.bonus-title-group {
-    flex: 1;
+    font-size: 1.75rem;
+    flex-shrink: 0;
+    line-height: 1;
 }
 
 .bonus-title {
+    flex: 1;
     font-size: var(--a11y-font-size-large);
     font-weight: 600;
     margin: 0;
-    margin-bottom: var(--a11y-spacing-xs);
 }
 
 .bonus-body {
@@ -873,17 +844,17 @@ export default defineComponent({
 
 .usage-bar-fill {
     height: 100%;
-    background-color: var(--a11y-success);
+    background-color: var(--a11y-primary, #004d99);
     border-radius: 5px;
     transition: width 0.3s ease;
 }
 
 .usage-bar-fill.usage-warning {
-    background-color: #ff9800;
+    background-color: var(--a11y-primary, #004d99);
 }
 
 .usage-bar-fill.usage-danger {
-    background-color: var(--a11y-error);
+    background-color: var(--a11y-primary, #004d99);
 }
 
 .usage-remaining {

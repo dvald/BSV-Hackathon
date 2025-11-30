@@ -10,10 +10,10 @@
             <div class="header-content">
                 <h1 class="a11y-heading-1">
                     <i class="mdi mdi-domain" aria-hidden="true"></i>
-                    {{ $t("Municipal Services") }}
+                    {{ isAdmin ? $t("Municipal Services") : $t("Available Services") }}
                 </h1>
             <p class="a11y-text-secondary">
-                {{ $t("Departments and services that issue or verify credentials") }}
+                {{ isAdmin ? $t("Departments and services that issue or verify credentials") : $t("Explore municipal services and request credentials") }}
             </p>
             </div>
             <div class="header-actions" v-if="isAdmin">
@@ -98,8 +98,8 @@
                                 {{ $t(service.description) }}
                             </p>
 
-                            <!-- Estadísticas del servicio -->
-                            <div class="service-metrics">
+                            <!-- Estadísticas del servicio - Solo admin -->
+                            <div v-if="isAdmin" class="service-metrics">
                                 <div class="metric">
                                     <span class="metric-value">{{ formatNumber(service.metrics.users) }}</span>
                                     <span class="metric-label">{{ $t("Citizens") }}</span>
@@ -114,8 +114,20 @@
                                 </div>
                             </div>
 
-                            <!-- Administrador del servicio -->
-                            <div class="service-admin">
+                            <!-- Informacion para ciudadano -->
+                            <div v-if="!isAdmin" class="service-citizen-info">
+                                <div class="citizen-info-item">
+                                    <i class="mdi mdi-clock-outline" aria-hidden="true"></i>
+                                    <span>{{ $t("Processing time") }}: {{ service.processingTime || '24-48h' }}</span>
+                                </div>
+                                <div class="citizen-info-item">
+                                    <i class="mdi mdi-currency-eur" aria-hidden="true"></i>
+                                    <span>{{ service.price === 0 ? $t("Free") : service.price + ' EUR' }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Administrador del servicio - Solo admin -->
+                            <div v-if="isAdmin" class="service-admin">
                                 <span class="admin-label">{{ $t("Service administrator") }}:</span>
                                 <span class="admin-name">{{ service.admin.name }}</span>
                                 <span class="admin-email a11y-text-secondary">{{ service.admin.email }}</span>
@@ -123,7 +135,7 @@
 
                             <!-- Tipos de credenciales que acepta -->
                             <div class="service-credentials">
-                                <span class="credentials-label">{{ $t("Required credentials") }}:</span>
+                                <span class="credentials-label">{{ isAdmin ? $t("Required credentials") : $t("You will need") }}:</span>
                                 <ul class="credentials-list" role="list">
                                     <li 
                                         v-for="cred in service.requiredCredentials" 
@@ -135,8 +147,8 @@
                                 </ul>
                             </div>
 
-                            <!-- Token asociado -->
-                            <div class="service-token">
+                            <!-- Token asociado - Solo admin -->
+                            <div v-if="isAdmin" class="service-token">
                                 <span class="token-label">{{ $t("Associated token") }}:</span>
                                 <span class="token-name">
                                     <i class="mdi mdi-hand-coin" aria-hidden="true"></i>
@@ -146,8 +158,15 @@
                                     ({{ $t(service.token.type === 'uses' ? 'Uses' : 'Points') }})
                                 </span>
                             </div>
+
+                            <!-- Beneficio para ciudadano -->
+                            <div v-if="!isAdmin && service.citizenBenefit" class="service-benefit">
+                                <i class="mdi mdi-gift-outline" aria-hidden="true"></i>
+                                <span>{{ $t(service.citizenBenefit) }}</span>
+                            </div>
                         </div>
                         <footer class="service-footer">
+                            <!-- Admin: Configurar servicio -->
                             <button 
                                 v-if="isAdmin || isServiceAdmin(service.id)"
                                 @click="editService(service)"
@@ -155,6 +174,25 @@
                             >
                                 {{ $t("Configure") }}
                             </button>
+                            <!-- Ciudadano: Solicitar/Inscribirse -->
+                            <template v-if="!isAdmin">
+                                <button 
+                                    v-if="!isEnrolled(service.id)"
+                                    @click="requestService(service)"
+                                    class="a11y-btn a11y-btn-primary"
+                                >
+                                    <i class="mdi mdi-plus" aria-hidden="true"></i>
+                                    {{ $t("Request") }}
+                                </button>
+                                <button 
+                                    v-else
+                                    class="a11y-btn a11y-btn-secondary"
+                                    disabled
+                                >
+                                    <i class="mdi mdi-check" aria-hidden="true"></i>
+                                    {{ $t("Enrolled") }}
+                                </button>
+                            </template>
                         </footer>
                     </article>
                 </div>
@@ -335,11 +373,10 @@
                                 id="token-symbol"
                                 type="text"
                                 v-model="newService.tokenSymbol"
-                                class="a11y-input"
+                                class="a11y-input token-symbol-input"
                                 required
                                 maxlength="10"
                                 :placeholder="$t('e.g., PARK')"
-                                style="text-transform: uppercase;"
                             />
                             <p class="a11y-help-text">
                                 {{ $t("Max 10 characters") }}
@@ -375,7 +412,6 @@
 import { defineComponent, ref, computed } from "vue";
 import { AuthController } from "@/control/auth";
 import { useWallet } from "@/composables/useWallet";
-import { signedFetch } from "@/api/signed-fetch";
 import { getApiUrl } from "@/api/utils";
 
 // Configuración fija para tokens de servicios municipales
@@ -414,6 +450,10 @@ interface Service {
     admin: ServiceAdmin;
     requiredCredentials: string[];
     token: ServiceToken;
+    // Campos para vista de ciudadano
+    processingTime?: string;
+    price?: number;
+    citizenBenefit?: string;
 }
 
 interface NewServiceForm {
@@ -490,6 +530,9 @@ export default defineComponent({
                     symbol: "PARK",
                     type: "uses",
                 },
+                processingTime: "Immediate",
+                price: 0,
+                citizenBenefit: "Free access to reserved PMR parking spaces throughout the city",
             },
             {
                 id: "srv-env-ecopuntos",
@@ -514,6 +557,9 @@ export default defineComponent({
                     symbol: "ECO",
                     type: "points",
                 },
+                processingTime: "24-48h",
+                price: 0,
+                citizenBenefit: "Earn points redeemable for discounts at local shops and services",
             },
         ]);
 
@@ -690,7 +736,7 @@ export default defineComponent({
             return labels[status] || status;
         };
 
-        const isServiceAdmin = (serviceId: string): boolean => {
+        const isServiceAdmin = (_serviceId: string): boolean => {
             return false;
         };
 
@@ -700,6 +746,20 @@ export default defineComponent({
 
         const editService = (service: Service) => {
             console.log("Edit service:", service.id);
+        };
+
+        // Funciones para ciudadanos
+        const enrolledServices = ref<string[]>([]);
+
+        const isEnrolled = (serviceId: string): boolean => {
+            return enrolledServices.value.includes(serviceId);
+        };
+
+        const requestService = (service: Service) => {
+            // TODO: Implementar logica de solicitud de servicio
+            console.log("Request service:", service.id);
+            // Por ahora, simular inscripcion
+            enrolledServices.value.push(service.id);
         };
 
         return {
@@ -734,6 +794,8 @@ export default defineComponent({
             isServiceAdmin,
             viewServiceDetails,
             editService,
+            isEnrolled,
+            requestService,
         };
     },
 });
@@ -1193,6 +1255,49 @@ export default defineComponent({
         flex-direction: column;
         gap: var(--a11y-spacing-sm);
     }
+}
+
+/* Estilos para vista de ciudadano */
+.service-citizen-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-md);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    margin-bottom: var(--a11y-spacing-md);
+}
+
+.citizen-info-item {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-xs);
+    font-size: var(--a11y-font-size-base);
+}
+
+.citizen-info-item i {
+    color: var(--mci-primary, var(--a11y-primary));
+}
+
+.service-benefit {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-md);
+    background-color: var(--mci-success-light, #d4edda);
+    color: var(--mci-success-dark, #155724);
+    border-radius: var(--a11y-border-radius);
+    margin-top: var(--a11y-spacing-sm);
+    font-size: var(--a11y-font-size-small);
+}
+
+.service-benefit i {
+    font-size: 1.25rem;
+}
+
+/* Token symbol input */
+.token-symbol-input {
+    text-transform: uppercase;
 }
 </style>
 
