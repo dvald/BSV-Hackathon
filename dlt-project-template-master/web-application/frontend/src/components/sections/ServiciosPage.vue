@@ -176,16 +176,15 @@
                                     <i class="mdi mdi-qrcode" aria-hidden="true"></i>
                                     {{ $t("My Credential") }}
                                 </button>
-                                <button 
-                                    @click="accessService(category)"
-                                    class="a11y-btn"
-                                    :class="isCredentialVerified(category.id) ? 'a11y-btn-success' : 'a11y-btn-secondary'"
-                                    :disabled="!isCredentialVerified(category.id) || !canAccessService"
-                                    :title="!isCredentialVerified(category.id) ? $t('Verify your credential to access services') : $t('Access services portal')"
-                                >
-                                    <i class="mdi" :class="isCredentialVerified(category.id) ? 'mdi-arrow-right-circle' : 'mdi-lock'" aria-hidden="true"></i>
-                                    {{ $t("Access") }}
-                                </button>
+                               <button 
+    @click="openAccessQR(category)"
+    class="a11y-btn"
+    :class="isCredentialVerified(category.id) ? 'a11y-btn-success' : 'a11y-btn-secondary'"
+    :title="!isCredentialVerified(category.id) ? $t('Verify your credential to access services') : $t('Access services portal')"
+>
+    <i class="mdi" :class="isCredentialVerified(category.id) ? 'mdi-arrow-right-circle' : 'mdi-lock'" aria-hidden="true"></i>
+    {{ $t("Access") }}
+</button>
                             </template>
                         </footer>
                     </article>
@@ -839,6 +838,63 @@
                 </footer>
             </div>
         </div>
+
+        <!-- Modal para mostrar QR de Access -->
+        <div 
+            v-if="showAccessQRModal && selectedCategoryForAccess" 
+            class="modal-overlay"
+            @click.self="closeAccessQRModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="access-qr-title"
+        >
+            <div class="modal-content a11y-card qr-modal">
+                <header class="modal-header">
+                    <h2 id="access-qr-title" class="a11y-heading-2">
+                        {{ $t("Access") }}
+                    </h2>
+                    <button 
+                        @click="closeAccessQRModal"
+                        class="a11y-btn a11y-btn-icon"
+                        :aria-label="$t('Close')"
+                    >
+                        ✕
+                    </button>
+                </header>
+                
+                <div class="modal-body qr-modal-body">
+                    <!-- Información del servicio -->
+                    <div class="qr-service-info">
+                        <i :class="'mdi ' + selectedCategoryForAccess.icon" aria-hidden="true"></i>
+                        <div>
+                            <h3>{{ $t(selectedCategoryForAccess.name) }}</h3>
+                            <p class="a11y-text-secondary">{{ $t(selectedCategoryForAccess.description) }}</p>
+                        </div>
+                    </div>
+
+                    <!-- QR Code -->
+                    <div class="qr-code-container">
+                        <div v-if="accessQRData" class="qr-code-wrapper">
+                            <img 
+                                :src="accessQRData" 
+                                :alt="$t('Access QR Code')" 
+                                class="qr-code-image"
+                            />
+                            <p class="qr-instruction">{{ $t("Scan this QR code to access the service") }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="modal-footer">
+                    <button 
+                        @click="closeAccessQRModal"
+                        class="a11y-btn a11y-btn-primary"
+                    >
+                        {{ $t("Close") }}
+                    </button>
+                </footer>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -1000,6 +1056,11 @@ export default defineComponent({
         const credentialQRData = ref<string | null>(null);
         const credentialId = ref<string | null>(null);
         const credentialExpiry = ref<string | null>(null);
+        
+        // Estado para modal de Access QR
+        const showAccessQRModal = ref(false);
+        const selectedCategoryForAccess = ref<ServiceCategory | null>(null);
+        const accessQRData = ref<string | null>(null);
         
         // Estado para conteo de requests aprobados
         const approvedCount = ref(0);
@@ -1459,7 +1520,7 @@ export default defineComponent({
                 
                 // URL que irá codificada en el QR - apunta al endpoint de acceso
                 const apiBaseUrl = getApiUrl('/credentials/access');
-                const qrUrl = apiBaseUrl;
+                const qrUrl = "http://localhost:3000/api/credentials"
                 
                 // Generar imagen QR usando API de qrserver.com
                 credentialQRData.value = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
@@ -1489,6 +1550,22 @@ export default defineComponent({
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        };
+
+        // Funciones para modal de Access QR
+        const openAccessQR = (category: ServiceCategory) => {
+            selectedCategoryForAccess.value = category;
+            showAccessQRModal.value = true;
+            
+            // Generar QR con el link http://hola.com
+            const qrUrl = "http://localhost:3000/api/presentation";
+            accessQRData.value = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
+        };
+
+        const closeAccessQRModal = () => {
+            showAccessQRModal.value = false;
+            selectedCategoryForAccess.value = null;
+            accessQRData.value = null;
         };
 
         // Función para cargar el conteo de requests aprobados
@@ -1676,6 +1753,9 @@ export default defineComponent({
             canAccessService,
             txid,
             uploadedFileData,
+            showAccessQRModal,
+            selectedCategoryForAccess,
+            accessQRData,
             
             // Wallet
             wallet,
@@ -1712,6 +1792,8 @@ export default defineComponent({
             openCredentialQR,
             closeCredentialQRModal,
             downloadCredentialQR,
+            openAccessQR,
+            closeAccessQRModal,
         };
     },
 });

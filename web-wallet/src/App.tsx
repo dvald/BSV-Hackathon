@@ -502,11 +502,7 @@ export default function WebWalletApp() {
             console.log("Enviando webhook de credencial recibida a:", webhookUrl);
 
             await fetch(webhookUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(credentialData),
+              method: 'GET'
             });
             console.log("Webhook de credencial recibida enviado con éxito");
           } catch (error) {
@@ -553,18 +549,18 @@ export default function WebWalletApp() {
           const credentialToShare = credentials[selectedCredentialIndex];
           console.log("Enviando webhook a:", webhookUrl);
 
-          await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(credentialToShare),
-          });
+          const response = await fetch(webhookUrl, { method: 'GET' });
+
+          if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+          }
+
           console.log("Webhook enviado con éxito");
         } catch (error) {
           console.error("Error enviando webhook:", error);
         }
       }
+
       // ---------------------
 
       // Volver a la lista de credenciales después del éxito
