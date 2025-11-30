@@ -1421,6 +1421,19 @@ export default defineComponent({
 
 <style scoped>
 
+/* Spin animation for loading icons */
+.mdi-spin {
+    animation: mdi-spin 1s infinite linear;
+}
+
+@keyframes mdi-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 
 /* Header */
 .page-header {
