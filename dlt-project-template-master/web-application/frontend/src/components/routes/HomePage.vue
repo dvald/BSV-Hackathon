@@ -5,18 +5,104 @@
             {{ $t("Skip to main content") }}
         </a>
 
-        <!-- Encabezado del Dashboard -->
-        <header class="dashboard-header">
-            <h1 class="a11y-heading-1">
-                <i class="mdi mdi-view-dashboard" aria-hidden="true"></i>
-                {{ $t("Control Panel") }}
-            </h1>
-            <p class="a11y-text-secondary">
-                {{ $t("Overview of citizens, credentials and recent activity") }}
-            </p>
-        </header>
+        <!-- ============================================ -->
+        <!-- VISTA CIUDADANO -->
+        <!-- ============================================ -->
+        <template v-if="!isAdmin">
+            <!-- Encabezado -->
+            <header class="page-header">
+                <div class="header-content">
+                    <h1 class="a11y-heading-1">
+                        <i class="mdi mdi-view-dashboard" aria-hidden="true"></i>
+                        {{ $t("Hello") }}, {{ citizenData.name }}!
+                    </h1>
+                    <p class="a11y-text-secondary citizen-level">
+                        {{ $t("Level") }}: 
+                        <i :class="'mdi mdi-medal level-icon-' + citizenData.level.toLowerCase()" aria-hidden="true"></i>
+                        {{ $t(citizenData.level) }} - {{ formatNumber(citizenData.points) }} {{ $t("points") }}
+                    </p>
+                </div>
+            </header>
 
-        <main id="main-content">
+            <main id="main-content">
+                <!-- Seccion: Tus servicios en la ciudad -->
+                <section aria-labelledby="services-heading" class="services-section">
+                    <h2 id="services-heading" class="a11y-heading-2">
+                        <i class="mdi mdi-domain" aria-hidden="true"></i>
+                        {{ $t("Your Services in the City") }}
+                    </h2>
+
+                    <div class="services-grid a11y-grid a11y-grid-2">
+                        <!-- Tarjeta Movilidad - Parking PMR -->
+                        <article class="service-card a11y-card">
+                            <header class="service-header">
+                                <i class="mdi mdi-car service-icon" aria-hidden="true"></i>
+                                <h3 class="service-title">{{ $t("Move and Park") }}</h3>
+                            </header>
+                            <div class="service-body">
+                                <p class="a11y-text">
+                                    {{ $t("You have") }} {{ citizenServices.parking.usesRemaining }} {{ $t("uses available this month") }}
+                                </p>
+                                <div class="usage-bar">
+                                    <div 
+                                        class="usage-bar-fill" 
+                                        :style="{ width: (citizenServices.parking.usesRemaining / citizenServices.parking.usesTotal * 100) + '%' }"
+                                    ></div>
+                                </div>
+                                <span class="usage-text">{{ citizenServices.parking.usesRemaining }}/{{ citizenServices.parking.usesTotal }}</span>
+                            </div>
+                            <footer class="service-footer">
+                                <button class="a11y-btn a11y-btn-primary" @click="useParking">
+                                    <i class="mdi mdi-parking" aria-hidden="true"></i>
+                                    {{ $t("Use Reserved Space") }}
+                                </button>
+                            </footer>
+                        </article>
+
+                        <!-- Tarjeta Medio Ambiente - EcoPuntos -->
+                        <article class="service-card a11y-card">
+                            <header class="service-header">
+                                <i class="mdi mdi-recycle service-icon" aria-hidden="true"></i>
+                                <h3 class="service-title">{{ $t("Recycle and Care") }}</h3>
+                            </header>
+                            <div class="service-body">
+                                <p class="a11y-text">
+                                    {{ formatNumber(citizenServices.eco.points) }} {{ $t("EcoPoints") }} - {{ $t("Level") }} {{ $t(citizenServices.eco.level) }}
+                                    <i :class="'mdi mdi-medal level-icon-' + citizenServices.eco.level.toLowerCase()" aria-hidden="true"></i>
+                                </p>
+                                <p class="a11y-text-secondary">
+                                    {{ $t("You need") }} {{ citizenServices.eco.pointsToNext }} {{ $t("points for") }} {{ $t(citizenServices.eco.nextLevel) }}
+                                    <i :class="'mdi mdi-medal level-icon-' + citizenServices.eco.nextLevel.toLowerCase()" aria-hidden="true"></i>
+                                </p>
+                            </div>
+                            <footer class="service-footer">
+                                <button class="a11y-btn a11y-btn-primary" @click="registerRecycling">
+                                    <i class="mdi mdi-recycle" aria-hidden="true"></i>
+                                    {{ $t("Register Recycling") }}
+                                </button>
+                            </footer>
+                        </article>
+                    </div>
+                </section>
+            </main>
+        </template>
+
+        <!-- ============================================ -->
+        <!-- VISTA ADMIN -->
+        <!-- ============================================ -->
+        <template v-else>
+            <!-- Encabezado del Dashboard -->
+            <header class="dashboard-header">
+                <h1 class="a11y-heading-1">
+                    <i class="mdi mdi-view-dashboard" aria-hidden="true"></i>
+                    {{ $t("Control Panel") }}
+                </h1>
+                <p class="a11y-text-secondary">
+                    {{ $t("Overview of citizens, credentials and recent activity") }}
+                </p>
+            </header>
+
+            <main id="main-content">
             <!-- Alertas/Avisos importantes -->
             <div 
                 v-if="showAlert && pendingValidations > 0" 
@@ -246,6 +332,7 @@
                 </div>
             </section>
         </main>
+        </template>
     </div>
 </template>
 
@@ -270,6 +357,25 @@ export default defineComponent({
             showAlert: true,
             pendingValidations: 5,
             loading: true,
+            // Datos ciudadano
+            citizenData: {
+                name: "Maria Garcia",
+                level: "Silver",
+                points: 450,
+            },
+            citizenServices: {
+                parking: {
+                    usesRemaining: 23,
+                    usesTotal: 30,
+                },
+                eco: {
+                    points: 450,
+                    level: "Silver",
+                    nextLevel: "Gold",
+                    pointsToNext: 50,
+                },
+            },
+            // Datos admin
             stats: {
                 totalCitizens: 0,
                 citizensTrend: 0,
@@ -395,6 +501,13 @@ export default defineComponent({
                     console.error(err);
                     Timeouts.Set(this.loadRequestId, 1500, this.loadDashboardStats.bind(this));
                 });
+        useParking(): void {
+            // TODO: Implementar uso de parking
+            console.log("Use parking");
+        },
+        registerRecycling(): void {
+            // TODO: Implementar registro de reciclaje
+            console.log("Register recycling");
         },
     },
     mounted: function () {
@@ -720,6 +833,9 @@ export default defineComponent({
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+    .citizen-services-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 768px) {
@@ -745,5 +861,70 @@ export default defineComponent({
         flex-direction: column;
         align-items: flex-start;
     }
+    
+    .services-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================ */
+/* ESTILOS VISTA CIUDADANO */
+/* ============================================ */
+
+/* Header ciudadano usa page-header existente */
+.citizen-level {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-xs);
+}
+
+/* Colores de nivel por medalla */
+.level-icon-bronze {
+    color: #cd7f32;
+}
+
+.level-icon-silver {
+    color: #c0c0c0;
+}
+
+.level-icon-gold {
+    color: #ffd700;
+}
+
+.level-icon-platinum {
+    color: #a9a9a9;
+}
+
+/* Seccion servicios ciudadano */
+.services-section {
+    margin-bottom: var(--a11y-spacing-lg);
+}
+
+.services-section h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    margin-bottom: var(--a11y-spacing-md);
+}
+
+/* Usage bar */
+.usage-bar {
+    height: 8px;
+    background-color: var(--a11y-border-color, #e0e0e0);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: var(--a11y-spacing-sm) 0 var(--a11y-spacing-xs) 0;
+}
+
+.usage-bar-fill {
+    height: 100%;
+    background-color: var(--a11y-primary);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.usage-text {
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
 }
 </style>

@@ -6,7 +6,9 @@
                 <span class="top-bar-title">MiCiudadID</span>
             </RouterLink>
         </div>
-        <nav class="top-bar-navigation" role="navigation" aria-label="Navegación principal de administración">
+
+        <!-- Navegacion para ADMIN -->
+        <nav v-if="loggedIn && isAdmin" class="top-bar-navigation" role="navigation" aria-label="Navegacion principal de administracion">
             <RouterLink 
                 :to="{name: 'home'}" 
                 class="top-bar-nav-link"
@@ -20,7 +22,7 @@
                 :to="{name: 'services'}" 
                 class="top-bar-nav-link"
                 tabindex="0"
-                aria-label="Ir a la sección de Servicios Municipales"
+                aria-label="Ir a la seccion de Servicios Municipales"
             >
                 <i class="mdi mdi-domain nav-icon" aria-hidden="true"></i>
                 <span class="nav-text">{{ $t("Services") }}</span>
@@ -29,7 +31,7 @@
                 :to="{name: 'people'}" 
                 class="top-bar-nav-link"
                 tabindex="0"
-                aria-label="Ir a la sección de Ciudadanos"
+                aria-label="Ir a la seccion de Ciudadanos"
             >
                 <i class="mdi mdi-account-group nav-icon" aria-hidden="true"></i>
                 <span class="nav-text">{{ $t("Citizens") }}</span>
@@ -38,7 +40,7 @@
                 :to="{name: 'permissions'}" 
                 class="top-bar-nav-link"
                 tabindex="0"
-                aria-label="Ir a la sección de Gestión SSI - Credenciales"
+                aria-label="Ir a la seccion de Gestion SSI - Credenciales"
             >
                 <i class="mdi mdi-certificate nav-icon" aria-hidden="true"></i>
                 <span class="nav-text">{{ $t("Credentials") }}</span>
@@ -47,7 +49,56 @@
                 :to="{name: 'activity'}" 
                 class="top-bar-nav-link"
                 tabindex="0"
-                aria-label="Ir a la sección de Actividad y Trazabilidad"
+                aria-label="Ir a la seccion de Actividad y Trazabilidad"
+            >
+                <i class="mdi mdi-clipboard-text-clock nav-icon" aria-hidden="true"></i>
+                <span class="nav-text">{{ $t("Activity") }}</span>
+            </RouterLink>
+        </nav>
+
+        <!-- Navegacion para CIUDADANO -->
+        <nav v-else-if="loggedIn && !isAdmin" class="top-bar-navigation" role="navigation" aria-label="Navegacion principal ciudadano">
+            <RouterLink 
+                :to="{name: 'home'}" 
+                class="top-bar-nav-link"
+                tabindex="0"
+                aria-label="Ir al Panel de Control"
+            >
+                <i class="mdi mdi-view-dashboard nav-icon" aria-hidden="true"></i>
+                <span class="nav-text">{{ $t("Dashboard") }}</span>
+            </RouterLink>
+            <RouterLink 
+                :to="{name: 'services'}" 
+                class="top-bar-nav-link"
+                tabindex="0"
+                aria-label="Ir a los Servicios disponibles"
+            >
+                <i class="mdi mdi-domain nav-icon" aria-hidden="true"></i>
+                <span class="nav-text">{{ $t("Services") }}</span>
+            </RouterLink>
+            <RouterLink 
+                :to="{name: 'my-credentials'}" 
+                class="top-bar-nav-link"
+                tabindex="0"
+                aria-label="Ir a la seccion de Gestiones"
+            >
+                <i class="mdi mdi-file-document-edit nav-icon" aria-hidden="true"></i>
+                <span class="nav-text">{{ $t("Gestiones") }}</span>
+            </RouterLink>
+            <RouterLink 
+                :to="{name: 'benefits'}" 
+                class="top-bar-nav-link"
+                tabindex="0"
+                aria-label="Ir a la seccion de Mis Beneficios"
+            >
+                <i class="mdi mdi-trophy nav-icon" aria-hidden="true"></i>
+                <span class="nav-text">{{ $t("Benefits") }}</span>
+            </RouterLink>
+            <RouterLink 
+                :to="{name: 'my-activity'}" 
+                class="top-bar-nav-link"
+                tabindex="0"
+                aria-label="Ver actividad con mis datos"
             >
                 <i class="mdi mdi-clipboard-text-clock nav-icon" aria-hidden="true"></i>
                 <span class="nav-text">{{ $t("Activity") }}</span>
@@ -87,6 +138,7 @@ export default defineComponent({
             loggedIn: AuthController.isAuthenticated(),
             profileImage: AuthController.ProfileImage,
             profileName: AuthController.ProfileName || AuthController.Username || "",
+            isAdmin: AuthController.hasPermission("mod.users") || AuthController.hasPermission("admin.roles"),
         };
     },
     methods: {
@@ -106,6 +158,7 @@ export default defineComponent({
             this.loggedIn = AuthController.isAuthenticated();
             this.profileName = AuthController.ProfileName || AuthController.Username || "";
             this.profileImage = AuthController.ProfileImage;
+            this.isAdmin = AuthController.hasPermission("mod.users") || AuthController.hasPermission("admin.roles");
         },
 
         renderName: function (name: string): string {

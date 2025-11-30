@@ -49,7 +49,7 @@ export class MainWebApplication {
             origin: Config.getInstance().allowedOrigins,
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'x-bsv-payment', 'x-session-id', 'x-identity-key'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'x-bsv-payment', 'x-session-id', 'x-identity-key', 'x-signature', 'x-ts', 'x-bsv-identity-key', 'x-bsv-auth-identity-key', 'x-bsv-auth-signature', 'x-bsv-auth-request-id', 'x-bsv-auth-nonce', 'x-bsv-auth-version'],
             exposedHeaders: ['x-bsv-payment-derivation-prefix', 'x-bsv-payment-derivation-suffix', 'x-bsv-payment-satoshis']
         }));
 
