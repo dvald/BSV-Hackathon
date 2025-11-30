@@ -3,11 +3,12 @@
 "use strict";
 
 import Express from "express";
-import { BAD_REQUEST, ensureObjectBody, INTERNAL_SERVER_ERROR, noCache, sendApiError, sendApiResult } from "../../utils/http-utils";
+import { BAD_REQUEST, ensureObjectBody, INTERNAL_SERVER_ERROR, noCache, sendApiError, sendApiResult, sendUnauthorized } from "../../utils/http-utils";
 import { Controller } from "../controller";
 import { DIDService, ServiceEndpoint } from "../../services/did-service";
 import { Monitor } from "../../monitor";
 import { PrivateKey } from "@bsv/sdk";
+import { UsersService } from "../../services/users-service";
 
 /**
  * DID API Controller
@@ -62,6 +63,7 @@ export class DIDController extends Controller {
     /**
      * Create a new DID
      * Creates a new DID identifier and publishes it to the BSV blockchain
+     * Binding: CreateDID
      * @route POST /did/create
      * @group did
      * @param {CreateDIDRequest.model} request.body.required - DID creation parameters
@@ -70,12 +72,18 @@ export class DIDController extends Controller {
      * @returns {Error} 500 - Internal server error
      */
     public async createDID(request: Express.Request, response: Express.Response): Promise<void> {
+        const auth = await UsersService.getInstance().auth(request);
+        if (!auth.isRegisteredUser()) {
+            sendUnauthorized(request, response);
+            return;
+        }
         try {
             const body = request.body;
 
             // Parse optional private key
             let privateKey: PrivateKey | undefined;
             if (body.privateKey) {
+                console.log('Private key:', body.privateKey);
                 try {
                     privateKey = PrivateKey.fromHex(body.privateKey);
                 } catch (error) {
@@ -105,6 +113,9 @@ export class DIDController extends Controller {
             });
 
             Monitor.info(`DID created successfully: ${result.did}`);
+
+            auth.user.did = result.did;
+            await auth.user.save();
 
             return sendApiResult(request, response, {
                 did: result.did,

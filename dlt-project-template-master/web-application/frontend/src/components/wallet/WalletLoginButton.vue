@@ -32,13 +32,36 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useWallet } from '@/composables/useWallet';
-import { useRouter } from 'vue-router';
 import { ApiAuth } from '@/api/api-group-auth';
+import { ApiDid } from '@/api/api-group-did';
 import { Request } from '@asanrom/request-browser';
 import { AuthController } from '@/control/auth';
 
-const { wallet, identityKey, isConnected, isConnecting, connect } = useWallet();
+const { wallet, isConnected, isConnecting, connect } = useWallet();
 const error = ref<string | null>(null);
+
+function createUserDID(identityKey: string) {
+    Request.Do(ApiDid.CreateDID({
+        privateKey: identityKey,
+        services: []
+    })).onSuccess((didResponse) => {
+        console.log('DID created successfully:', didResponse.did);
+    }).onRequestError((didErr, handleDIDErr) => {
+        handleDIDErr(didErr, {
+            badRequest: () => {
+                console.error('Error creating DID: Bad request');
+            },
+            serverError: () => {
+                console.error('Error creating DID: Server error');
+            },
+            networkError: () => {
+                console.error('Error creating DID: Network error');
+            },
+        });
+    }).onUnexpectedError((didErr) => {
+        console.error('Unexpected error creating DID:', didErr);
+    });
+}
 
 async function handleWalletLogin() {
     try {
@@ -61,6 +84,7 @@ async function handleWalletLogin() {
         })).onSuccess((response) => {
             if (response.session_id) {
                 AuthController.SetSession(response.session_id);
+                createUserDID(userIdentityKey);
             } else {
                 error.value = 'Login succeeded but no session received';
             }
