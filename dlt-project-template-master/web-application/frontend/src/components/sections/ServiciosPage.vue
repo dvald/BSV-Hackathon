@@ -423,7 +423,7 @@
             aria-modal="true"
             aria-labelledby="request-service-title"
         >
-            <div class="modal-content a11y-card request-service-modal">
+            <div class="modal-content a11y-card">
                 <header class="modal-header">
                     <h2 id="request-service-title" class="a11y-heading-2">
                         {{ $t("Request Service") }}
@@ -437,28 +437,25 @@
                     </button>
                 </header>
                 
-                <div class="modal-body">
+                <form @submit.prevent="submitServiceRequest" class="modal-body">
                     <!-- Información del servicio seleccionado -->
-                    <div class="selected-service-info">
-                        <div class="service-info-header">
-                            <i :class="'mdi ' + selectedService.icon + ' service-info-icon'" aria-hidden="true"></i>
-                            <div>
-                                <h3 class="service-info-title">{{ $t(selectedService.name) }}</h3>
-                                <p class="service-info-desc a11y-text-secondary">
-                                    {{ $t(selectedService.description) }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <fieldset class="form-fieldset" :disabled="uploading">
+                        <legend class="form-legend">
+                            {{ $t(selectedService.name) }}
+                        </legend>
+                        <p class="fieldset-description a11y-text-secondary">
+                            {{ $t(selectedService.description) }}
+                        </p>
+                    </fieldset>
 
-                    <!-- Formulario de solicitud -->
-                    <form @submit.prevent="submitServiceRequest" class="request-form">
-                        <!-- Tipo de credencial -->
+                    <!-- Tipo de credencial -->
+                    <fieldset class="form-fieldset" :disabled="uploading">
+                        <legend class="form-legend">
+                            {{ $t("Credential type") }}
+                        </legend>
+                        
                         <div class="a11y-form-group">
-                            <label for="request-credential-type" class="a11y-label a11y-label-required">
-                                {{ $t("Credential type") }}
-                            </label>
-                            <div class="credential-types-grid">
+                            <div class="credential-types-list">
                                 <label 
                                     v-for="credType in credentialTypes" 
                                     :key="credType.id"
@@ -469,25 +466,28 @@
                                         type="radio"
                                         :value="credType.id"
                                         v-model="serviceRequest.credentialType"
-                                        class="a11y-visually-hidden"
+                                        class="a11y-radio"
                                         name="request-credential-type"
+                                        required
                                     />
-                                    <i :class="'mdi ' + credType.icon + ' option-icon'" aria-hidden="true"></i>
-                                    <div class="option-content">
-                                        <span class="option-title">{{ $t(credType.name) }}</span>
-                                        <span class="option-desc">{{ $t(credType.description) }}</span>
-                                    </div>
-                                    <span v-if="serviceRequest.credentialType === credType.id" class="option-check">
-                                        <i class="mdi mdi-check-circle"></i>
+                                    <i :class="'mdi ' + credType.icon" aria-hidden="true"></i>
+                                    <span class="option-label">
+                                        <strong>{{ $t(credType.name) }}</strong>
+                                        <span class="a11y-text-secondary">{{ $t(credType.description) }}</span>
                                     </span>
                                 </label>
                             </div>
                         </div>
+                    </fieldset>
 
-                        <!-- Campos dinámicos según tipo de credencial -->
-                        <div v-if="serviceRequest.credentialType" class="credential-data-section">
-                            <!-- Campos para Credencial de Discapacidad -->
-                            <template v-if="serviceRequest.credentialType === 'disability'">
+                    <!-- Campos dinámicos según tipo de credencial -->
+                    <fieldset v-if="serviceRequest.credentialType" class="form-fieldset" :disabled="uploading">
+                        <legend class="form-legend">
+                            {{ $t("Credential data") }}
+                        </legend>
+                        
+                        <!-- Campos para Credencial de Discapacidad -->
+                        <template v-if="serviceRequest.credentialType === 'disability'">
                                 <div class="a11y-form-group">
                                     <label for="request-disability-grade" class="a11y-label a11y-label-required">
                                         {{ $t("Disability grade") }}
@@ -581,9 +581,15 @@
                                         <option value="oeste">Oeste</option>
                                     </select>
                                 </div>
-                            </template>
-                        </div>
+                        </template>
+                    </fieldset>
 
+                    <!-- Documento de identificación -->
+                    <fieldset class="form-fieldset" :disabled="uploading">
+                        <legend class="form-legend">
+                            {{ $t("Documentation") }}
+                        </legend>
+                        
                         <div class="a11y-form-group">
                             <label for="request-document" class="a11y-label a11y-label-required">
                                 {{ $t("Upload Identification document") }}
@@ -612,40 +618,40 @@
                                 </div>
                             </div>
                         </div>
+                    </fieldset>
 
-                        <!-- Mensaje de error -->
-                        <div v-if="uploadError" class="upload-message upload-error" role="alert">
-                            <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
-                            {{ uploadError }}
-                        </div>
+                    <!-- Mensaje de error -->
+                    <div v-if="uploadError" class="error-banner" role="alert">
+                        <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
+                        {{ uploadError }}
+                    </div>
 
-                        <!-- Mensaje de éxito -->
-                        <div v-if="uploadSuccess" class="upload-message upload-success" role="status">
-                            <i class="mdi mdi-check-circle" aria-hidden="true"></i>
-                            {{ $t("Document uploaded successfully!") }}
-                        </div>
+                    <!-- Mensaje de éxito -->
+                    <div v-if="uploadSuccess" class="upload-message upload-success" role="status">
+                        <i class="mdi mdi-check-circle" aria-hidden="true"></i>
+                        {{ $t("Document uploaded successfully!") }}
+                    </div>
 
-                        <footer class="modal-footer">
-                            <button 
-                                type="button"
-                                @click="closeRequestModal"
-                                class="a11y-btn a11y-btn-secondary"
-                                :disabled="uploading"
-                            >
-                                {{ $t("Cancel") }}
-                            </button>
-                            <button 
-                                type="submit"
-                                class="a11y-btn a11y-btn-primary"
-                                :disabled="!serviceRequest.credentialType || !serviceRequest.document || uploading || uploadSuccess"
-                            >
-                                <i v-if="uploading" class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
-                                <i v-else class="mdi mdi-send" aria-hidden="true"></i>
-                                {{ uploading ? $t("Uploading...") : $t("Submit request") }}
-                            </button>
-                        </footer>
-                    </form>
-                </div>
+                    <footer class="modal-footer">
+                        <button 
+                            type="button"
+                            @click="closeRequestModal"
+                            class="a11y-btn a11y-btn-secondary"
+                            :disabled="uploading"
+                        >
+                            {{ $t("Cancel") }}
+                        </button>
+                        <button 
+                            type="submit"
+                            class="a11y-btn a11y-btn-primary"
+                            :disabled="!serviceRequest.credentialType || !serviceRequest.document || uploading || uploadSuccess"
+                        >
+                            <i v-if="uploading" class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                            <i v-else class="mdi mdi-send" aria-hidden="true"></i>
+                            {{ uploading ? $t("Uploading...") : $t("Submit request") }}
+                        </button>
+                    </footer>
+                </form>
             </div>
         </div>
 
@@ -885,7 +891,6 @@ export default defineComponent({
                 id: "srv-mobility-pmr",
                 name: "PMR Parking",
                 description: "Accessible parking management for people with reduced mobility. Allows use of reserved spaces with disability credential.",
-                icon: "mdi-car",
                 category: "mobility",
                 status: "active",
                 metrics: {
@@ -912,7 +917,6 @@ export default defineComponent({
                 id: "srv-env-ecopuntos",
                 name: "EcoPoints Recycling",
                 description: "Rewards system for sustainable actions. Earn points for recycling at authorized points that can be redeemed for discounts.",
-                icon: "mdi-recycle",
                 category: "environment",
                 status: "active",
                 metrics: {
@@ -1719,6 +1723,159 @@ export default defineComponent({
 /* Token symbol input */
 .token-symbol-input {
     text-transform: uppercase;
+}
+
+/* Credential Types List - Request Service Modal */
+.credential-types-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--a11y-spacing-sm);
+}
+
+.credential-type-option {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-md);
+    border: 2px solid #e0e0e0;
+    border-radius: var(--a11y-border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.credential-type-option:hover {
+    border-color: var(--a11y-primary);
+    background-color: rgba(var(--a11y-primary-rgb, 0, 86, 179), 0.05);
+}
+
+.credential-type-option.option-selected {
+    border-color: var(--a11y-primary);
+    background-color: rgba(var(--a11y-primary-rgb, 0, 86, 179), 0.1);
+}
+
+.credential-type-option i {
+    font-size: 1.5rem;
+    color: var(--a11y-primary);
+}
+
+.credential-type-option .a11y-radio {
+    flex-shrink: 0;
+}
+
+.option-label {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.option-label strong {
+    font-size: var(--a11y-font-size-base);
+}
+
+.option-label .a11y-text-secondary {
+    font-size: var(--a11y-font-size-small);
+}
+
+/* File Upload Area */
+.file-upload-area {
+    position: relative;
+    border: 2px dashed #ccc;
+    border-radius: var(--a11y-border-radius);
+    padding: var(--a11y-spacing-lg);
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.file-upload-area:hover {
+    border-color: var(--a11y-primary);
+    background-color: rgba(var(--a11y-primary-rgb, 0, 86, 179), 0.05);
+}
+
+.file-upload-area.has-file {
+    border-color: var(--a11y-success);
+    border-style: solid;
+    background-color: rgba(40, 167, 69, 0.05);
+}
+
+.file-upload-area .file-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.file-upload-content {
+    pointer-events: none;
+}
+
+.file-upload-icon {
+    font-size: 2.5rem;
+    color: #999;
+    margin-bottom: var(--a11y-spacing-sm);
+}
+
+.file-upload-area:hover .file-upload-icon {
+    color: var(--a11y-primary);
+}
+
+.file-upload-area.has-file .file-upload-icon {
+    color: var(--a11y-success);
+}
+
+.file-upload-text {
+    margin: 0;
+    color: var(--a11y-primary);
+    font-weight: 500;
+}
+
+.file-upload-text.file-selected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--a11y-spacing-xs);
+    color: var(--a11y-success);
+}
+
+.file-upload-hint {
+    margin: var(--a11y-spacing-xs) 0 0 0;
+    font-size: var(--a11y-font-size-small);
+}
+
+/* Upload Messages */
+.upload-message {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-md);
+    border-radius: var(--a11y-border-radius);
+    margin-bottom: var(--a11y-spacing-md);
+}
+
+.upload-message.upload-success {
+    background-color: #d4edda;
+    border: 1px solid #28a745;
+    color: #155724;
+}
+
+/* Checkbox wrapper */
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.checkbox-wrapper label {
+    margin: 0;
+    cursor: pointer;
 }
 </style>
 
