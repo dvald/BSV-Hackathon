@@ -3,11 +3,12 @@
 "use strict";
 
 import Express from "express";
-import { BAD_REQUEST, ensureObjectBody, INTERNAL_SERVER_ERROR, noCache, sendApiError, sendApiResult } from "../../utils/http-utils";
+import { BAD_REQUEST, ensureObjectBody, INTERNAL_SERVER_ERROR, noCache, sendApiError, sendApiResult, sendUnauthorized } from "../../utils/http-utils";
 import { Controller } from "../controller";
 import { VerifiableCredentialsService } from "../../services/verifiable-credentials-service";
 import { Monitor } from "../../monitor";
 import { PrivateKey } from "@bsv/sdk";
+import { UsersService } from "../../services/users-service";
 
 /**
  * Verifiable Credentials API Controller
@@ -47,8 +48,7 @@ export class CredentialsController extends Controller {
 
     /**
      * @typedef RequestCredentialRequest
-     * @property {string} userDID.required - User's DID identifier
-     * @property {string} credentialType.required - Type of credential (e.g., "DriversLicense", "MedicalCertificate")
+     * @property {string} credentialId.required - Credential ID
      * @property {object} requestData.required - Data for this credential type (dynamic)
      */
 
@@ -62,6 +62,7 @@ export class CredentialsController extends Controller {
      * Request a Verifiable Credential
      * User submits a request for a specific type of credential
      * @route POST /credentials/request
+     * Binding: RequestCredential
      * @group credentials
      * @param {RequestCredentialRequest.model} request.body.required - Request parameters
      * @returns {RequestCredentialResponse.model} 200 - Request created successfully
@@ -69,11 +70,16 @@ export class CredentialsController extends Controller {
      * @returns {Error} 500 - Internal server error
      */
     public async requestCredential(request: Express.Request, response: Express.Response): Promise<void> {
+        const auth = await UsersService.getInstance().auth(request);
+        if (!auth.isRegisteredUser()) {
+            sendUnauthorized(request, response);
+            return;
+        }
         try {
             const body = request.body;
 
             // Validate required fields
-            if (!body.userDID) {
+            if (!auth.user.did) {
                 return sendApiError(request, response, BAD_REQUEST, "MISSING_USER_DID", "User DID is required");
             }
 
@@ -86,18 +92,18 @@ export class CredentialsController extends Controller {
             }
 
             // Validate DID format
-            if (!body.userDID.startsWith('did:bsv:')) {
+            if (!auth.user.did.startsWith('did:bsv:')) {
                 return sendApiError(request, response, BAD_REQUEST, "INVALID_DID_FORMAT", "DID must start with 'did:bsv:'");
             }
 
             // Create credential request
             const result = await this.vcService.requestCredential(
-                body.userDID,
+                auth.user.did,
                 body.credentialType,
                 body.requestData
             );
 
-            Monitor.info(`Credential request created: ${result.requestId} for ${body.userDID}`);
+            Monitor.info(`Credential request created: ${result.requestId} for ${auth.user.did}`);
 
             return sendApiResult(request, response, {
                 requestId: result.requestId,

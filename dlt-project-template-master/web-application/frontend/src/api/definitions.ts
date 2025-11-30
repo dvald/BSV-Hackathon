@@ -609,14 +609,9 @@ export interface ExportDIDResponse {
 
 export interface RequestCredentialRequest {
     /**
-     * User's DID identifier
+     * Credential ID
      */
-    userDID: string;
-
-    /**
-     * Type of credential (e.g., "DriversLicense", "MedicalCertificate")
-     */
-    credentialType: string;
+    credentialId: string;
 
     /**
      * Data for this credential type (dynamic)
