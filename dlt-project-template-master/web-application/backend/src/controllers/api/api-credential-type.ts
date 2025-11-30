@@ -6,7 +6,6 @@ import Express from "express";
 import { BAD_REQUEST, ensureObjectBody, INTERNAL_SERVER_ERROR, noCache, NOT_FOUND, sendApiError, sendApiResult, sendUnauthorized } from "../../utils/http-utils";
 import { UsersService } from "../../services/users-service";
 import { Controller } from "../controller";
-import { Service } from "../../models/service";
 import { CredentialType } from "../../models/credential-type";
 import { Monitor } from "../../monitor";
 import { DataFilter, OrderBy } from "tsbean-orm";

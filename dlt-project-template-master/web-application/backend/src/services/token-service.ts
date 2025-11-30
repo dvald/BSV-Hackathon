@@ -6,6 +6,7 @@ import { TokenHolder } from "../models/tokens/token-holder";
 import { TokenTransaction } from "../models/tokens/token-transaction";
 import { DataFilter } from "tsbean-orm";
 import { createRandomUID } from "../utils/text-utils";
+import { BsvService } from "./bsv-service";
 
 export class TokenService {
     private static instance: TokenService | null = null;
@@ -528,5 +529,218 @@ export class TokenService {
         console.log('[createServiceToken] Genesis transaction logged');
 
         return { tokenId: assetId, txid };
+    }
+
+    // ==========================================
+    // HACKATHON ECONOMY METHODS
+    // ==========================================
+
+    /**
+     * Find a token by its symbol (e.g., "SERVICE", "GAME")
+     */
+    public async getTokenBySymbol(symbol: string): Promise<Token | null> {
+        const tokens = await Token.finder.find(DataFilter.equals("symbol", symbol));
+        return tokens.length > 0 ? tokens[0] : null;
+    }
+
+    /**
+     * Get user balance for a specific token by symbol
+     */
+    public async getBalanceBySymbol(userId: string, tokenSymbol: string): Promise<number> {
+        const token = await this.getTokenBySymbol(tokenSymbol);
+        if (!token) return 0;
+
+        const holder = (await TokenHolder.finder.find(DataFilter.and(
+            DataFilter.equals("tokenId", token.id),
+            DataFilter.equals("holderIdentityKey", userId)
+        )))[0];
+
+        return holder?.balance || 0;
+    }
+
+    /**
+     * Add balance to a user (MINT operation)
+     * Updates MongoDB and anchors the event to BSV blockchain via OP_RETURN
+     * @param userId User identity key
+     * @param tokenSymbol Token symbol (e.g., "SERVICE", "GAME")
+     * @param amount Amount to add
+     * @returns Success status and optional BSV txid
+     */
+    public async addBalance(userId: string, tokenSymbol: string, amount: number): Promise<{ success: boolean; txid?: string; balance?: number }> {
+        console.log('[addBalance] Adding balance:', { userId, tokenSymbol, amount });
+
+        // Find token by symbol
+        const token = await this.getTokenBySymbol(tokenSymbol);
+        if (!token) {
+            throw new Error(`Token with symbol "${tokenSymbol}" not found`);
+        }
+
+        // Validate amount
+        if (amount <= 0) {
+            throw new Error("Amount must be positive");
+        }
+
+        // Check max supply
+        if (token.maxSupply > 0 && (token.totalSupply + amount) > token.maxSupply) {
+            throw new Error(`Would exceed max supply. Current: ${token.totalSupply}, Max: ${token.maxSupply}`);
+        }
+
+        // Update holder balance
+        await this.updateHolderBalance(token.id, userId, amount);
+
+        // Update token total supply
+        token.totalSupply += amount;
+        await token.save();
+
+        // Get updated balance
+        const newBalance = await this.getBalanceBySymbol(userId, tokenSymbol);
+
+        // Log transaction in DB
+        const tx = new TokenTransaction({
+            id: createRandomUID(),
+            tokenId: token.id,
+            type: 'mint',
+            fromIdentityKey: null,
+            toIdentityKey: userId,
+            amount,
+            txid: '', // Will be updated with BSV txid
+            vout: 0,
+            timestamp: Date.now(),
+            notes: `Economy MINT: ${amount} ${tokenSymbol}`,
+            spentBy: null
+        } as any);
+        await tx.insert();
+
+        // Anchor to BSV blockchain via OP_RETURN
+        let bsvTxid: string | null = null;
+        try {
+            const bsvService = BsvService.getInstance();
+            await bsvService.ready();
+            
+            bsvTxid = await bsvService.writeOpReturn({
+                event: 'MINT',
+                token: tokenSymbol,
+                amount: amount,
+                user: userId
+            });
+
+            // Update transaction with BSV txid
+            if (bsvTxid) {
+                tx.txid = bsvTxid;
+                await tx.save();
+            }
+        } catch (error: any) {
+            console.error('[addBalance] BSV anchoring failed:', error.message);
+            console.error('[addBalance] Full error:', JSON.stringify(error));
+            // Don't fail the operation, but log clearly
+        }
+
+        console.log('[addBalance] Successfully added balance:', { userId, tokenSymbol, amount, newBalance, bsvTxid });
+        
+        return { 
+            success: true, 
+            txid: bsvTxid || undefined,
+            balance: newBalance
+        };
+    }
+
+    /**
+     * Burn/subtract balance from a user (BURN operation)
+     * Verifies sufficient funds, updates MongoDB, and anchors to BSV via OP_RETURN
+     * @param userId User identity key
+     * @param tokenSymbol Token symbol (e.g., "SERVICE", "GAME")
+     * @param amount Amount to burn/subtract
+     * @returns Success status and optional BSV txid
+     */
+    public async burnBalance(userId: string, tokenSymbol: string, amount: number): Promise<{ success: boolean; txid?: string; balance?: number }> {
+        console.log('[burnBalance] Burning balance:', { userId, tokenSymbol, amount });
+
+        // Find token by symbol
+        const token = await this.getTokenBySymbol(tokenSymbol);
+        if (!token) {
+            throw new Error(`Token with symbol "${tokenSymbol}" not found`);
+        }
+
+        // Validate amount
+        if (amount <= 0) {
+            throw new Error("Amount must be positive");
+        }
+
+        // Check current balance
+        const currentBalance = await this.getBalanceBySymbol(userId, tokenSymbol);
+        if (currentBalance < amount) {
+            throw new Error(`Insufficient balance. Available: ${currentBalance}, Required: ${amount}`);
+        }
+
+        // Update holder balance (subtract)
+        await this.updateHolderBalance(token.id, userId, -amount);
+
+        // Update token total supply (burn reduces supply)
+        token.totalSupply -= amount;
+        await token.save();
+
+        // Get updated balance
+        const newBalance = await this.getBalanceBySymbol(userId, tokenSymbol);
+
+        // Log transaction in DB
+        const tx = new TokenTransaction({
+            id: createRandomUID(),
+            tokenId: token.id,
+            type: 'burn',
+            fromIdentityKey: userId,
+            toIdentityKey: null,
+            amount,
+            txid: '', // Will be updated with BSV txid
+            vout: 0,
+            timestamp: Date.now(),
+            notes: `Economy BURN: ${amount} ${tokenSymbol}`,
+            spentBy: null
+        } as any);
+        await tx.insert();
+
+        // Anchor to BSV blockchain via OP_RETURN
+        let bsvTxid: string | null = null;
+        try {
+            const bsvService = BsvService.getInstance();
+            await bsvService.ready();
+            
+            bsvTxid = await bsvService.writeOpReturn({
+                event: 'BURN',
+                token: tokenSymbol,
+                amount: amount,
+                user: userId
+            });
+
+            // Update transaction with BSV txid
+            if (bsvTxid) {
+                tx.txid = bsvTxid;
+                await tx.save();
+            }
+        } catch (error: any) {
+            console.error('[burnBalance] BSV anchoring failed:', error.message);
+            console.error('[burnBalance] Full error:', JSON.stringify(error));
+            // Don't fail the operation, but log clearly
+        }
+
+        console.log('[burnBalance] Successfully burned balance:', { userId, tokenSymbol, amount, newBalance, bsvTxid });
+        
+        return { 
+            success: true, 
+            txid: bsvTxid || undefined,
+            balance: newBalance
+        };
+    }
+
+    /**
+     * Get all economy balances for a user (SERVICE and GAME tokens)
+     */
+    public async getEconomyBalances(userId: string): Promise<{ service: number; game: number }> {
+        const serviceBalance = await this.getBalanceBySymbol(userId, 'SERVICE');
+        const gameBalance = await this.getBalanceBySymbol(userId, 'GAME');
+        
+        return {
+            service: serviceBalance,
+            game: gameBalance
+        };
     }
 }

@@ -2,7 +2,7 @@
 
 "use strict";
 
-import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter, OrderBy, SelectOptions, DataUpdate } from "tsbean-orm";
+import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter } from "tsbean-orm";
 import { createRandomUID } from "../utils/text-utils";
 import { FileStorageService } from "../services/file-storage";
 import { Monitor } from "../monitor";

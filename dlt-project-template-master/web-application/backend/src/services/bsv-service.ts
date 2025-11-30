@@ -1,6 +1,6 @@
 "use strict";
 
-import { PrivateKey, KeyDeriver, WalletInterface, PushDrop, Utils } from '@bsv/sdk';
+import { PrivateKey, KeyDeriver, WalletInterface, PushDrop, Utils, Script } from '@bsv/sdk';
 import { Wallet, WalletStorageManager, WalletSigner, Services, StorageClient, Chain } from '@bsv/wallet-toolbox';
 import { BsvConfig } from "../config/config-bsv";
 import { Monitor } from "../monitor";
@@ -316,5 +316,61 @@ export class BsvService {
         }
 
         return { message: "Crowdfunding campaign reset successfully." };
+    }
+
+    /**
+     * Helper: Convert string to hex for OP_RETURN
+     */
+    private stringToHex(str: string): string {
+        return Buffer.from(str, "utf8").toString("hex");
+    }
+
+    /**
+     * Writes data to BSV blockchain using OP_RETURN
+     * Used for token economy events (MINT, BURN, TRANSFER)
+     * @param data Object containing event data to anchor on blockchain
+     * @returns Transaction ID or null if failed
+     */
+    public async writeOpReturn(data: { event: string; token: string; amount: number; user: string; timestamp?: number }): Promise<string | null> {
+        if (!this.wallet) {
+            Monitor.error("[writeOpReturn] Wallet not initialized");
+            return null;
+        }
+
+        try {
+            // Add timestamp if not provided
+            const eventData = {
+                ...data,
+                timestamp: data.timestamp || Date.now()
+            };
+
+            const jsonData = JSON.stringify(eventData);
+            
+            // Build OP_RETURN script: OP_FALSE OP_RETURN <hex_data>
+            const asmParts = ["OP_FALSE", "OP_RETURN", this.stringToHex(jsonData)];
+            const opReturnScript = Script.fromASM(asmParts.join(" "));
+
+            const result = await this.wallet.createAction({
+                outputs: [{
+                    lockingScript: opReturnScript.toHex(),
+                    satoshis: 0,
+                    outputDescription: `Token ${eventData.event}: ${eventData.token}`
+                }],
+                description: `Token Event: ${eventData.event} ${eventData.amount} ${eventData.token}`,
+                options: { randomizeOutputs: false }
+            });
+
+            if (result.txid) {
+                Monitor.info(`[writeOpReturn] ✓ Event anchored: ${result.txid} - ${eventData.event} ${eventData.amount} ${eventData.token}`);
+                return result.txid;
+            } else {
+                throw new Error("No txid returned from createAction");
+            }
+        } catch (error: any) {
+            Monitor.error(`[writeOpReturn] Failed to anchor event: ${error.message}`);
+            Monitor.error(`[writeOpReturn] Full error: ${JSON.stringify(error)}`);
+            // Throw the error so callers know what happened
+            throw error;
+        }
     }
 }

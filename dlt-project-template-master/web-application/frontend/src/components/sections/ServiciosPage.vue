@@ -16,6 +16,18 @@
                 {{ isAdmin ? $t("Departments and services that issue or verify credentials") : $t("Explore municipal services and request credentials") }}
             </p>
             </div>
+            <!-- Buy Credits Button (always visible) -->
+            <div class="header-actions">
+                <button 
+                    @click="showBuyCreditsModal = true"
+                    class="a11y-btn a11y-btn-accent a11y-btn-large buy-credits-btn"
+                    :aria-label="$t('Buy service credits')"
+                >
+                    <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
+                    {{ $t("Buy Credits") }}
+                    <span class="credits-badge" v-if="serviceTokenBalance > 0">{{ serviceTokenBalance }}</span>
+                </button>
+            </div>
             <div class="header-actions" v-if="isAdmin">
                 <button 
                     @click="showNewServiceModal = true"
@@ -81,7 +93,7 @@
                 </h2>
 
                 <div class="services-grid a11y-grid a11y-grid-2">
-                    <!-- Servicio de Movilidad - Parking PMR -->
+                    <!-- Servicio de Movilidad - Parking Familia Numerosa -->
                     <article 
                         v-for="service in filteredServices" 
                         :key="service.id"
@@ -184,8 +196,18 @@
                             </button>
                             <!-- Ciudadano: Solicitar/Inscribirse -->
                             <template v-if="!isAdmin">
+                                <!-- Special button for Family Parking - Loyalty System -->
                                 <button 
-                                    v-if="!isEnrolled(service.id)"
+                                    v-if="service.id === 'srv-mobility-familia'"
+                                    @click="openPaymentModal(service)"
+                                    class="a11y-btn a11y-btn-primary family-reserve-btn"
+                                >
+                                    <i class="mdi mdi-car-brake-parking" aria-hidden="true"></i>
+                                    {{ $t("Reserve Space") }} (50 Pts)
+                                </button>
+                                <!-- Regular request button for other services -->
+                                <button 
+                                    v-else-if="!isEnrolled(service.id)"
                                     @click="requestService(service)"
                                     class="a11y-btn a11y-btn-primary"
                                 >
@@ -287,7 +309,7 @@
                                 v-model="newService.name"
                                 class="a11y-input"
                                 required
-                                :placeholder="$t('e.g., PMR Parking')"
+                                :placeholder="$t('e.g., Family Parking')"
                             />
                         </div>
 
@@ -734,14 +756,35 @@
                 </form>
             </div>
         </div>
+
+        <!-- Service Payment Modal (Loyalty System) -->
+        <ServicePaymentModal
+            v-model:display="showPaymentModal"
+            :service-name="selectedPaymentService?.name || 'Parking Familia Numerosa'"
+            :service-id="'parking-familia'"
+            :cost="50"
+            :reward="10"
+            :current-balance="userServiceTokenBalance"
+            :user-id="identityKey || ''"
+            @payment-success="onPaymentSuccess"
+        />
+
+        <!-- Buy Credits Modal -->
+        <BuyCreditsModal
+            v-model:display="showBuyCreditsModal"
+            :current-balance="serviceTokenBalance"
+            @purchase-success="onCreditsPurchased"
+        />
     </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed } from "vue";
+import { defineComponent, ref, computed, onMounted } from "vue";
 import { AuthController } from "@/control/auth";
 import { useWallet } from "@/composables/useWallet";
 import { getApiUrl } from "@/api/utils";
+import ServicePaymentModal from "@/components/modals/ServicePaymentModal.vue";
+import BuyCreditsModal from "@/components/modals/BuyCreditsModal.vue";
 
 // Configuración fija para tokens de servicios municipales
 const TOKEN_FIXED_CONFIG = {
@@ -795,20 +838,32 @@ interface NewServiceForm {
 }
 
 export default defineComponent({
-    components: {},
+    components: {
+        ServicePaymentModal,
+        BuyCreditsModal
+    },
     name: "ServiciosPage",
     setup() {
         // Wallet composable
         const { wallet, identityKey, isConnected, isConnecting, connect } = useWallet();
+
+        // Payment Modal State (Loyalty System)
+        const showPaymentModal = ref(false);
+        const selectedPaymentService = ref<Service | null>(null);
+        const userServiceTokenBalance = ref(0);
         
         // Estado del formulario
         const showNewServiceModal = ref(false);
         const showNewCredentialTypeModal = ref(false);
         const showRequestServiceModal = ref(false);
+        const showBuyCreditsModal = ref(false);
         const selectedService = ref<Service | null>(null);
         const isCreating = ref(false);
         const currentStep = ref(0);
         const errorMessage = ref("");
+        
+        // Token balances for display
+        const serviceTokenBalance = ref(0);
         
         const creationSteps = [
             "Preparing",
@@ -882,31 +937,31 @@ export default defineComponent({
 
         const services = ref<Service[]>([
             {
-                id: "srv-mobility-pmr",
-                name: "PMR Parking",
-                description: "Accessible parking management for people with reduced mobility. Allows use of reserved spaces with disability credential.",
-                icon: "mdi-car",
+                id: "srv-mobility-familia",
+                name: "Parking Familia Numerosa",
+                description: "Reserved parking for large families. Use your Family Card credential to access exclusive spaces with discounted rates.",
+                icon: "mdi-human-male-child",
                 category: "mobility",
                 status: "active",
                 metrics: {
-                    users: 342,
-                    credentials: 412,
-                    tokensUsed: 2847,
+                    users: 1256,
+                    credentials: 1489,
+                    tokensUsed: 8721,
                 },
                 admin: {
                     id: "admin1",
                     name: "María García",
                     email: "m.garcia@ciudad.es",
                 },
-                requiredCredentials: ["Disability Credential"],
+                requiredCredentials: ["Large Family Credential"],
                 token: {
-                    name: "parking_pmr",
+                    name: "parking_familia",
                     symbol: "PARK",
                     type: "uses",
                 },
                 processingTime: "Immediate",
-                price: 0,
-                citizenBenefit: "Free access to reserved PMR parking spaces throughout the city",
+                price: 50,
+                citizenBenefit: "Discounted access to reserved family parking spaces throughout the city",
             },
             {
                 id: "srv-env-ecopuntos",
@@ -1136,6 +1191,82 @@ export default defineComponent({
             showRequestServiceModal.value = true;
         };
 
+        // ==========================================
+        // LOYALTY SYSTEM FUNCTIONS
+        // ==========================================
+
+        const loadUserBalance = async () => {
+            if (!identityKey.value) return;
+            
+            try {
+                const response = await fetch(getApiUrl('/api/v1/gamification/status'), {
+                    headers: {
+                        'x-bsv-identity-key': identityKey.value
+                    },
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    userServiceTokenBalance.value = data.balances?.serviceToken || 0;
+                    console.log('[ServiciosPage] User balance loaded:', userServiceTokenBalance.value);
+                }
+            } catch (error) {
+                console.error('[ServiciosPage] Error loading balance:', error);
+            }
+        };
+
+        const openPaymentModal = async (service: Service) => {
+            console.log('[ServiciosPage] Opening payment modal for:', service.id);
+            selectedPaymentService.value = service;
+            
+            // Load user balance before showing modal
+            await loadUserBalance();
+            
+            showPaymentModal.value = true;
+        };
+
+        const onPaymentSuccess = (data: any) => {
+            console.log('[ServiciosPage] Payment successful:', data);
+            // Update local balance
+            userServiceTokenBalance.value = data.balances?.serviceToken || 0;
+            serviceTokenBalance.value = data.balances?.serviceToken || 0;
+            // Could add notification or update UI here
+        };
+
+        const onCreditsPurchased = (data: any) => {
+            console.log('[ServiciosPage] Credits purchased:', data);
+            // Update local balance
+            serviceTokenBalance.value = data.balance || 0;
+            userServiceTokenBalance.value = data.balance || 0;
+        };
+
+        // Load service token balance
+        const loadServiceTokenBalance = async () => {
+            if (!identityKey.value) return;
+            try {
+                const response = await fetch(getApiUrl('/api/v1/gamification/status'), {
+                    headers: {
+                        'x-bsv-identity-key': identityKey.value
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    serviceTokenBalance.value = data.balances?.serviceToken || 0;
+                }
+            } catch (error) {
+                console.error('Error loading balance:', error);
+            }
+        };
+
+        // Load balance when identity changes
+        onMounted(() => {
+            if (identityKey.value) {
+                loadUserBalance();
+                loadServiceTokenBalance();
+            }
+        });
+
         const closeRequestModal = () => {
             showRequestServiceModal.value = false;
             selectedService.value = null;
@@ -1167,6 +1298,8 @@ export default defineComponent({
             showNewServiceModal,
             showNewCredentialTypeModal,
             showRequestServiceModal,
+            showBuyCreditsModal,
+            serviceTokenBalance,
             selectedService,
             newService,
             availableAdmins,
@@ -1184,6 +1317,11 @@ export default defineComponent({
             creatingCredentialType,
             credentialTypeError,
             credentialTypeSuccess,
+            
+            // Payment Modal State (Loyalty System)
+            showPaymentModal,
+            selectedPaymentService,
+            userServiceTokenBalance,
             
             // Wallet
             wallet,
@@ -1211,6 +1349,13 @@ export default defineComponent({
             handleFileUpload,
             submitServiceRequest,
             createCredentialType,
+            
+            // Loyalty System Methods
+            openPaymentModal,
+            onPaymentSuccess,
+            onCreditsPurchased,
+            loadUserBalance,
+            loadServiceTokenBalance,
         };
     },
 });
@@ -1239,6 +1384,31 @@ export default defineComponent({
     display: flex;
     gap: var(--a11y-spacing-sm);
     flex-wrap: wrap;
+}
+
+/* Buy Credits Button */
+.buy-credits-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: none !important;
+    position: relative;
+}
+
+.buy-credits-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+}
+
+.credits-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
 }
 
 /* Filters */
@@ -1719,6 +1889,27 @@ export default defineComponent({
 /* Token symbol input */
 .token-symbol-input {
     text-transform: uppercase;
+}
+
+/* Family Parking Reserve Button */
+.family-reserve-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-xs);
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.family-reserve-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.family-reserve-btn i {
+    font-size: 1.1rem;
 }
 </style>
 

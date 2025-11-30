@@ -9,7 +9,6 @@ import { Controller } from "../controller";
 import { Service } from "../../models/service";
 import { Monitor } from "../../monitor";
 import { DataFilter, OrderBy } from "tsbean-orm";
-import { createRandomUID } from "../../utils/text-utils";
 
 /**
  * Service API Controller
