@@ -33,11 +33,37 @@
                     </h2>
 
                     <div class="services-grid a11y-grid a11y-grid-2">
+                        <!-- Tarjeta Familia Numerosa - Parking -->
+                        <article class="service-card a11y-card">
+                            <header class="service-header">
+                                <i class="mdi mdi-human-male-female-child service-icon" aria-hidden="true"></i>
+                                <h3 class="service-title">{{ $t("Family Parking") }}</h3>
+                            </header>
+                            <div class="service-body">
+                                <p class="a11y-text">
+                                    {{ $t("You have") }} {{ citizenServices.familyParking.usesRemaining }} {{ $t("uses available this month") }}
+                                </p>
+                                <div class="usage-bar">
+                                    <div 
+                                        class="usage-bar-fill" 
+                                        :style="{ width: (citizenServices.familyParking.usesRemaining / citizenServices.familyParking.usesTotal * 100) + '%' }"
+                                    ></div>
+                                </div>
+                                <span class="usage-text">{{ citizenServices.familyParking.usesRemaining }}/{{ citizenServices.familyParking.usesTotal }}</span>
+                            </div>
+                            <footer class="service-footer">
+                                <button class="a11y-btn a11y-btn-primary" @click="useFamilyParking">
+                                    <i class="mdi mdi-parking" aria-hidden="true"></i>
+                                    {{ $t("Reserve Family Space") }}
+                                </button>
+                            </footer>
+                        </article>
+
                         <!-- Tarjeta Movilidad - Parking PMR -->
                         <article class="service-card a11y-card">
                             <header class="service-header">
-                                <i class="mdi mdi-car service-icon" aria-hidden="true"></i>
-                                <h3 class="service-title">{{ $t("Move and Park") }}</h3>
+                                <i class="mdi mdi-wheelchair-accessibility service-icon" aria-hidden="true"></i>
+                                <h3 class="service-title">{{ $t("Accessible Parking") }}</h3>
                             </header>
                             <div class="service-body">
                                 <p class="a11y-text">
@@ -81,6 +107,117 @@
                                     {{ $t("Register Recycling") }}
                                 </button>
                             </footer>
+                        </article>
+
+                        <!-- Tarjeta Transporte Familiar -->
+                        <article class="service-card a11y-card">
+                            <header class="service-header">
+                                <i class="mdi mdi-train-car service-icon" aria-hidden="true"></i>
+                                <h3 class="service-title">{{ $t("Family Transport") }}</h3>
+                            </header>
+                            <div class="service-body">
+                                <p class="a11y-text">
+                                    {{ $t("You have") }} {{ citizenServices.familyTransport.tripsRemaining }} {{ $t("discounted trips remaining") }}
+                                </p>
+                                <div class="usage-bar">
+                                    <div 
+                                        class="usage-bar-fill" 
+                                        :style="{ width: (citizenServices.familyTransport.tripsRemaining / citizenServices.familyTransport.tripsTotal * 100) + '%' }"
+                                    ></div>
+                                </div>
+                                <span class="usage-text">{{ citizenServices.familyTransport.tripsRemaining }}/{{ citizenServices.familyTransport.tripsTotal }} - 30% {{ $t("discount") }}</span>
+                            </div>
+                            <footer class="service-footer">
+                                <button class="a11y-btn a11y-btn-primary" @click="useTransport">
+                                    <i class="mdi mdi-qrcode" aria-hidden="true"></i>
+                                    {{ $t("Show QR Pass") }}
+                                </button>
+                            </footer>
+                        </article>
+                    </div>
+                </section>
+
+                <!-- Seccion: Actividad Reciente del Ciudadano -->
+                <section aria-labelledby="recent-activity-heading" class="a11y-mt-lg">
+                    <div class="section-header">
+                        <h2 id="recent-activity-heading" class="a11y-heading-2">
+                            <i class="mdi mdi-history" aria-hidden="true"></i>
+                            {{ $t("Recent Activity") }}
+                        </h2>
+                        <router-link to="/my-activity" class="a11y-btn a11y-btn-secondary">
+                            {{ $t("View all") }}
+                        </router-link>
+                    </div>
+
+                    <div class="activity-list a11y-card">
+                        <ul role="list" class="timeline" aria-label="Recent activity">
+                            <li class="timeline-item">
+                                <i class="mdi mdi-human-male-female-child timeline-icon" aria-hidden="true"></i>
+                                <div class="timeline-content">
+                                    <p class="timeline-title">{{ $t("Family parking used") }}</p>
+                                    <p class="timeline-desc">{{ $t("Reserved space at Centro Comercial") }}</p>
+                                </div>
+                                <div class="timeline-meta">
+                                    <time class="timeline-time">{{ $t("2 hours ago") }}</time>
+                                </div>
+                            </li>
+                            <li class="timeline-item">
+                                <i class="mdi mdi-recycle timeline-icon" aria-hidden="true"></i>
+                                <div class="timeline-content">
+                                    <p class="timeline-title">{{ $t("EcoPoints earned") }}</p>
+                                    <p class="timeline-desc">+50 {{ $t("points for recycling") }}</p>
+                                </div>
+                                <div class="timeline-meta">
+                                    <time class="timeline-time">{{ $t("Yesterday") }}</time>
+                                </div>
+                            </li>
+                            <li class="timeline-item">
+                                <i class="mdi mdi-certificate timeline-icon" aria-hidden="true"></i>
+                                <div class="timeline-content">
+                                    <p class="timeline-title">{{ $t("Credential verified") }}</p>
+                                    <p class="timeline-desc">{{ $t("Large Family Card at municipal office") }}</p>
+                                </div>
+                                <div class="timeline-meta">
+                                    <time class="timeline-time">{{ $t("3 days ago") }}</time>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Seccion: Mis Credenciales Activas -->
+                <section aria-labelledby="credentials-heading" class="a11y-mt-lg">
+                    <div class="section-header">
+                        <h2 id="credentials-heading" class="a11y-heading-2">
+                            <i class="mdi mdi-certificate" aria-hidden="true"></i>
+                            {{ $t("My Active Credentials") }}
+                        </h2>
+                        <router-link to="/my-credentials" class="a11y-btn a11y-btn-secondary">
+                            {{ $t("Manage") }}
+                        </router-link>
+                    </div>
+
+                    <div class="credentials-quick-grid a11y-grid a11y-grid-3">
+                        <article class="credential-mini-card a11y-card">
+                            <i class="mdi mdi-human-male-female-child credential-mini-icon" aria-hidden="true"></i>
+                            <div class="credential-mini-content">
+                                <h3>{{ $t("Large Family") }}</h3>
+                                <span class="a11y-badge a11y-badge-success">{{ $t("Active") }}</span>
+                            </div>
+                        </article>
+                        <article class="credential-mini-card a11y-card">
+                            <i class="mdi mdi-wheelchair-accessibility credential-mini-icon" aria-hidden="true"></i>
+                            <div class="credential-mini-content">
+                                <h3>{{ $t("Disability") }}</h3>
+                                <span class="a11y-badge a11y-badge-success">{{ $t("Active") }}</span>
+                            </div>
+                        </article>
+                        <article class="credential-mini-card a11y-card">
+                            <i class="mdi mdi-clipboard-account credential-mini-icon" aria-hidden="true"></i>
+                            <div class="credential-mini-content">
+                                <h3>{{ $t("Census") }}</h3>
+                                <span class="a11y-badge a11y-badge-success">{{ $t("Active") }}</span>
+                            </div>
                         </article>
                     </div>
                 </section>
@@ -220,24 +357,24 @@
                 </h2>
                 
                 <div class="services-grid a11y-grid a11y-grid-2">
-                    <!-- Tarjeta Movilidad - Parking PMR -->
+                    <!-- Tarjeta Movilidad - Incluye PMR y Familia Numerosa -->
                     <article class="service-card a11y-card a11y-card-interactive" tabindex="0">
                         <div class="service-header">
-                            <i class="mdi mdi-car service-icon" aria-hidden="true"></i>
+                            <i class="mdi mdi-car-multiple service-icon" aria-hidden="true"></i>
                             <h3 class="service-title">{{ $t("Mobility") }}</h3>
                             <span class="a11y-badge a11y-badge-success">{{ $t("Active") }}</span>
                         </div>
                         <div class="service-body">
                             <p class="a11y-text">
-                                {{ $t("PMR Parking - Accessible parking management for people with reduced mobility") }}
+                                {{ $t("PMR Parking, Large Family Parking and Public Transport services") }}
                             </p>
                             <div class="service-stats">
                                 <div class="service-stat">
-                                    <span class="stat-number">{{ serviceStats.parking.activeUsers }}</span>
+                                    <span class="stat-number">{{ serviceStats.mobility.activeUsers }}</span>
                                     <span class="stat-desc">{{ $t("Active users") }}</span>
                                 </div>
                                 <div class="service-stat">
-                                    <span class="stat-number">{{ serviceStats.parking.usesToday }}</span>
+                                    <span class="stat-number">{{ serviceStats.mobility.usesToday }}</span>
                                     <span class="stat-desc">{{ $t("Uses today") }}</span>
                                 </div>
                             </div>
@@ -368,6 +505,14 @@ export default defineComponent({
                     usesRemaining: 23,
                     usesTotal: 30,
                 },
+                familyParking: {
+                    usesRemaining: 8,
+                    usesTotal: 20,
+                },
+                familyTransport: {
+                    tripsRemaining: 45,
+                    tripsTotal: 60,
+                },
                 eco: {
                     points: 450,
                     level: "Silver",
@@ -386,9 +531,9 @@ export default defineComponent({
                 verificationsToday: 0,
             },
             serviceStats: {
-                parking: {
-                    activeUsers: 342,
-                    usesToday: 89,
+                mobility: {
+                    activeUsers: 1589,
+                    usesToday: 245,
                 },
                 eco: {
                     participants: 8456,
@@ -398,14 +543,22 @@ export default defineComponent({
             recentActivity: [
                 {
                     id: 1,
-                    icon: "mdi-certificate",
-                    title: "Credential issued",
-                    description: "Credencial de Discapacidad emitida a ciudadano ****4521",
-                    timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-                    txId: "abc123def456",
+                    icon: "mdi-human-male-female-child",
+                    title: "Family credential issued",
+                    description: "Credencial de Familia Numerosa emitida a ciudadano ****8765",
+                    timestamp: new Date(Date.now() - 3 * 60000).toISOString(),
+                    txId: "fam123abc456",
                 },
                 {
                     id: 2,
+                    icon: "mdi-certificate",
+                    title: "Credential issued",
+                    description: "Credencial de Discapacidad emitida a ciudadano ****4521",
+                    timestamp: new Date(Date.now() - 8 * 60000).toISOString(),
+                    txId: "abc123def456",
+                },
+                {
+                    id: 3,
                     icon: "mdi-check-decagram",
                     title: "Credential verified",
                     description: "Presentación verificada en Parking PMR Centro",
@@ -413,7 +566,15 @@ export default defineComponent({
                     txId: "xyz789ghi012",
                 },
                 {
-                    id: 3,
+                    id: 4,
+                    icon: "mdi-car-child-seat",
+                    title: "Family parking use",
+                    description: "Uso de plaza Familia Numerosa - Centro Comercial Norte",
+                    timestamp: new Date(Date.now() - 22 * 60000).toISOString(),
+                    txId: "fpark789xyz",
+                },
+                {
+                    id: 5,
                     icon: "mdi-hand-coin",
                     title: "Tokens credited",
                     description: "50 EcoPuntos acreditados por reciclaje",
@@ -421,7 +582,7 @@ export default defineComponent({
                     txId: "jkl345mno678",
                 },
                 {
-                    id: 4,
+                    id: 6,
                     icon: "mdi-car",
                     title: "Parking use",
                     description: "Uso de plaza PMR registrado - Plaza Mayor",
@@ -429,7 +590,7 @@ export default defineComponent({
                     txId: null,
                 },
                 {
-                    id: 5,
+                    id: 7,
                     icon: "mdi-account-plus",
                     title: "New citizen",
                     description: "Nuevo ciudadano registrado en el sistema",
@@ -505,6 +666,14 @@ export default defineComponent({
         useParking(): void {
             // TODO: Implementar uso de parking
             console.log("Use parking");
+        },
+        useFamilyParking(): void {
+            // TODO: Implementar uso de parking familiar
+            console.log("Use family parking");
+        },
+        useTransport(): void {
+            // TODO: Implementar QR de transporte
+            console.log("Use transport");
         },
         registerRecycling(): void {
             // TODO: Implementar registro de reciclaje
@@ -927,5 +1096,42 @@ export default defineComponent({
 .usage-text {
     font-size: var(--a11y-font-size-small);
     color: var(--a11y-text-secondary);
+}
+
+/* Credentials Quick Grid */
+.credentials-quick-grid {
+    gap: var(--a11y-spacing-md);
+}
+
+.credential-mini-card {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-md);
+}
+
+.credential-mini-icon {
+    font-size: 2rem;
+    color: var(--a11y-primary);
+}
+
+.credential-mini-content h3 {
+    margin: 0;
+    font-size: var(--a11y-font-size-base);
+    font-weight: 600;
+}
+
+.credential-mini-content .a11y-badge {
+    font-size: 0.7rem;
+    margin-top: 0.25rem;
+}
+
+/* Activity list in citizen view */
+.activity-list {
+    padding: var(--a11y-spacing-md);
+}
+
+.activity-list .timeline-item {
+    padding: var(--a11y-spacing-sm) 0;
 }
 </style>

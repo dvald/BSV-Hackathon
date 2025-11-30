@@ -4,7 +4,7 @@
             <!-- Header -->
             <div class="modal-header">
                 <div class="modal-title">
-                    <i class="mdi mdi-human-male-child" aria-hidden="true"></i>
+                    <i :class="'mdi ' + serviceIcon" aria-hidden="true"></i>
                     {{ serviceName }}
                 </div>
                 <button 
@@ -22,134 +22,315 @@
             <div v-if="state === 'confirm'" class="modal-body">
                 <div class="payment-info">
                     <div class="payment-header">
-                        <i class="mdi mdi-human-male-child payment-icon" aria-hidden="true"></i>
-                        <h3>{{ $t("Reserve Family Parking") }}</h3>
+                        <i :class="'mdi ' + serviceIcon + ' payment-icon'" aria-hidden="true"></i>
+                        <h3>{{ serviceActionTitle }}</h3>
                     </div>
 
-                    <!-- Payment Method Tabs -->
-                    <div class="payment-method-tabs four-tabs">
-                        <!-- Tab 1: Use existing SERVICE_TOKEN -->
-                        <button 
-                            type="button"
-                            class="tab-btn tokens-tab"
-                            :class="{ active: paymentMethod === 'tokens', 'has-tokens': serviceBalance >= cost }"
-                            @click="paymentMethod = 'tokens'"
-                        >
-                            <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
-                            {{ $t("Tokens") }}
-                            <span v-if="serviceBalance > 0" class="tokens-badge">{{ serviceBalance }}</span>
-                        </button>
-                        <!-- Tab 2: Buy with TXID -->
-                        <button 
-                            type="button"
-                            class="tab-btn"
-                            :class="{ active: paymentMethod === 'manual' }"
-                            @click="paymentMethod = 'manual'"
-                        >
-                            <i class="mdi mdi-form-textbox" aria-hidden="true"></i>
-                            {{ $t("TXID") }}
-                        </button>
-                        <!-- Tab 3: Buy with Wallet -->
-                        <button 
-                            type="button"
-                            class="tab-btn"
-                            :class="{ active: paymentMethod === 'auto' }"
-                            @click="paymentMethod = 'auto'"
-                        >
-                            <i class="mdi mdi-wallet" aria-hidden="true"></i>
-                            {{ $t("Wallet") }}
-                        </button>
-                        <!-- Tab 4: Redeem LOYALTY points -->
-                        <button 
-                            type="button"
-                            class="tab-btn loyalty-tab"
-                            :class="{ active: paymentMethod === 'loyalty', 'has-points': loyaltyBalance >= 100 }"
-                            @click="paymentMethod = 'loyalty'"
-                        >
-                            <i class="mdi mdi-star" aria-hidden="true"></i>
-                            {{ $t("Points") }}
-                            <span v-if="loyaltyBalance > 0" class="points-badge">{{ loyaltyBalance }}</span>
-                        </button>
-                    </div>
-                    
-                    <!-- Payment Details (for BSV direct payment: TXID and Wallet) -->
-                    <div v-if="paymentMethod === 'manual' || paymentMethod === 'auto'" class="payment-details">
-                        <div class="detail-row bsv-row">
-                            <span class="detail-label">{{ $t("Parking Cost") }}:</span>
-                            <span class="detail-value cost bsv-cost">
-                                <i class="mdi mdi-bitcoin" aria-hidden="true"></i>
-                                {{ satoshiCost }} sats
-                            </span>
-                        </div>
-                        <div class="detail-row service-row">
-                            <span class="detail-label">{{ $t("Service") }}:</span>
-                            <span class="detail-value service">👨‍👩‍👧‍👦 {{ $t("Family Parking Reservation") }}</span>
-                        </div>
-                        <div class="detail-row reward-row">
-                            <span class="detail-label">{{ $t("Loyalty Bonus") }}:</span>
-                            <span class="detail-value reward">+{{ reward }} {{ $t("Points") }}</span>
-                        </div>
-                    </div>
+                    <!-- ========================================== -->
+                    <!-- FREE SERVICE VIEW (Accessible Parking) -->
+                    <!-- ========================================== -->
+                    <template v-if="serviceType === 'free'">
+                        <div class="free-service-section">
+                            <div class="free-service-badge">
+                                <i class="mdi mdi-check-circle" aria-hidden="true"></i>
+                                <span>{{ $t("Free Service") }}</span>
+                            </div>
+                            
+                            <div class="free-service-info">
+                                <p class="free-description">
+                                    {{ serviceDescription || $t("This service is free for citizens with valid credentials.") }}
+                                </p>
+                                
+                                <div class="free-benefit-list">
+                                    <div class="benefit-item">
+                                        <i class="mdi mdi-parking" aria-hidden="true"></i>
+                                        <span>{{ $t("Access to reserved accessible parking spaces") }}</span>
+                                    </div>
+                                    <div class="benefit-item">
+                                        <i class="mdi mdi-infinity" aria-hidden="true"></i>
+                                        <span>{{ $t("Unlimited use with valid credential") }}</span>
+                                    </div>
+                                    <div class="benefit-item">
+                                        <i class="mdi mdi-map-marker-check" aria-hidden="true"></i>
+                                        <span>{{ $t("Valid in all municipal parking areas") }}</span>
+                                    </div>
+                                </div>
 
-                    <!-- USE SERVICE TOKENS VIEW -->
-                    <div v-if="paymentMethod === 'tokens'" class="tokens-section">
-                        <div class="tokens-header">
-                            <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
-                            <span>{{ $t("Your Service Tokens") }}</span>
-                        </div>
+                                <div v-if="reward > 0" class="free-reward-hint">
+                                    <i class="mdi mdi-star" aria-hidden="true"></i>
+                                    <span>{{ $t("You will earn") }} +{{ reward }} {{ $t("loyalty points") }}</span>
+                                </div>
+                            </div>
 
-                        <!-- Current Balance Display -->
-                        <div class="tokens-balance-display">
-                            <span class="tokens-amount">{{ serviceBalance }}</span>
-                            <span class="tokens-label">{{ $t("Tokens") }}</span>
-                        </div>
+                            <!-- Activate Free Service Button -->
+                            <div v-if="!isUsingTokens && !tokenUseSuccess" class="free-action-section">
+                                <button 
+                                    type="button"
+                                    class="a11y-btn a11y-btn-primary a11y-btn-large free-activate-btn"
+                                    @click="activateFreeService"
+                                >
+                                    <i class="mdi mdi-check-decagram" aria-hidden="true"></i>
+                                    {{ serviceButtonText }}
+                                </button>
+                            </div>
 
-                        <!-- Cost info -->
-                        <div class="tokens-cost-info">
-                            <span>{{ $t("Reservation cost") }}: <strong>{{ cost }} tokens</strong></span>
-                        </div>
+                            <!-- Processing State -->
+                            <div v-if="isUsingTokens" class="using-tokens-state">
+                                <i class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                                <span>{{ $t("Activating service...") }}</span>
+                            </div>
 
-                        <!-- Use Tokens Button (only if enough balance) -->
-                        <div v-if="serviceBalance >= cost && !isUsingTokens && !tokenUseSuccess" class="use-tokens-section">
+                            <!-- Success State -->
+                            <div v-if="tokenUseSuccess" class="token-use-success">
+                                <i :class="'mdi ' + serviceIcon" aria-hidden="true"></i>
+                                <div class="success-text">
+                                    <strong>🎉 {{ serviceSuccessMessage }}</strong>
+                                    <span v-if="reward > 0">+{{ reward }} {{ $t("loyalty points earned!") }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- ========================================== -->
+                    <!-- SUBSCRIPTION SERVICE VIEW (Transport Pass) -->
+                    <!-- ========================================== -->
+                    <template v-else-if="serviceType === 'subscription'">
+                        <div class="subscription-section">
+                            <div class="subscription-badge">
+                                <i class="mdi mdi-calendar-month" aria-hidden="true"></i>
+                                <span>{{ $t("Monthly Pass") }}</span>
+                            </div>
+
+                            <div class="subscription-info">
+                                <p class="subscription-description">
+                                    {{ serviceDescription || $t("Get unlimited access to public transport for a full month.") }}
+                                </p>
+
+                                <div class="subscription-benefit-list">
+                                    <div class="benefit-item">
+                                        <i class="mdi mdi-bus" aria-hidden="true"></i>
+                                        <span>{{ $t("Unlimited bus rides") }}</span>
+                                    </div>
+                                    <div class="benefit-item">
+                                        <i class="mdi mdi-subway-variant" aria-hidden="true"></i>
+                                        <span>{{ $t("Metro and tram access") }}</span>
+                                    </div>
+                                    <div class="benefit-item">
+                                        <i class="mdi mdi-percent" aria-hidden="true"></i>
+                                        <span>{{ $t("20% discount on standard fares") }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="subscription-price-box">
+                                    <div class="price-label">{{ $t("Monthly price") }}</div>
+                                    <div class="price-value">{{ cost }} <span class="price-unit">{{ $t("Tokens") }}</span></div>
+                                    <div v-if="reward > 0" class="price-reward">+{{ reward }} {{ $t("loyalty points") }}</div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Tabs for Subscription -->
+                            <div class="payment-method-tabs three-tabs">
+                                <button 
+                                    type="button"
+                                    class="tab-btn tokens-tab"
+                                    :class="{ active: paymentMethod === 'tokens', 'has-tokens': serviceBalance >= cost }"
+                                    @click="paymentMethod = 'tokens'"
+                                >
+                                    <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
+                                    {{ $t("Tokens") }}
+                                    <span v-if="serviceBalance > 0" class="tokens-badge">{{ serviceBalance }}</span>
+                                </button>
+                                <button 
+                                    type="button"
+                                    class="tab-btn"
+                                    :class="{ active: paymentMethod === 'manual' }"
+                                    @click="paymentMethod = 'manual'"
+                                >
+                                    <i class="mdi mdi-form-textbox" aria-hidden="true"></i>
+                                    {{ $t("TXID") }}
+                                </button>
+                                <button 
+                                    type="button"
+                                    class="tab-btn"
+                                    :class="{ active: paymentMethod === 'auto' }"
+                                    @click="paymentMethod = 'auto'"
+                                >
+                                    <i class="mdi mdi-wallet" aria-hidden="true"></i>
+                                    {{ $t("Wallet") }}
+                                </button>
+                            </div>
+
+                            <!-- Token Payment for Subscription -->
+                            <div v-if="paymentMethod === 'tokens'" class="subscription-tokens-view">
+                                <div class="tokens-balance-display compact">
+                                    <span class="tokens-label">{{ $t("Your balance") }}:</span>
+                                    <span class="tokens-amount">{{ serviceBalance }}</span>
+                                    <span class="tokens-label">{{ $t("tokens") }}</span>
+                                </div>
+
+                                <div v-if="serviceBalance >= cost && !isUsingTokens && !tokenUseSuccess" class="use-tokens-section">
+                                    <button 
+                                        type="button"
+                                        class="a11y-btn a11y-btn-primary a11y-btn-large"
+                                        @click="useServiceTokens"
+                                    >
+                                        <i class="mdi mdi-check-decagram" aria-hidden="true"></i>
+                                        {{ serviceButtonText }}
+                                    </button>
+                                </div>
+
+                                <div v-if="serviceBalance < cost && !isUsingTokens" class="not-enough-tokens">
+                                    <i class="mdi mdi-alert-circle-outline" aria-hidden="true"></i>
+                                    <span>{{ $t("Not enough tokens.") }} {{ $t("You need") }} {{ cost - serviceBalance }} {{ $t("more.") }}</span>
+                                    <p class="buy-hint">{{ $t("Buy more tokens in the TXID or Wallet tab.") }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Processing State -->
+                            <div v-if="isUsingTokens" class="using-tokens-state">
+                                <i class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                                <span>{{ $t("Processing purchase...") }}</span>
+                            </div>
+
+                            <!-- Success State -->
+                            <div v-if="tokenUseSuccess" class="token-use-success">
+                                <i :class="'mdi ' + serviceIcon" aria-hidden="true"></i>
+                                <div class="success-text">
+                                    <strong>🎉 {{ serviceSuccessMessage }}</strong>
+                                    <span>+{{ reward }} {{ $t("loyalty points earned!") }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- ========================================== -->
+                    <!-- PAID SERVICE VIEW (Family Parking - Default) -->
+                    <!-- ========================================== -->
+                    <template v-else>
+                        <!-- Payment Method Tabs -->
+                        <div class="payment-method-tabs four-tabs">
+                            <!-- Tab 1: Use existing SERVICE_TOKEN -->
                             <button 
                                 type="button"
-                                class="btn btn-use-tokens"
-                                @click="useServiceTokens"
+                                class="tab-btn tokens-tab"
+                                :class="{ active: paymentMethod === 'tokens', 'has-tokens': serviceBalance >= cost }"
+                                @click="paymentMethod = 'tokens'"
                             >
-                                <i class="mdi mdi-check-decagram" aria-hidden="true"></i>
-                                {{ $t("Reserve with my Tokens") }}
+                                <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
+                                {{ $t("Tokens") }}
+                                <span v-if="serviceBalance > 0" class="tokens-badge">{{ serviceBalance }}</span>
                             </button>
-                            <p class="tokens-hint">
-                                <i class="mdi mdi-gift" aria-hidden="true"></i>
-                                {{ $t("You will also earn") }} +{{ reward }} {{ $t("loyalty points!") }}
-                            </p>
+                            <!-- Tab 2: Buy with TXID -->
+                            <button 
+                                type="button"
+                                class="tab-btn"
+                                :class="{ active: paymentMethod === 'manual' }"
+                                @click="paymentMethod = 'manual'"
+                            >
+                                <i class="mdi mdi-form-textbox" aria-hidden="true"></i>
+                                {{ $t("TXID") }}
+                            </button>
+                            <!-- Tab 3: Buy with Wallet -->
+                            <button 
+                                type="button"
+                                class="tab-btn"
+                                :class="{ active: paymentMethod === 'auto' }"
+                                @click="paymentMethod = 'auto'"
+                            >
+                                <i class="mdi mdi-wallet" aria-hidden="true"></i>
+                                {{ $t("Wallet") }}
+                            </button>
+                            <!-- Tab 4: Redeem LOYALTY points -->
+                            <button 
+                                type="button"
+                                class="tab-btn loyalty-tab"
+                                :class="{ active: paymentMethod === 'loyalty', 'has-points': loyaltyBalance >= 100 }"
+                                @click="paymentMethod = 'loyalty'"
+                            >
+                                <i class="mdi mdi-star" aria-hidden="true"></i>
+                                {{ $t("Points") }}
+                                <span v-if="loyaltyBalance > 0" class="points-badge">{{ loyaltyBalance }}</span>
+                            </button>
                         </div>
-
-                        <!-- Using Tokens State -->
-                        <div v-if="isUsingTokens" class="using-tokens-state">
-                            <i class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
-                            <span>{{ $t("Processing reservation...") }}</span>
-                        </div>
-
-                        <!-- Token Use Success -->
-                        <div v-if="tokenUseSuccess" class="token-use-success">
-                            <i class="mdi mdi-human-male-child" aria-hidden="true"></i>
-                            <div class="success-text">
-                                <strong>🎉 {{ $t("Family Space Reserved!") }}</strong>
-                                <span>+{{ reward }} {{ $t("loyalty points earned!") }}</span>
+                        
+                        <!-- Payment Details (for BSV direct payment: TXID and Wallet) -->
+                        <div v-if="paymentMethod === 'manual' || paymentMethod === 'auto'" class="payment-details">
+                            <div class="detail-row bsv-row">
+                                <span class="detail-label">{{ $t("Service Cost") }}:</span>
+                                <span class="detail-value cost bsv-cost">
+                                    <i class="mdi mdi-bitcoin" aria-hidden="true"></i>
+                                    {{ satoshiCost }} sats
+                                </span>
+                            </div>
+                            <div class="detail-row service-row">
+                                <span class="detail-label">{{ $t("Service") }}:</span>
+                                <span class="detail-value service">{{ serviceEmoji }} {{ serviceName }}</span>
+                            </div>
+                            <div class="detail-row reward-row">
+                                <span class="detail-label">{{ $t("Loyalty Bonus") }}:</span>
+                                <span class="detail-value reward">+{{ reward }} {{ $t("Points") }}</span>
                             </div>
                         </div>
 
-                        <!-- Not Enough Tokens -->
-                        <div v-if="serviceBalance < cost && !isUsingTokens" class="not-enough-tokens">
-                            <i class="mdi mdi-alert-circle-outline" aria-hidden="true"></i>
-                            <span>{{ $t("Not enough tokens.") }} {{ $t("You need") }} {{ cost - serviceBalance }} {{ $t("more.") }}</span>
-                            <p class="buy-hint">{{ $t("Buy more tokens in the TXID or Wallet tab.") }}</p>
-                        </div>
-                    </div>
+                        <!-- USE SERVICE TOKENS VIEW -->
+                        <div v-if="paymentMethod === 'tokens'" class="tokens-section">
+                            <div class="tokens-header">
+                                <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
+                                <span>{{ $t("Your Service Tokens") }}</span>
+                            </div>
 
-                    <!-- LOYALTY POINTS VIEW -->
-                    <div v-if="paymentMethod === 'loyalty'" class="loyalty-section">
+                            <!-- Current Balance Display -->
+                            <div class="tokens-balance-display">
+                                <span class="tokens-amount">{{ serviceBalance }}</span>
+                                <span class="tokens-label">{{ $t("Tokens") }}</span>
+                            </div>
+
+                            <!-- Cost info -->
+                            <div class="tokens-cost-info">
+                                <span>{{ $t("Reservation cost") }}: <strong>{{ cost }} tokens</strong></span>
+                            </div>
+
+                            <!-- Use Tokens Button (only if enough balance) -->
+                            <div v-if="serviceBalance >= cost && !isUsingTokens && !tokenUseSuccess" class="use-tokens-section">
+                                <button 
+                                    type="button"
+                                    class="btn btn-use-tokens"
+                                    @click="useServiceTokens"
+                                >
+                                    <i class="mdi mdi-check-decagram" aria-hidden="true"></i>
+                                    {{ serviceButtonText }}
+                                </button>
+                                <p class="tokens-hint">
+                                    <i class="mdi mdi-gift" aria-hidden="true"></i>
+                                    {{ $t("You will also earn") }} +{{ reward }} {{ $t("loyalty points!") }}
+                                </p>
+                            </div>
+
+                            <!-- Using Tokens State -->
+                            <div v-if="isUsingTokens" class="using-tokens-state">
+                                <i class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                                <span>{{ $t("Processing reservation...") }}</span>
+                            </div>
+
+                            <!-- Token Use Success -->
+                            <div v-if="tokenUseSuccess" class="token-use-success">
+                                <i :class="'mdi ' + serviceIcon" aria-hidden="true"></i>
+                                <div class="success-text">
+                                    <strong>🎉 {{ serviceSuccessMessage }}</strong>
+                                    <span>+{{ reward }} {{ $t("loyalty points earned!") }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Not Enough Tokens -->
+                            <div v-if="serviceBalance < cost && !isUsingTokens" class="not-enough-tokens">
+                                <i class="mdi mdi-alert-circle-outline" aria-hidden="true"></i>
+                                <span>{{ $t("Not enough tokens.") }} {{ $t("You need") }} {{ cost - serviceBalance }} {{ $t("more.") }}</span>
+                                <p class="buy-hint">{{ $t("Buy more tokens in the TXID or Wallet tab.") }}</p>
+                            </div>
+                        </div>
+
+                        <!-- LOYALTY POINTS VIEW -->
+                        <div v-if="paymentMethod === 'loyalty'" class="loyalty-section">
                         <div class="loyalty-header">
                             <i class="mdi mdi-star-circle" aria-hidden="true"></i>
                             <span>{{ $t("Your Loyalty Points") }}</span>
@@ -300,6 +481,7 @@
                             {{ $t("Automatic payment requires a browser wallet. Use 'External Wallet' for BSV Desktop.") }}
                         </div>
                     </div>
+                    </template>
                 </div>
             </div>
 
@@ -489,6 +671,36 @@ export default defineComponent({
         serviceId: {
             type: String,
             default: "parking-familia"
+        },
+        serviceIcon: {
+            type: String,
+            default: "mdi-human-male-child"
+        },
+        serviceEmoji: {
+            type: String,
+            default: "👨‍👩‍👧‍👦"
+        },
+        serviceActionTitle: {
+            type: String,
+            default: "Reserve Parking Space"
+        },
+        serviceButtonText: {
+            type: String,
+            default: "Reserve with my Tokens"
+        },
+        serviceSuccessMessage: {
+            type: String,
+            default: "Space Reserved!"
+        },
+        // Service type: 'paid' (tokens/BSV), 'free' (no cost), 'subscription' (monthly pass)
+        serviceType: {
+            type: String as () => 'paid' | 'free' | 'subscription',
+            default: 'paid'
+        },
+        // Description for the service benefit
+        serviceDescription: {
+            type: String,
+            default: ''
         },
         cost: {
             type: Number,
@@ -930,6 +1142,63 @@ export default defineComponent({
             }
         };
 
+        // Activate FREE service (no cost, just grant access and minimal points)
+        const activateFreeService = async () => {
+            isUsingTokens.value = true;
+            tokenUseSuccess.value = false;
+            
+            try {
+                const userKey = identityKey.value;
+                if (!userKey) {
+                    throw new Error('User identity not available');
+                }
+
+                // Call the activate-free-service endpoint (grants access, mints minimal LOYALTY_TOKEN)
+                const response = await fetch(getApiUrl('/api/v1/gamification/activate-free-service'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-bsv-identity-key': userKey
+                    },
+                    body: JSON.stringify({
+                        userId: userKey,
+                        serviceId: props.serviceId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || 'Service activation failed');
+                }
+
+                // Update balances with new values
+                loyaltyBalance.value = data.balances?.loyaltyToken || 0;
+                
+                newBalances.value = {
+                    serviceToken: data.balances?.serviceToken || 0,
+                    loyaltyToken: data.balances?.loyaltyToken || 0
+                };
+
+                txIds.value = {
+                    burn: null,
+                    mint: data.txIds?.mint || data.txIds?.loyalty || null
+                };
+
+                // Show success
+                tokenUseSuccess.value = true;
+                state.value = 'success';
+                emit('payment-success', data);
+
+            } catch (error: any) {
+                console.error('[ServicePaymentModal] Free service activation error:', error);
+                errorMessage.value = error.message;
+                state.value = 'error';
+            } finally {
+                isUsingTokens.value = false;
+            }
+        };
+
         // Redeem loyalty points for free reservation
         const redeemLoyalty = async () => {
             if (loyaltyBalance.value < 100) return;
@@ -1034,6 +1303,7 @@ export default defineComponent({
             copyAddress,
             connectWallet,
             useServiceTokens,
+            activateFreeService,
             redeemLoyalty,
             close,
             stopPropagationEvent
@@ -1045,61 +1315,79 @@ export default defineComponent({
 <style scoped>
 .service-payment-modal {
     max-width: 480px;
+    max-height: calc(100vh - var(--top-bar-size) - 2rem);
+    margin-top: var(--top-bar-size);
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--a11y-border-radius, 8px);
+}
+
+.service-payment-modal .modal-header {
+    flex-shrink: 0;
+}
+
+.service-payment-modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.service-payment-modal .modal-footer {
+    flex-shrink: 0;
 }
 
 .modal-header .modal-title {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--a11y-spacing-sm);
 }
 
 .modal-header .modal-title i {
     font-size: 1.5rem;
-    color: var(--a11y-primary, #2563eb);
+    color: var(--a11y-primary);
 }
 
 /* Confirm State */
 .payment-info {
-    padding: 1rem 0;
+    padding: var(--a11y-spacing-md) 0;
 }
 
 .payment-header {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+    gap: var(--a11y-spacing-md);
+    margin-bottom: var(--a11y-spacing-lg);
+    padding-bottom: var(--a11y-spacing-md);
+    border-bottom: 1px solid var(--theme-border-color);
 }
 
 .payment-icon {
     font-size: 2.5rem;
-    color: var(--a11y-primary, #2563eb);
+    color: var(--a11y-primary);
 }
 
 .payment-header h3 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: var(--a11y-font-size-large);
 }
 
 .payment-details {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--a11y-spacing-sm);
 }
 
 .detail-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem;
-    background-color: #f9fafb;
-    border-radius: 0.5rem;
+    padding: var(--a11y-spacing-sm);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
 }
 
 .detail-label {
     font-weight: 500;
-    color: #6b7280;
+    color: var(--a11y-text-secondary);
 }
 
 .detail-value {
@@ -1107,53 +1395,53 @@ export default defineComponent({
 }
 
 .detail-value.cost {
-    color: #dc2626;
+    color: var(--a11y-error);
 }
 
 .detail-value.balance {
-    color: #059669;
+    color: var(--a11y-primary);
 }
 
 .detail-value.balance.insufficient {
-    color: #dc2626;
+    color: var(--a11y-error);
 }
 
 .reward-row {
-    background-color: #fef3c7;
-    border: 1px solid #f59e0b;
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border: 1px solid var(--theme-border-color);
 }
 
 .detail-value.reward {
-    color: #d97706;
+    color: var(--a11y-primary);
     font-size: 1.1rem;
 }
 
 .insufficient-funds-warning {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background-color: #fef2f2;
-    border: 1px solid #fca5a5;
-    border-radius: 0.5rem;
-    color: #dc2626;
-    font-size: 0.9rem;
+    gap: var(--a11y-spacing-sm);
+    margin-top: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-sm);
+    background-color: var(--a11y-error-bg, #fef2f2);
+    border: 1px solid var(--a11y-error);
+    border-radius: var(--a11y-border-radius);
+    color: var(--a11y-error);
+    font-size: var(--a11y-font-size-small);
 }
 
 /* Loading State */
 .loading-state {
     text-align: center;
-    padding: 2rem 1rem;
+    padding: var(--a11y-spacing-xl) var(--a11y-spacing-md);
 }
 
 .loading-content h3 {
-    margin: 1rem 0 0.5rem;
-    color: var(--a11y-primary, #2563eb);
+    margin: var(--a11y-spacing-md) 0 var(--a11y-spacing-sm);
+    color: var(--a11y-primary);
 }
 
 .loading-subtitle {
-    color: #6b7280;
+    color: var(--a11y-text-secondary);
     margin: 0;
 }
 
@@ -1164,20 +1452,20 @@ export default defineComponent({
 
 .loading-spinner {
     font-size: 3rem;
-    color: var(--a11y-primary, #2563eb);
+    color: var(--a11y-primary);
 }
 
 .bsv-animation {
     display: flex;
     justify-content: center;
-    gap: 0.5rem;
-    margin-top: 1.5rem;
+    gap: var(--a11y-spacing-sm);
+    margin-top: var(--a11y-spacing-lg);
 }
 
 .bsv-dot {
     width: 10px;
     height: 10px;
-    background-color: var(--a11y-primary, #2563eb);
+    background-color: var(--a11y-primary);
     border-radius: 50%;
     animation: bsv-pulse 1.4s ease-in-out infinite;
 }
@@ -1204,16 +1492,16 @@ export default defineComponent({
 /* Success State */
 .success-state {
     text-align: center;
-    padding: 1.5rem 1rem;
+    padding: var(--a11y-spacing-lg) var(--a11y-spacing-md);
 }
 
 .success-icon-container {
-    margin-bottom: 1rem;
+    margin-bottom: var(--a11y-spacing-md);
 }
 
 .success-icon {
     font-size: 4rem;
-    color: #10b981;
+    color: var(--a11y-primary);
     animation: success-pop 0.5s ease-out;
 }
 
@@ -1232,29 +1520,29 @@ export default defineComponent({
 }
 
 .success-title {
-    color: #10b981;
-    margin: 0 0 1.5rem;
-    font-size: 1.5rem;
+    color: var(--a11y-primary);
+    margin: 0 0 var(--a11y-spacing-lg);
+    font-size: var(--a11y-font-size-xlarge, 1.5rem);
 }
 
 .reward-celebration {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 2px solid #f59e0b;
-    border-radius: 1rem;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border: 2px solid var(--a11y-primary);
+    border-radius: var(--a11y-border-radius);
+    padding: var(--a11y-spacing-lg);
+    margin-bottom: var(--a11y-spacing-lg);
 }
 
 .reward-badge {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: var(--a11y-spacing-sm);
 }
 
 .reward-badge i {
     font-size: 2rem;
-    color: #f59e0b;
+    color: var(--a11y-primary);
     animation: star-spin 1s ease-out;
 }
 
@@ -1273,36 +1561,35 @@ export default defineComponent({
 .reward-amount {
     font-size: 2.5rem;
     font-weight: 700;
-    color: #b45309;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    color: var(--a11y-primary);
 }
 
 .reward-message {
-    margin: 0.5rem 0 0;
-    color: #92400e;
+    margin: var(--a11y-spacing-sm) 0 0;
+    color: var(--a11y-text-secondary);
     font-weight: 600;
 }
 
 .transaction-info {
-    background-color: #f3f4f6;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    padding: var(--a11y-spacing-md);
+    margin-bottom: var(--a11y-spacing-md);
     text-align: left;
 }
 
 .transaction-info h4 {
-    margin: 0 0 0.75rem;
-    font-size: 0.9rem;
-    color: #6b7280;
+    margin: 0 0 var(--a11y-spacing-sm);
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
 }
 
 .tx-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #e5e7eb;
+    padding: var(--a11y-spacing-sm) 0;
+    border-bottom: 1px solid var(--theme-border-color);
 }
 
 .tx-row:last-child {
@@ -1310,17 +1597,17 @@ export default defineComponent({
 }
 
 .tx-label {
-    font-size: 0.85rem;
-    color: #6b7280;
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
 }
 
 .tx-link {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: var(--a11y-spacing-xs);
     font-family: monospace;
-    font-size: 0.85rem;
-    color: var(--a11y-primary, #2563eb);
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-primary);
     text-decoration: none;
 }
 
@@ -1335,8 +1622,8 @@ export default defineComponent({
 .new-balances {
     display: flex;
     justify-content: center;
-    gap: 2rem;
-    padding-top: 1rem;
+    gap: var(--a11y-spacing-xl);
+    padding-top: var(--a11y-spacing-md);
 }
 
 .balance-item {
@@ -1345,46 +1632,49 @@ export default defineComponent({
 
 .balance-label {
     display: block;
-    font-size: 0.85rem;
-    color: #6b7280;
-    margin-bottom: 0.25rem;
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
+    margin-bottom: var(--a11y-spacing-xs);
 }
 
 .balance-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--a11y-text);
 }
 
 .balance-value.loyalty {
-    color: #f59e0b;
+    color: var(--a11y-primary);
 }
 
 /* Error State */
 .error-state {
     text-align: center;
-    padding: 2rem 1rem;
+    padding: var(--a11y-spacing-xl) var(--a11y-spacing-md);
 }
 
 .error-icon {
     font-size: 3rem;
-    color: #dc2626;
+    color: var(--a11y-error);
 }
 
 .error-content h3 {
-    color: #dc2626;
-    margin: 1rem 0 0.5rem;
+    color: var(--a11y-error);
+    margin: var(--a11y-spacing-md) 0 var(--a11y-spacing-sm);
 }
 
 .error-message {
-    color: #6b7280;
+    color: var(--a11y-text-secondary);
 }
 
 /* Footer */
 .modal-footer {
     display: flex;
     justify-content: flex-end;
-    gap: 0.75rem;
+    gap: var(--a11y-spacing-sm);
+    padding-top: var(--a11y-spacing-md);
+    border-top: 1px solid var(--theme-border-color, #e0e0e0);
+    background-color: var(--modal-bg-color, white);
 }
 
 .confirm-btn {
@@ -1402,20 +1692,20 @@ export default defineComponent({
 .wallet-status {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-md);
+    border-radius: var(--a11y-border-radius);
+    margin-bottom: var(--a11y-spacing-md);
 }
 
 .wallet-status.connected {
-    background-color: #d1fae5;
-    border: 1px solid #10b981;
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border: 1px solid var(--a11y-primary);
 }
 
 .wallet-status.disconnected {
-    background-color: #fef3c7;
-    border: 1px solid #f59e0b;
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border: 1px solid var(--theme-border-color);
 }
 
 .wallet-status-icon i {
@@ -1423,11 +1713,11 @@ export default defineComponent({
 }
 
 .wallet-status.connected .wallet-status-icon i {
-    color: #10b981;
+    color: var(--a11y-primary);
 }
 
 .wallet-status.disconnected .wallet-status-icon i {
-    color: #f59e0b;
+    color: var(--a11y-text-secondary);
 }
 
 .wallet-status-text {
@@ -1436,69 +1726,69 @@ export default defineComponent({
 }
 
 .wallet-status.connected .wallet-status-text {
-    color: #065f46;
+    color: var(--a11y-primary);
 }
 
 .wallet-status.disconnected .wallet-status-text {
-    color: #92400e;
+    color: var(--a11y-text-secondary);
 }
 
 .btn-connect {
-    background-color: #f59e0b;
+    background-color: var(--a11y-primary);
     color: white;
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-md);
+    border-radius: var(--a11y-border-radius);
     font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: var(--a11y-spacing-xs);
     transition: background-color 0.2s;
 }
 
 .btn-connect:hover {
-    background-color: #d97706;
+    background-color: var(--a11y-primary-dark);
 }
 
 .wallet-required-warning {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background-color: #fef3c7;
-    border: 1px solid #f59e0b;
-    border-radius: 0.5rem;
-    color: #92400e;
-    font-size: 0.9rem;
+    gap: var(--a11y-spacing-sm);
+    margin-top: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-sm);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border: 1px solid var(--theme-border-color);
+    border-radius: var(--a11y-border-radius);
+    color: var(--a11y-text-secondary);
+    font-size: var(--a11y-font-size-small);
 }
 
 /* BSV Payment Row */
 .bsv-row {
-    background-color: #eff6ff;
-    border: 1px solid #3b82f6;
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border: 1px solid var(--a11y-primary);
 }
 
 .bsv-cost {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    color: #1d4ed8 !important;
+    gap: var(--a11y-spacing-xs);
+    color: var(--a11y-primary) !important;
 }
 
 .bsv-cost i {
-    color: #f59e0b;
+    color: var(--a11y-primary);
 }
 
 /* BSV Pay Button */
 .bsv-pay-btn {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    background-color: var(--a11y-primary);
     border: none;
 }
 
 .bsv-pay-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    background-color: var(--a11y-primary-dark);
 }
 
 .bsv-pay-btn i {
@@ -1508,17 +1798,17 @@ export default defineComponent({
 /* Wallet Prompt State */
 .wallet-prompt-state {
     text-align: center;
-    padding: 2rem 1rem;
+    padding: var(--a11y-spacing-xl) var(--a11y-spacing-md);
 }
 
 .wallet-prompt-content h3 {
-    margin: 1rem 0 0.5rem;
-    color: var(--a11y-primary, #2563eb);
+    margin: var(--a11y-spacing-md) 0 var(--a11y-spacing-sm);
+    color: var(--a11y-primary);
 }
 
 .wallet-prompt-subtitle {
-    color: #6b7280;
-    margin: 0 0 1.5rem;
+    color: var(--a11y-text-secondary);
+    margin: 0 0 var(--a11y-spacing-lg);
 }
 
 .wallet-icon-container {
@@ -1528,7 +1818,7 @@ export default defineComponent({
 
 .wallet-icon {
     font-size: 4rem;
-    color: var(--a11y-primary, #2563eb);
+    color: var(--a11y-primary);
 }
 
 .wallet-icon.pulse {
@@ -1550,47 +1840,47 @@ export default defineComponent({
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    padding: 1rem;
-    background-color: #f3f4f6;
-    border-radius: 0.5rem;
+    gap: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-md);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
 }
 
 .tx-amount {
-    font-size: 1.25rem;
+    font-size: var(--a11y-font-size-large);
     font-weight: 700;
-    color: #f59e0b;
+    color: var(--a11y-primary);
 }
 
 .transaction-preview i {
-    color: #9ca3af;
+    color: var(--a11y-text-secondary);
 }
 
 .tx-recipient {
     font-weight: 600;
-    color: #1f2937;
+    color: var(--a11y-text);
 }
 
 /* Payment Method Tabs */
 .payment-method-tabs {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    padding: 0.25rem;
-    background-color: #f3f4f6;
-    border-radius: 0.5rem;
+    gap: var(--a11y-spacing-sm);
+    margin-bottom: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-xs);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
 }
 
 .payment-method-tabs.three-tabs .tab-btn,
 .payment-method-tabs.four-tabs .tab-btn {
-    padding: 0.5rem 0.25rem;
-    font-size: 0.75rem;
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-xs);
+    font-size: var(--a11y-font-size-small);
     flex-direction: column;
-    gap: 0.2rem;
+    gap: var(--a11y-spacing-xs);
 }
 
 .payment-method-tabs.four-tabs {
-    gap: 0.25rem;
+    gap: var(--a11y-spacing-xs);
 }
 
 .tab-btn {
@@ -1598,58 +1888,58 @@ export default defineComponent({
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-md);
     border: none;
     background-color: transparent;
-    border-radius: 0.375rem;
+    border-radius: var(--a11y-border-radius);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    color: #6b7280;
+    color: var(--a11y-text-secondary);
     position: relative;
 }
 
 .tab-btn:hover {
-    background-color: #e5e7eb;
+    background-color: var(--theme-border-color);
 }
 
 .tab-btn.active {
-    background-color: white;
-    color: #1d4ed8;
+    background-color: var(--modal-bg-color, white);
+    color: var(--a11y-primary);
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .tab-btn.loyalty-tab.active {
-    color: #d97706;
+    color: var(--a11y-primary);
 }
 
 .tab-btn.loyalty-tab.has-points {
-    background-color: #fef3c7;
+    background-color: var(--mci-gray-100, #f8f9fa);
 }
 
 .tab-btn.loyalty-tab.has-points.active {
-    background-color: #fde68a;
+    background-color: var(--mci-gray-100, #f8f9fa);
 }
 
 /* Tokens tab styling */
 .tab-btn.tokens-tab.active {
-    color: #059669;
+    color: var(--a11y-primary);
 }
 
 .tab-btn.tokens-tab.has-tokens {
-    background-color: #d1fae5;
+    background-color: var(--mci-gray-100, #f8f9fa);
 }
 
 .tab-btn.tokens-tab.has-tokens.active {
-    background-color: #a7f3d0;
+    background-color: var(--mci-gray-100, #f8f9fa);
 }
 
 .tokens-badge {
     position: absolute;
     top: -4px;
     right: -4px;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background-color: var(--a11y-primary);
     color: white;
     font-size: 0.6rem;
     font-weight: 700;
@@ -1663,7 +1953,7 @@ export default defineComponent({
     position: absolute;
     top: -4px;
     right: -4px;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    background-color: var(--a11y-primary);
     color: white;
     font-size: 0.65rem;
     font-weight: 700;
@@ -1679,33 +1969,33 @@ export default defineComponent({
 
 /* Manual Payment Section */
 .manual-payment-section {
-    margin-top: 1rem;
-    padding: 1rem;
-    background-color: #f9fafb;
-    border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
+    margin-top: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-md);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    border: 1px solid var(--theme-border-color);
 }
 
 .manual-payment-header {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    gap: var(--a11y-spacing-sm);
+    margin-bottom: var(--a11y-spacing-md);
     font-weight: 600;
-    color: #374151;
+    color: var(--a11y-text);
 }
 
 .manual-payment-header i {
     font-size: 1.25rem;
-    color: #f59e0b;
+    color: var(--a11y-primary);
 }
 
 .manual-step {
     display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+    gap: var(--a11y-spacing-md);
+    margin-bottom: var(--a11y-spacing-md);
+    padding-bottom: var(--a11y-spacing-md);
+    border-bottom: 1px solid var(--theme-border-color);
 }
 
 .manual-step:last-child {
@@ -1720,11 +2010,11 @@ export default defineComponent({
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f59e0b;
+    background-color: var(--a11y-primary);
     color: white;
     border-radius: 50%;
     font-weight: 700;
-    font-size: 0.875rem;
+    font-size: var(--a11y-font-size-small);
     flex-shrink: 0;
 }
 
@@ -1734,184 +2024,173 @@ export default defineComponent({
 
 .step-content label {
     display: block;
-    font-size: 0.875rem;
+    font-size: var(--a11y-font-size-small);
     font-weight: 500;
-    color: #4b5563;
-    margin-bottom: 0.5rem;
+    color: var(--a11y-text-secondary);
+    margin-bottom: var(--a11y-spacing-sm);
 }
 
 .address-box {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background-color: white;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    margin-bottom: 0.5rem;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm);
+    background-color: var(--modal-bg-color, white);
+    border: 1px solid var(--theme-border-color);
+    border-radius: var(--a11y-border-radius);
+    margin-bottom: var(--a11y-spacing-sm);
 }
 
 .payment-address {
     flex: 1;
     font-family: monospace;
-    font-size: 0.75rem;
-    color: #374151;
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text);
     word-break: break-all;
 }
 
 .btn-copy {
-    padding: 0.375rem 0.5rem;
-    background-color: #e5e7eb;
+    padding: var(--a11y-spacing-xs) var(--a11y-spacing-sm);
+    background-color: var(--theme-border-color);
     border: none;
-    border-radius: 0.25rem;
+    border-radius: var(--a11y-border-radius);
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
 .btn-copy:hover {
-    background-color: #d1d5db;
+    background-color: var(--a11y-text-secondary);
 }
 
 .btn-copy i {
     font-size: 1rem;
-    color: #374151;
+    color: var(--a11y-text);
 }
 
 .btn-open-wallet {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    background-color: #f59e0b;
+    gap: var(--a11y-spacing-xs);
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-md);
+    background-color: var(--a11y-primary);
     color: white;
-    border-radius: 0.375rem;
+    border-radius: var(--a11y-border-radius);
     text-decoration: none;
     font-weight: 500;
-    font-size: 0.875rem;
+    font-size: var(--a11y-font-size-small);
     transition: background-color 0.2s;
 }
 
 .btn-open-wallet:hover {
-    background-color: #d97706;
+    background-color: var(--a11y-primary-dark);
 }
 
 .txid-input {
     width: 100%;
-    padding: 0.75rem;
+    padding: var(--a11y-spacing-sm);
     font-family: monospace;
-    font-size: 0.875rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    background-color: white;
+    font-size: var(--a11y-font-size-small);
+    border: 1px solid var(--theme-border-color);
+    border-radius: var(--a11y-border-radius);
+    background-color: var(--modal-bg-color, white);
 }
 
 .txid-input:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: var(--a11y-primary);
+    box-shadow: 0 0 0 3px rgba(var(--a11y-primary-rgb, 59, 130, 246), 0.1);
 }
 
 .txid-error {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    margin-top: 0.5rem;
-    color: #dc2626;
-    font-size: 0.875rem;
+    gap: var(--a11y-spacing-xs);
+    margin-top: var(--a11y-spacing-sm);
+    color: var(--a11y-error);
+    font-size: var(--a11y-font-size-small);
 }
 
 /* Auto Payment Section */
 .auto-payment-section {
-    margin-top: 1rem;
+    margin-top: var(--a11y-spacing-md);
 }
 
 /* Verify Button */
 .verify-btn {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background-color: var(--a11y-primary);
     border: none;
 }
 
 .verify-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    background-color: var(--a11y-primary-dark);
 }
 
 .verify-btn:disabled {
-    background: #9ca3af;
+    background-color: var(--a11y-text-secondary);
     cursor: not-allowed;
 }
 
 /* Redemption Section */
 .redemption-section {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px dashed #e5e7eb;
+    margin-top: var(--a11y-spacing-lg);
+    padding-top: var(--a11y-spacing-lg);
+    border-top: 1px dashed var(--theme-border-color);
 }
 
 .redemption-progress {
-    margin-bottom: 1rem;
+    margin-bottom: var(--a11y-spacing-md);
 }
 
 .progress-bar-container {
     height: 12px;
-    background-color: #e5e7eb;
+    background-color: var(--theme-border-color);
     border-radius: 6px;
     overflow: hidden;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--a11y-spacing-sm);
 }
 
 .progress-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+    background-color: var(--a11y-primary);
     border-radius: 6px;
     transition: width 0.5s ease-out;
 }
 
 .progress-text {
-    font-size: 0.875rem;
-    color: #6b7280;
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
     text-align: center;
     display: block;
 }
 
 .btn-redeem {
     width: 100%;
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
+    padding: var(--a11y-spacing-md) var(--a11y-spacing-lg);
+    font-size: var(--a11y-font-size-base);
     font-weight: 600;
     color: white;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    background-color: var(--a11y-primary);
     border: none;
-    border-radius: 0.5rem;
+    border-radius: var(--a11y-border-radius);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: var(--a11y-spacing-sm);
     transition: all 0.2s;
-    animation: pulse-gold 2s infinite;
 }
 
 .btn-redeem:hover {
-    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-    transform: scale(1.02);
-}
-
-@keyframes pulse-gold {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
-    }
-    50% {
-        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
-    }
+    background-color: var(--a11y-primary-dark);
 }
 
 .redeeming-state {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    color: #f59e0b;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-md);
+    color: var(--a11y-primary);
     font-weight: 500;
 }
 
@@ -1923,13 +2202,13 @@ export default defineComponent({
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border-radius: 0.5rem;
-    color: #92400e;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-md);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    color: var(--a11y-primary);
     font-weight: 600;
-    margin-top: 1rem;
+    margin-top: var(--a11y-spacing-md);
     animation: celebration 0.5s ease-out;
 }
 
@@ -1963,62 +2242,59 @@ export default defineComponent({
 
 /* Tokens Section */
 .tokens-section {
-    margin-top: 1rem;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-    border-radius: 0.75rem;
-    border: 2px solid #a7f3d0;
+    margin-top: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-lg);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    border: 2px solid var(--a11y-primary);
 }
 
 .tokens-header {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    gap: var(--a11y-spacing-sm);
+    margin-bottom: var(--a11y-spacing-lg);
     font-weight: 600;
-    color: #065f46;
-    font-size: 1.1rem;
+    color: var(--a11y-primary);
+    font-size: var(--a11y-font-size-large);
 }
 
 .tokens-header i {
     font-size: 1.5rem;
-    color: #10b981;
+    color: var(--a11y-primary);
 }
 
 .tokens-balance-display {
     text-align: center;
-    margin-bottom: 1rem;
+    margin-bottom: var(--a11y-spacing-md);
 }
 
 .tokens-amount {
     display: block;
     font-size: 4rem;
     font-weight: 800;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--a11y-primary);
     line-height: 1;
 }
 
 .tokens-label {
     display: block;
-    font-size: 1rem;
-    color: #065f46;
+    font-size: var(--a11y-font-size-base);
+    color: var(--a11y-primary);
     font-weight: 500;
-    margin-top: 0.25rem;
+    margin-top: var(--a11y-spacing-xs);
 }
 
 .tokens-cost-info {
     text-align: center;
-    margin-bottom: 1.5rem;
-    color: #065f46;
-    font-size: 0.95rem;
+    margin-bottom: var(--a11y-spacing-lg);
+    color: var(--a11y-text-secondary);
+    font-size: var(--a11y-font-size-base);
 }
 
 .tokens-cost-info strong {
-    color: #047857;
+    color: var(--a11y-primary);
 }
 
 .use-tokens-section {
@@ -2027,57 +2303,46 @@ export default defineComponent({
 
 .btn-use-tokens {
     width: 100%;
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
+    padding: var(--a11y-spacing-md) var(--a11y-spacing-lg);
+    font-size: var(--a11y-font-size-base);
     font-weight: 600;
     color: white;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background-color: var(--a11y-primary);
     border: none;
-    border-radius: 0.5rem;
+    border-radius: var(--a11y-border-radius);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: var(--a11y-spacing-sm);
     transition: all 0.2s;
-    animation: pulse-green 2s infinite;
 }
 
 .btn-use-tokens:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-    transform: scale(1.02);
-}
-
-@keyframes pulse-green {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-    }
-    50% {
-        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
-    }
+    background-color: var(--a11y-primary-dark);
 }
 
 .tokens-hint {
-    margin-top: 0.75rem;
-    font-size: 0.875rem;
-    color: #065f46;
+    margin-top: var(--a11y-spacing-sm);
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.375rem;
+    gap: var(--a11y-spacing-xs);
 }
 
 .tokens-hint i {
-    color: #f59e0b;
+    color: var(--a11y-primary);
 }
 
 .using-tokens-state {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    color: #10b981;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-md);
+    color: var(--a11y-primary);
     font-weight: 500;
 }
 
@@ -2089,17 +2354,17 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.75rem;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-    border-radius: 0.75rem;
-    border: 2px solid #86efac;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-lg);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    border: 2px solid var(--a11y-primary);
     animation: celebration 0.5s ease-out;
 }
 
 .token-use-success i {
     font-size: 2.5rem;
-    color: #16a34a;
+    color: var(--a11y-primary);
 }
 
 .token-use-success .success-text {
@@ -2108,87 +2373,85 @@ export default defineComponent({
 
 .token-use-success .success-text strong {
     display: block;
-    font-size: 1.25rem;
-    color: #166534;
-    margin-bottom: 0.25rem;
+    font-size: var(--a11y-font-size-large);
+    color: var(--a11y-primary);
+    margin-bottom: var(--a11y-spacing-xs);
 }
 
 .token-use-success .success-text span {
-    color: #15803d;
+    color: var(--a11y-text-secondary);
 }
 
 .not-enough-tokens {
     text-align: center;
-    padding: 1rem;
-    background-color: #fef3c7;
-    border-radius: 0.5rem;
-    color: #92400e;
+    padding: var(--a11y-spacing-md);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    color: var(--a11y-text-secondary);
+    border: 1px solid var(--theme-border-color);
 }
 
 .not-enough-tokens i {
     font-size: 1.5rem;
-    color: #f59e0b;
+    color: var(--a11y-text-secondary);
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--a11y-spacing-sm);
 }
 
 .not-enough-tokens .buy-hint {
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: #b45309;
+    margin-top: var(--a11y-spacing-sm);
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
 }
 
 /* Loyalty Section */
 .loyalty-section {
-    margin-top: 1rem;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
-    border-radius: 0.75rem;
-    border: 2px solid #fde68a;
+    margin-top: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-lg);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    border: 2px solid var(--a11y-primary);
 }
 
 .loyalty-header {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    gap: var(--a11y-spacing-sm);
+    margin-bottom: var(--a11y-spacing-lg);
     font-weight: 600;
-    color: #92400e;
-    font-size: 1.1rem;
+    color: var(--a11y-primary);
+    font-size: var(--a11y-font-size-large);
 }
 
 .loyalty-header i {
     font-size: 1.5rem;
-    color: #f59e0b;
+    color: var(--a11y-primary);
 }
 
 .loyalty-balance-display {
     text-align: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--a11y-spacing-lg);
 }
 
 .loyalty-amount {
     display: block;
     font-size: 4rem;
     font-weight: 800;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--a11y-primary);
     line-height: 1;
 }
 
 .loyalty-label {
     display: block;
-    font-size: 1rem;
-    color: #92400e;
+    font-size: var(--a11y-font-size-base);
+    color: var(--a11y-primary);
     font-weight: 500;
-    margin-top: 0.25rem;
+    margin-top: var(--a11y-spacing-xs);
 }
 
 .loyalty-progress {
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--a11y-spacing-lg);
 }
 
 .redeem-section {
@@ -2199,32 +2462,32 @@ export default defineComponent({
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    color: #92400e;
+    gap: var(--a11y-spacing-sm);
+    margin-bottom: var(--a11y-spacing-md);
+    color: var(--a11y-primary);
     font-weight: 500;
 }
 
 .redeem-info i {
     font-size: 1.25rem;
-    color: #f59e0b;
+    color: var(--a11y-primary);
 }
 
 .redemption-success-box {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.75rem;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-    border-radius: 0.75rem;
-    border: 2px solid #86efac;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-lg);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    border: 2px solid var(--a11y-primary);
     animation: celebration 0.5s ease-out;
 }
 
 .redemption-success-box i {
     font-size: 2.5rem;
-    color: #16a34a;
+    color: var(--a11y-primary);
 }
 
 .redemption-success-box .success-text {
@@ -2233,18 +2496,18 @@ export default defineComponent({
 
 .redemption-success-box .success-text strong {
     display: block;
-    font-size: 1.25rem;
-    color: #166534;
-    margin-bottom: 0.25rem;
+    font-size: var(--a11y-font-size-large);
+    color: var(--a11y-primary);
+    margin-bottom: var(--a11y-spacing-xs);
 }
 
 .redemption-success-box .success-text span {
-    color: #15803d;
+    color: var(--a11y-text-secondary);
 }
 
 .redemption-success-box .new-balance {
-    font-size: 0.875rem;
-    color: #166534;
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
     font-weight: 500;
 }
 
@@ -2252,33 +2515,208 @@ export default defineComponent({
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    background-color: #fef3c7;
-    border-radius: 0.5rem;
-    color: #92400e;
-    font-size: 0.9rem;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-md);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    color: var(--a11y-text-secondary);
+    font-size: var(--a11y-font-size-small);
+    border: 1px solid var(--theme-border-color);
 }
 
 .not-enough-points i {
-    color: #f59e0b;
+    color: var(--a11y-text-secondary);
 }
 
 .success-hint {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background-color: #fef3c7;
-    border-radius: 0.5rem;
-    color: #92400e;
-    font-size: 0.875rem;
+    gap: var(--a11y-spacing-sm);
+    margin-top: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-sm);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    color: var(--a11y-text-secondary);
+    font-size: var(--a11y-font-size-small);
 }
 
 .success-hint i {
-    color: #f59e0b;
+    color: var(--a11y-primary);
+}
+
+/* ========================================== */
+/* FREE SERVICE STYLES (Accessible Parking) */
+/* ========================================== */
+.free-service-section {
+    text-align: center;
+}
+
+.free-service-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-lg);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    color: var(--a11y-primary);
+    border-radius: var(--a11y-border-radius);
+    font-weight: 600;
+    font-size: var(--a11y-font-size-large);
+    margin-bottom: var(--a11y-spacing-lg);
+    border: 1px solid var(--a11y-primary);
+}
+
+.free-service-badge i {
+    font-size: 1.5rem;
+}
+
+.free-service-info {
+    text-align: left;
+    margin-bottom: var(--a11y-spacing-lg);
+}
+
+.free-description {
+    color: var(--a11y-text-secondary);
+    margin-bottom: var(--a11y-spacing-md);
+    font-size: var(--a11y-font-size-base);
+}
+
+.free-benefit-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--a11y-spacing-sm);
+    margin-bottom: var(--a11y-spacing-md);
+}
+
+.benefit-item {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-md);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    font-size: var(--a11y-font-size-base);
+}
+
+.benefit-item i {
+    color: var(--a11y-primary);
+    font-size: 1.25rem;
+}
+
+.free-reward-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border-radius: var(--a11y-border-radius);
+    color: var(--a11y-text-secondary);
+    font-weight: 500;
+}
+
+.free-reward-hint i {
+    color: var(--a11y-primary);
+}
+
+.free-action-section {
+    margin-top: var(--a11y-spacing-lg);
+}
+
+.free-activate-btn {
+    width: 100%;
+}
+
+/* ========================================== */
+/* SUBSCRIPTION SERVICE STYLES (Transport) */
+/* ========================================== */
+.subscription-section {
+    text-align: center;
+}
+
+.subscription-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-lg);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    color: var(--a11y-primary);
+    border-radius: var(--a11y-border-radius);
+    font-weight: 600;
+    font-size: var(--a11y-font-size-large);
+    margin-bottom: var(--a11y-spacing-lg);
+    border: 1px solid var(--a11y-primary);
+}
+
+.subscription-badge i {
+    font-size: 1.5rem;
+}
+
+.subscription-info {
+    text-align: left;
+    margin-bottom: var(--a11y-spacing-lg);
+}
+
+.subscription-description {
+    color: var(--a11y-text-secondary);
+    margin-bottom: var(--a11y-spacing-md);
+    font-size: var(--a11y-font-size-base);
+}
+
+.subscription-benefit-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--a11y-spacing-sm);
+    margin-bottom: var(--a11y-spacing-lg);
+}
+
+.subscription-price-box {
+    text-align: center;
+    padding: var(--a11y-spacing-lg);
+    background-color: var(--mci-gray-100, #f8f9fa);
+    border: 2px solid var(--a11y-primary);
+    border-radius: var(--a11y-border-radius);
+    margin-bottom: var(--a11y-spacing-lg);
+}
+
+.price-label {
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
+    margin-bottom: var(--a11y-spacing-xs);
+}
+
+.price-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--a11y-primary);
+}
+
+.price-unit {
+    font-size: var(--a11y-font-size-base);
+    font-weight: 500;
+}
+
+.price-reward {
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
+    font-weight: 500;
+    margin-top: var(--a11y-spacing-xs);
+}
+
+.subscription-tokens-view {
+    margin-top: var(--a11y-spacing-md);
+}
+
+.tokens-balance-display.compact {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--a11y-spacing-sm);
+    margin-bottom: var(--a11y-spacing-md);
+}
+
+.tokens-balance-display.compact .tokens-amount {
+    font-size: 1.5rem;
 }
 </style>
 

@@ -20,12 +20,11 @@
             <div class="header-actions">
                 <button 
                     @click="showBuyCreditsModal = true"
-                    class="a11y-btn a11y-btn-accent a11y-btn-large buy-credits-btn"
+                    class="a11y-btn a11y-btn-primary a11y-btn-large"
                     :aria-label="$t('Buy service credits')"
                 >
                     <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
                     {{ $t("Buy Credits") }}
-                    <span class="credits-badge" v-if="serviceTokenBalance > 0">{{ serviceTokenBalance }}</span>
                 </button>
             </div>
         </header>
@@ -145,10 +144,28 @@
                                 <button 
                                     v-if="service.id === 'srv-mobility-familia'"
                                     @click="openPaymentModal(service)"
-                                    class="a11y-btn a11y-btn-primary family-reserve-btn"
+                                    class="a11y-btn a11y-btn-primary"
                                 >
                                     <i class="mdi mdi-car-brake-parking" aria-hidden="true"></i>
-                                    {{ $t("Reserve Space") }} (50 Pts)
+                                    {{ $t("Reserve Space") }} ({{ service.price }} Pts)
+                                </button>
+                                <!-- Accessible Parking - Free Service -->
+                                <button 
+                                    v-else-if="service.id === 'srv-mobility-disability'"
+                                    @click="openPaymentModal(service)"
+                                    class="a11y-btn a11y-btn-primary"
+                                >
+                                    <i class="mdi mdi-wheelchair-accessibility" aria-hidden="true"></i>
+                                    {{ $t("Get Free Pass") }}
+                                </button>
+                                <!-- Public Transport Pass -->
+                                <button 
+                                    v-else-if="service.id === 'srv-mobility-transport'"
+                                    @click="openPaymentModal(service)"
+                                    class="a11y-btn a11y-btn-primary"
+                                >
+                                    <i class="mdi mdi-bus" aria-hidden="true"></i>
+                                    {{ $t("Buy Monthly Pass") }} ({{ service.price }} Pts)
                                 </button>
                                 <!-- Regular request button for other services -->
                                 <button 
@@ -705,10 +722,17 @@
         <!-- Service Payment Modal (Loyalty System) -->
         <ServicePaymentModal
             v-model:display="showPaymentModal"
-            :service-name="selectedPaymentService?.name || 'Parking Familia Numerosa'"
-            :service-id="'parking-familia'"
-            :cost="50"
-            :reward="10"
+            :service-name="selectedPaymentService?.name || 'Service'"
+            :service-id="selectedPaymentService?.id || 'generic'"
+            :service-icon="getServiceIcon(selectedPaymentService?.id)"
+            :service-emoji="getServiceEmoji(selectedPaymentService?.id)"
+            :service-action-title="getServiceActionTitle(selectedPaymentService?.id)"
+            :service-button-text="getServiceButtonText(selectedPaymentService?.id)"
+            :service-success-message="getServiceSuccessMessage(selectedPaymentService?.id)"
+            :service-type="getServiceType(selectedPaymentService?.id)"
+            :service-description="getServiceDescription(selectedPaymentService?.id)"
+            :cost="selectedPaymentService?.price || 0"
+            :reward="getServiceReward(selectedPaymentService?.id)"
             :current-balance="userServiceTokenBalance"
             :user-id="identityKey || ''"
             @payment-success="onPaymentSuccess"
@@ -1198,6 +1222,79 @@ export default defineComponent({
             showPaymentModal.value = true;
         };
 
+        // Helper functions for dynamic modal props
+        const getServiceIcon = (serviceId?: string): string => {
+            const icons: Record<string, string> = {
+                'srv-mobility-familia': 'mdi-human-male-child',
+                'srv-mobility-disability': 'mdi-wheelchair-accessibility',
+                'srv-mobility-transport': 'mdi-bus-multiple',
+            };
+            return icons[serviceId || ''] || 'mdi-ticket-confirmation';
+        };
+
+        const getServiceEmoji = (serviceId?: string): string => {
+            const emojis: Record<string, string> = {
+                'srv-mobility-familia': '👨‍👩‍👧‍👦',
+                'srv-mobility-disability': '♿',
+                'srv-mobility-transport': '🚌',
+            };
+            return emojis[serviceId || ''] || '🎫';
+        };
+
+        const getServiceActionTitle = (serviceId?: string): string => {
+            const titles: Record<string, string> = {
+                'srv-mobility-familia': 'Reserve Family Parking',
+                'srv-mobility-disability': 'Get Free Accessible Parking Pass',
+                'srv-mobility-transport': 'Buy Monthly Transport Pass',
+            };
+            return titles[serviceId || ''] || 'Get Service';
+        };
+
+        const getServiceButtonText = (serviceId?: string): string => {
+            const texts: Record<string, string> = {
+                'srv-mobility-familia': 'Reserve with my Tokens',
+                'srv-mobility-disability': 'Activate Free Pass',
+                'srv-mobility-transport': 'Purchase Monthly Pass',
+            };
+            return texts[serviceId || ''] || 'Use my Tokens';
+        };
+
+        const getServiceSuccessMessage = (serviceId?: string): string => {
+            const messages: Record<string, string> = {
+                'srv-mobility-familia': 'Family Space Reserved!',
+                'srv-mobility-disability': 'Accessible Parking Pass Activated!',
+                'srv-mobility-transport': 'Monthly Pass Purchased!',
+            };
+            return messages[serviceId || ''] || 'Service Obtained!';
+        };
+
+        const getServiceReward = (serviceId?: string): number => {
+            const rewards: Record<string, number> = {
+                'srv-mobility-familia': 10,
+                'srv-mobility-disability': 2,  // Minimal points for free service
+                'srv-mobility-transport': 15,
+            };
+            return rewards[serviceId || ''] || 10;
+        };
+
+        const getServiceType = (serviceId?: string): 'paid' | 'free' | 'subscription' => {
+            const types: Record<string, 'paid' | 'free' | 'subscription'> = {
+                'srv-mobility-familia': 'paid',
+                'srv-mobility-disability': 'free',
+                'srv-mobility-transport': 'subscription',
+            };
+            return types[serviceId || ''] || 'paid';
+        };
+
+        const getServiceDescription = (serviceId?: string): string => {
+            const descriptions: Record<string, string> = {
+                'srv-mobility-familia': 'Reserve parking spaces for large families with discounted rates.',
+                'srv-mobility-disability': 'Free access to reserved accessible parking spaces throughout the city. Valid with your Disability Credential.',
+                'srv-mobility-transport': 'Get unlimited access to buses, metro and trams for a full month with 20% discount on standard fares.',
+            };
+            return descriptions[serviceId || ''] || '';
+        };
+
         const onPaymentSuccess = (data: any) => {
             console.log('[ServiciosPage] Payment successful:', data);
             // Update local balance
@@ -1328,6 +1425,16 @@ export default defineComponent({
             onCreditsPurchased,
             loadUserBalance,
             loadServiceTokenBalance,
+            
+            // Service Modal Helpers
+            getServiceIcon,
+            getServiceEmoji,
+            getServiceActionTitle,
+            getServiceButtonText,
+            getServiceSuccessMessage,
+            getServiceReward,
+            getServiceType,
+            getServiceDescription,
         };
     },
 });
@@ -1356,31 +1463,6 @@ export default defineComponent({
     display: flex;
     gap: var(--a11y-spacing-sm);
     flex-wrap: wrap;
-}
-
-/* Buy Credits Button */
-.buy-credits-btn {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    border: none !important;
-    position: relative;
-}
-
-.buy-credits-btn:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-}
-
-.credits-badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 10px;
-    min-width: 20px;
-    text-align: center;
 }
 
 /* Filters */
@@ -1863,25 +1945,5 @@ export default defineComponent({
     text-transform: uppercase;
 }
 
-/* Family Parking Reserve Button */
-.family-reserve-btn {
-    display: flex;
-    align-items: center;
-    gap: var(--a11y-spacing-xs);
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    border: none;
-    font-weight: 600;
-    transition: all 0.2s ease;
-}
-
-.family-reserve-btn:hover {
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-}
-
-.family-reserve-btn i {
-    font-size: 1.1rem;
-}
 </style>
 

@@ -1032,11 +1032,11 @@ export default defineComponent({
                 id: "cat-mobility",
                 name: "Mobility",
                 description: "Services related to urban mobility, accessible parking, public transport and sustainable movement in the city.",
-                icon: "mdi-car",
+                icon: "mdi-wheelchair-accessibility",
                 category: "mobility",
                 status: "active",
                 servicesCount: 3,
-                requiredCredentials: ["Disability Credential", "Census Credential"],
+                requiredCredentials: ["Disability Credential", "Large Family Credential", "Census Credential"],
                 disabled: false,
                 metrics: {
                     users: 1250,

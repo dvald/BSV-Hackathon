@@ -367,8 +367,8 @@ export default defineComponent({
                 {
                     id: "bonus-pmr-1",
                     name: "Reserved PMR Parking",
-                    description: "Access to reserved parking spaces for large families in municipal areas.",
-                    icon: "mdi mdi-parking",
+                    description: "Access to reserved parking spaces for people with disabilities in municipal areas.",
+                    icon: "mdi mdi-wheelchair-accessibility",
                     type: "parking",
                     usedCount: 23,
                     totalLimit: 30,
@@ -377,6 +377,21 @@ export default defineComponent({
                     requirements: [
                         { id: "req1", name: "Disability Card", icon: "mdi mdi-card-account-details", valid: true },
                         { id: "req2", name: "Census Certificate", icon: "mdi mdi-file-document", valid: true },
+                    ],
+                },
+                {
+                    id: "bonus-family-1",
+                    name: "Large Family Parking",
+                    description: "Reserved parking spaces for large families with discounted rates in municipal parking areas.",
+                    icon: "mdi mdi-human-male-female-child",
+                    type: "parking",
+                    usedCount: 12,
+                    totalLimit: 20,
+                    renewalPeriod: "Monthly",
+                    nextRenewal: "2025-12-01T00:00:00Z",
+                    requirements: [
+                        { id: "req4", name: "Large Family Card", icon: "mdi mdi-card-account-details", valid: true },
+                        { id: "req5", name: "Census Certificate", icon: "mdi mdi-file-document", valid: true },
                     ],
                 },
                 {
@@ -391,6 +406,20 @@ export default defineComponent({
                     nextRenewal: "2025-12-01T00:00:00Z",
                     requirements: [
                         { id: "req3", name: "Senior Citizen Card", icon: "mdi mdi-card-account-details", valid: true },
+                    ],
+                },
+                {
+                    id: "bonus-family-transport-1",
+                    name: "Family Transport Pass",
+                    description: "30% discount on public transportation for large families on all routes.",
+                    icon: "mdi mdi-train-car",
+                    type: "transport",
+                    usedCount: 15,
+                    totalLimit: 60,
+                    renewalPeriod: "Monthly",
+                    nextRenewal: "2025-12-01T00:00:00Z",
+                    requirements: [
+                        { id: "req6", name: "Large Family Card", icon: "mdi mdi-card-account-details", valid: true },
                     ],
                 },
             ] as Bonus[],
