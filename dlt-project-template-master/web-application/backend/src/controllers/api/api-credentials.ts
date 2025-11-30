@@ -9,6 +9,7 @@ import { VerifiableCredentialsService } from "../../services/verifiable-credenti
 import { Monitor } from "../../monitor";
 import { PrivateKey } from "@bsv/sdk";
 import { UsersService } from "../../services/users-service";
+import { CredentialRequest } from "../../models/credential-request";
 
 /**
  * Verifiable Credentials API Controller
@@ -44,7 +45,8 @@ export class CredentialsController extends Controller {
     /**
      * @typedef RequestCredentialRequest
      * @property {string} credentialId.required - Credential ID
-     * @property {object} requestData.required - Data for this credential type (dynamic)
+     * @property {string} serviceId.required - Service ID
+     * @property {string} documentId.required - Document ID
      */
 
     /**
@@ -82,8 +84,12 @@ export class CredentialsController extends Controller {
                 return sendApiError(request, response, BAD_REQUEST, "MISSING_CREDENTIAL_TYPE", "Credential type is required");
             }
 
-            if (!body.requestData || typeof body.requestData !== 'object') {
-                return sendApiError(request, response, BAD_REQUEST, "INVALID_REQUEST_DATA", "Request data must be an object");
+            if (!body.serviceId) {
+                return sendApiError(request, response, BAD_REQUEST, "MISSING_SERVICE_ID", "Service ID is required");
+            }
+
+            if (!body.documentId) {
+                return sendApiError(request, response, BAD_REQUEST, "MISSING_DOCUMENT_ID", "Document ID is required");
             }
 
             // Validate DID format
@@ -97,6 +103,21 @@ export class CredentialsController extends Controller {
                 body.credentialType,
                 body.requestData
             );
+
+            const credentialRequest = new CredentialRequest({
+                id: result.requestId,
+                userDID: auth.user.did,
+                credentialType: body.credentialType,
+                requestData: JSON.stringify(body.requestData),
+                status: result.status,
+                requestedAt: Date.now(),
+                reviewedAt: 0,
+                reviewedBy: "",
+                rejectionReason: "",
+                credentialId: "",
+                documentId: body.documentId,
+                serviceId: body.serviceId
+            });
 
             Monitor.info(`Credential request created: ${result.requestId} for ${auth.user.did}`);
 

@@ -86,6 +86,12 @@ export class CredentialRequest extends DataModel {
     /* db-type: VARCHAR 255 */
     public credentialId: string;
 
+    /* db-type: VARCHAR 255 */
+    public documentId: string;
+
+    /* db-type: VARCHAR 255 */
+    public serviceId: string;
+
     constructor(row: TypedRow<CredentialRequest>) {
         // First, call DataModel constructor
         super(DATA_SOURCE, TABLE, PRIMARY_KEY);
@@ -101,7 +107,8 @@ export class CredentialRequest extends DataModel {
         this.reviewedBy = enforceType(row.reviewedBy, "string") || "";
         this.rejectionReason = enforceType(row.rejectionReason, "string") || "";
         this.credentialId = enforceType(row.credentialId, "string") || "";
-
+        this.documentId = enforceType(row.documentId, "string") || "";
+        this.serviceId = enforceType(row.serviceId, "string") || "";
         // Finally, call init()
         this.init();
     }
