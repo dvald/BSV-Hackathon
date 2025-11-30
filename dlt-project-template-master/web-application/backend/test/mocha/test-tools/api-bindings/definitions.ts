@@ -353,6 +353,154 @@ export interface UserAdminPasswordChangeBadRequest {
     code: string;
 }
 
+export interface ServiceItem {
+    /**
+     * Service ID
+     */
+    id: string;
+
+    /**
+     * Service name
+     */
+    name: string;
+
+    /**
+     * Service description
+     */
+    description?: string;
+
+    /**
+     * Admin user
+     */
+    adminUser?: string;
+
+    /**
+     * Required credentials (comma-separated)
+     */
+    requiredCredentials?: string;
+
+    /**
+     * Associated token
+     */
+    associatedToken?: string;
+
+    /**
+     * User count
+     */
+    userCount?: number;
+
+    /**
+     * Credential count
+     */
+    credentialCount?: number;
+
+    /**
+     * Tokens used
+     */
+    tokensUsed?: number;
+}
+
+export interface ServiceListResponse {
+    services: ServiceItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateServiceRequest {
+    /**
+     * Service name
+     */
+    name: string;
+
+    /**
+     * Service description
+     */
+    description?: string;
+
+    /**
+     * Admin user ID
+     */
+    adminUser?: string;
+
+    /**
+     * Required credentials (comma-separated)
+     */
+    requiredCredentials?: string;
+
+    /**
+     * Associated token
+     */
+    associatedToken?: string;
+}
+
+export interface UpdateServiceRequest {
+    /**
+     * Service name
+     */
+    name?: string;
+
+    /**
+     * Service description
+     */
+    description?: string;
+
+    /**
+     * Admin user ID
+     */
+    adminUser?: string;
+
+    /**
+     * Required credentials
+     */
+    requiredCredentials?: string;
+
+    /**
+     * Associated token
+     */
+    associatedToken?: string;
+}
+
+export interface ServiceAdminItem {
+    /**
+     * Record ID
+     */
+    id: string;
+
+    /**
+     * Admin user ID
+     */
+    adminUID: string;
+
+    /**
+     * Service ID
+     */
+    serviceId: string;
+}
+
+export interface ServiceAdminListResponse {
+    admins: ServiceAdminItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateServiceAdminRequest {
+    /**
+     * Admin user ID
+     */
+    adminUID: string;
+
+    /**
+     * Service ID
+     */
+    serviceId: string;
+}
+
 export interface GlobalRolePermission {
     /**
      * Permission identifier
@@ -773,6 +921,87 @@ export interface VerifyCredentialResponse {
      * Individual checks
      */
     checks: any;
+}
+
+export interface CredentialTypeListResponse {
+    credentialTypes: CredentialTypeItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateCredentialTypeRequest {
+    /**
+     * Credential type name
+     */
+    name: string;
+
+    /**
+     * Description
+     */
+    description?: string;
+
+    /**
+     * Associated service ID
+     */
+    serviceId?: string;
+}
+
+export interface UpdateCredentialTypeRequest {
+    /**
+     * Credential type name
+     */
+    name?: string;
+
+    /**
+     * Description
+     */
+    description?: string;
+
+    /**
+     * Associated service ID
+     */
+    serviceId?: string;
+}
+
+export interface CitizenServiceItem {
+    /**
+     * Record ID
+     */
+    id: string;
+
+    /**
+     * Citizen ID
+     */
+    citizenId: string;
+
+    /**
+     * Service ID
+     */
+    serviceId: string;
+}
+
+export interface CitizenServiceListResponse {
+    citizenServices: CitizenServiceItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateCitizenServiceRequest {
+    /**
+     * Citizen ID
+     */
+    citizenId: string;
+
+    /**
+     * Service ID
+     */
+    serviceId: string;
 }
 
 export interface ExplorerSearchInformationItem {
