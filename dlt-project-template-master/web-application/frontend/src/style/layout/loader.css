@@ -3,10 +3,12 @@
 @keyframes component-loader-init {
     0% {
         visibility: hidden;
+        opacity: 0;
     }
 
     100% {
         visibility: visible;
+        opacity: 1;
     }
 }
 
@@ -83,8 +85,9 @@
     margin: 8px;
     border: 8px solid var(--loader-color);
     border-radius: 50%;
-    animation: loading-overlay-loader 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    animation: loader-rotate 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
     border-color: var(--loader-color) transparent transparent transparent;
+    will-change: transform;
 }
 
 @media (max-width: 400px) {
@@ -114,7 +117,7 @@
     animation-delay: -0.15s;
 }
 
-@keyframes loading-overlay-loader {
+@keyframes loader-rotate {
     0% {
         transform: rotate(0deg);
     }
@@ -123,3 +126,34 @@
         transform: rotate(360deg);
     }
 }
+
+/* Global Spinner Definitions (Polyfills/Fixes) */
+
+/* Bootstrap-style spinner-border */
+.spinner-border {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    vertical-align: text-bottom;
+    border: 0.25em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: loader-rotate 0.75s linear infinite;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.2em;
+}
+
+/* FontAwesome fa-spin fix */
+.fa-spin {
+    animation: loader-rotate 2s infinite linear !important;
+}
+
+/* Generic spinner class */
+.spinner {
+    animation: loader-rotate 0.8s infinite linear !important;
+}
+

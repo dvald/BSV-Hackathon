@@ -9,6 +9,8 @@ import { VerifiableCredentialsService } from "../../services/verifiable-credenti
 import { Monitor } from "../../monitor";
 import { PrivateKey } from "@bsv/sdk";
 import { UsersService } from "../../services/users-service";
+import { CredentialRequest } from "../../models/credential-request";
+import { BsvConfig } from "../../config/config-bsv";
 
 /**
  * Verifiable Credentials API Controller
@@ -39,12 +41,16 @@ export class CredentialsController extends Controller {
 
         // Helper: Verify credential
         application.post(prefix + "/credentials/verify", ensureObjectBody(this.verifyCredential.bind(this)));
+
+        // Helper: Get count of approved requests for authenticated user
+        application.get(prefix + "/credentials/approved/count", noCache(this.getApprovedCount.bind(this)));
     }
 
     /**
      * @typedef RequestCredentialRequest
      * @property {string} credentialId.required - Credential ID
-     * @property {object} requestData.required - Data for this credential type (dynamic)
+     * @property {string} serviceId.required - Service ID
+     * @property {string} documentId.required - Document ID
      */
 
     /**
@@ -56,8 +62,8 @@ export class CredentialsController extends Controller {
     /**
      * Request a Verifiable Credential
      * User submits a request for a specific type of credential
-     * @route POST /credentials/request
      * Binding: RequestCredential
+     * @route POST /credentials/request
      * @group credentials
      * @param {RequestCredentialRequest.model} request.body.required - Request parameters
      * @returns {RequestCredentialResponse.model} 200 - Request created successfully
@@ -65,6 +71,7 @@ export class CredentialsController extends Controller {
      * @returns {Error} 500 - Internal server error
      */
     public async requestCredential(request: Express.Request, response: Express.Response): Promise<void> {
+        console.log("requestCredential");
         const auth = await UsersService.getInstance().auth(request);
         if (!auth.isRegisteredUser()) {
             sendUnauthorized(request, response);
@@ -78,12 +85,16 @@ export class CredentialsController extends Controller {
                 return sendApiError(request, response, BAD_REQUEST, "MISSING_USER_DID", "User DID is required");
             }
 
-            if (!body.credentialType) {
-                return sendApiError(request, response, BAD_REQUEST, "MISSING_CREDENTIAL_TYPE", "Credential type is required");
+            if (!body.serviceId) {
+                return sendApiError(request, response, BAD_REQUEST, "MISSING_SERVICE_ID", "Service ID is required");
             }
 
-            if (!body.requestData || typeof body.requestData !== 'object') {
-                return sendApiError(request, response, BAD_REQUEST, "INVALID_REQUEST_DATA", "Request data must be an object");
+            if (!body.documentId) {
+                return sendApiError(request, response, BAD_REQUEST, "MISSING_DOCUMENT_ID", "Document ID is required");
+            }
+
+            if (!body.credentialId) {
+                return sendApiError(request, response, BAD_REQUEST, "MISSING_CREDENTIAL_ID", "Credential ID is required");
             }
 
             // Validate DID format
@@ -91,14 +102,44 @@ export class CredentialsController extends Controller {
                 return sendApiError(request, response, BAD_REQUEST, "INVALID_DID_FORMAT", "DID must start with 'did:bsv:'");
             }
 
-            // Create credential request
+            // Use credentialId as credentialType (the frontend sends the credential type as credentialId)
+            const credentialType = body.credentialId;
+            const requestData = body.requestData || {};
+
+            // Create credential request using the service
             const result = await VerifiableCredentialsService.getInstance().requestCredential(
-                body.userDID,
-                body.credentialType,
-                body.requestData
+                auth.user.did,
+                credentialType,
+                requestData
             );
 
-            Monitor.info(`Credential request created: ${result.requestId} for ${auth.user.did}`);
+            // Update the created request with additional fields (credentialId, documentId, serviceId)
+            const credentialRequest = await CredentialRequest.findById(result.requestId);
+            if (credentialRequest) {
+                credentialRequest.credentialId = body.credentialId;
+                credentialRequest.documentId = body.documentId;
+                credentialRequest.serviceId = body.serviceId;
+                await credentialRequest.save();
+            } else {
+                // If for some reason the request wasn't found, create a new one with all fields
+                const newRequest = new CredentialRequest({
+                    id: result.requestId,
+                    userDID: auth.user.did,
+                    credentialType: credentialType,
+                    requestData: JSON.stringify({a: "a", b: "b"}),
+                    status: result.status,
+                    requestedAt: Date.now(),
+                    reviewedAt: 0,
+                    reviewedBy: "",
+                    rejectionReason: "",
+                    credentialId: body.credentialId,
+                    documentId: body.documentId,
+                    serviceId: body.serviceId
+                });
+                await newRequest.insert();
+            }
+
+            Monitor.info(`Credential request created: ${result.requestId} for ${auth.user.did} with service ${body.serviceId}`);
 
             return sendApiResult(request, response, {
                 requestId: result.requestId,
@@ -112,29 +153,24 @@ export class CredentialsController extends Controller {
 
     /**
      * @typedef GetPendingRequestsResponse
-     * @property {Array.<object>} requests.required - Array of pending requests
+     * @property {Array.<CredentialRequest>} requests.required - Array of pending requests
      * @property {number} count.required - Total count
      */
 
     /**
      * Get Pending Credential Requests
-     * For issuers to review pending requests
+     * Binding: GetPendingRequests
      * @route GET /credentials/requests/pending
      * @group credentials
-     * @param {string} credentialType.query - Optional filter by credential type
      * @returns {GetPendingRequestsResponse.model} 200 - Pending requests
      * @returns {Error} 500 - Internal server error
      */
     public async getPendingRequests(request: Express.Request, response: Express.Response): Promise<void> {
         try {
-            const credentialType = request.query.credentialType as string;
-
-            const requests = await VerifiableCredentialsService.getInstance().getPendingRequests(credentialType);
-
-            Monitor.info(`Retrieved ${requests.length} pending credential requests`);
+            const requests = await CredentialRequest.findPending();
 
             return sendApiResult(request, response, {
-                requests,
+                requests: requests.map(r => r.toObject()),
                 count: requests.length
             });
         } catch (error) {
@@ -146,20 +182,18 @@ export class CredentialsController extends Controller {
     /**
      * @typedef ApproveRequestRequest
      * @property {string} requestId.required - The request ID to approve
-     * @property {string} issuerPrivateKey.required - Issuer's private key in hex format
-     * @property {string} expirationDate - Optional expiration date (ISO 8601)
      */
 
     /**
      * @typedef ApproveRequestResponse
-     * @property {string} credentialId.required - The issued credential ID
-     * @property {string} txid.required - Blockchain anchor transaction ID
+     * @property {string} credentialRequestId.required - The issued credential ID
      * @property {object} credential.required - The complete credential
      */
 
     /**
      * Approve Credential Request
      * Issuer approves a request and issues the credential to blockchain
+     * Binding: ApproveRequest
      * @route POST /credentials/approve
      * @group credentials
      * @param {ApproveRequestRequest.model} request.body.required - Approval parameters
@@ -175,15 +209,12 @@ export class CredentialsController extends Controller {
             if (!body.requestId) {
                 return sendApiError(request, response, BAD_REQUEST, "MISSING_REQUEST_ID", "Request ID is required");
             }
-
-            if (!body.issuerPrivateKey) {
-                return sendApiError(request, response, BAD_REQUEST, "MISSING_ISSUER_KEY", "Issuer private key is required");
-            }
+            const issuerPrivateKeyString = BsvConfig.getInstance().privateKey;
 
             // Parse issuer private key
             let issuerPrivateKey: PrivateKey;
             try {
-                issuerPrivateKey = PrivateKey.fromHex(body.issuerPrivateKey);
+                issuerPrivateKey = PrivateKey.fromHex(issuerPrivateKeyString);
             } catch (error) {
                 return sendApiError(request, response, BAD_REQUEST, "INVALID_PRIVATE_KEY", "Invalid private key format");
             }
@@ -194,6 +225,15 @@ export class CredentialsController extends Controller {
                 issuerPrivateKey,
                 body.expirationDate
             );
+
+            const credentialRequest = await CredentialRequest.findById(body.requestId);
+            if (!credentialRequest) {
+                return sendApiError(request, response, BAD_REQUEST, "REQUEST_NOT_FOUND", "Request not found");
+            }
+            credentialRequest.status = "APPROVED";
+            credentialRequest.reviewedAt = Date.now();
+            credentialRequest.credentialId = result.credentialId;
+            await credentialRequest.save();
 
             Monitor.info(`Request approved: ${body.requestId}, Credential: ${result.credentialId}`);
 
@@ -211,7 +251,6 @@ export class CredentialsController extends Controller {
     /**
      * @typedef RejectRequestRequest
      * @property {string} requestId.required - The request ID to reject
-     * @property {string} issuerDID.required - Issuer's DID
      * @property {string} reason.required - Reason for rejection
      */
 
@@ -223,6 +262,7 @@ export class CredentialsController extends Controller {
     /**
      * Reject Credential Request
      * Issuer rejects a credential request
+     * Binding: RejectRequest
      * @route POST /credentials/reject
      * @group credentials
      * @param {RejectRequestRequest.model} request.body.required - Rejection parameters
@@ -231,6 +271,11 @@ export class CredentialsController extends Controller {
      * @returns {Error} 500 - Internal server error
      */
     public async rejectRequest(request: Express.Request, response: Express.Response): Promise<void> {
+        const auth = await UsersService.getInstance().auth(request);
+        if (!auth.isRegisteredUser()) {
+            sendUnauthorized(request, response);
+            return;
+        }
         try {
             const body = request.body;
 
@@ -239,9 +284,7 @@ export class CredentialsController extends Controller {
                 return sendApiError(request, response, BAD_REQUEST, "MISSING_REQUEST_ID", "Request ID is required");
             }
 
-            if (!body.issuerDID) {
-                return sendApiError(request, response, BAD_REQUEST, "MISSING_ISSUER_DID", "Issuer DID is required");
-            }
+            const issuerDID = auth.user.did;
 
             if (!body.reason) {
                 return sendApiError(request, response, BAD_REQUEST, "MISSING_REASON", "Rejection reason is required");
@@ -250,7 +293,7 @@ export class CredentialsController extends Controller {
             // Reject request
             const result = await VerifiableCredentialsService.getInstance().rejectRequest(
                 body.requestId,
-                body.issuerDID,
+                issuerDID,
                 body.reason
             );
 
@@ -390,6 +433,47 @@ export class CredentialsController extends Controller {
         } catch (error) {
             Monitor.error(`Error verifying credential: ${error.message}`);
             return sendApiError(request, response, INTERNAL_SERVER_ERROR, "VERIFICATION_FAILED", error.message);
+        }
+    }
+
+    /**
+     * @typedef GetApprovedCountResponse
+     * @property {number} count.required - Number of approved credential requests
+     */
+
+    /**
+     * Get Count of Approved Credential Requests
+     * Get the number of approved credential requests for the authenticated user
+     * Binding: GetApprovedCount
+     * @route GET /credentials/approved/count
+     * @group credentials
+     * @returns {GetApprovedCountResponse.model} 200 - Count of approved requests
+     * @returns {Error} 401 - Unauthorized
+     * @returns {Error} 500 - Internal server error
+     */
+    public async getApprovedCount(request: Express.Request, response: Express.Response): Promise<void> {
+        const auth = await UsersService.getInstance().auth(request);
+        if (!auth.isRegisteredUser()) {
+            sendUnauthorized(request, response);
+            return;
+        }
+        try {
+            if (!auth.user.did) {
+                return sendApiResult(request, response, {
+                    count: 0
+                });
+            }
+
+            const count = await CredentialRequest.countApprovedByUserDID(auth.user.did);
+
+            Monitor.info(`Retrieved approved count for ${auth.user.did}: ${count}`);
+
+            return sendApiResult(request, response, {
+                count: count
+            });
+        } catch (error) {
+            Monitor.error(`Error getting approved count: ${error.message}`);
+            return sendApiError(request, response, INTERNAL_SERVER_ERROR, "GET_APPROVED_COUNT_FAILED", error.message);
         }
     }
 }

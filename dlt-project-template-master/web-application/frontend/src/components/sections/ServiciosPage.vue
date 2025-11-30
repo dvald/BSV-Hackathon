@@ -16,18 +16,6 @@
                 {{ isAdmin ? $t("Departments and services that issue or verify credentials") : $t("Explore municipal services and request credentials") }}
             </p>
             </div>
-            <!-- Buy Credits Button (always visible) -->
-            <div class="header-actions">
-                <button 
-                    @click="showBuyCreditsModal = true"
-                    class="a11y-btn a11y-btn-accent a11y-btn-large buy-credits-btn"
-                    :aria-label="$t('Buy service credits')"
-                >
-                    <i class="mdi mdi-ticket-confirmation" aria-hidden="true"></i>
-                    {{ $t("Buy Credits") }}
-                    <span class="credits-badge" v-if="serviceTokenBalance > 0">{{ serviceTokenBalance }}</span>
-                </button>
-            </div>
             <div class="header-actions" v-if="isAdmin">
                 <button 
                     @click="showNewServiceModal = true"
@@ -86,79 +74,72 @@
                 </div>
             </section>
 
-            <!-- Lista de servicios -->
+            <!-- Lista de categorías de servicios -->
             <section aria-labelledby="services-heading" class="a11y-mt-lg">
                 <h2 id="services-heading" class="a11y-heading-2">
-                    {{ $t("Services") }} ({{ filteredServices.length }})
+                    {{ $t("Municipal Services") }} ({{ filteredCategories.length }})
                 </h2>
 
                 <div class="services-grid a11y-grid a11y-grid-2">
-                    <!-- Servicio de Movilidad - Parking Familia Numerosa -->
                     <article 
-                        v-for="service in filteredServices" 
-                        :key="service.id"
+                        v-for="category in filteredCategories" 
+                        :key="category.id"
                         class="service-card a11y-card"
-                        :class="{ 'service-inactive': service.status !== 'active' }"
+                        :class="{ 'service-inactive': category.status !== 'active' }"
                     >
                         <header class="service-header">
-                            <i :class="'mdi ' + service.icon + ' service-icon'" aria-hidden="true"></i>
+                            <i :class="'mdi ' + category.icon + ' category-icon'" aria-hidden="true"></i>
                             <div class="service-title-group">
-                                <h3 class="service-title">{{ $t(service.name) }}</h3>
+                                <h3 class="service-title">{{ $t(category.name) }}</h3>
                                 <span 
                                     class="a11y-badge" 
-                                    :class="getStatusBadgeClass(service.status)"
+                                    :class="getStatusBadgeClass(category.status)"
                                 >
-                                    {{ $t(getStatusLabel(service.status)) }}
+                                    {{ $t(getStatusLabel(category.status)) }}
                                 </span>
                             </div>
                         </header>
 
                         <div class="service-body">
                             <p class="service-description a11y-text">
-                                {{ $t(service.description) }}
+                                {{ $t(category.description) }}
                             </p>
 
-                            <!-- Estadísticas del servicio - Solo admin -->
-                            <div v-if="isAdmin" class="service-metrics">
+                            <!-- Estadísticas - Solo admin -->
+                            <div v-if="isAdmin && category.metrics" class="service-metrics">
                                 <div class="metric">
-                                    <span class="metric-value">{{ formatNumber(service.metrics.users) }}</span>
+                                    <span class="metric-value">{{ formatNumber(category.metrics.users) }}</span>
                                     <span class="metric-label">{{ $t("Citizens") }}</span>
                                 </div>
                                 <div class="metric">
-                                    <span class="metric-value">{{ formatNumber(service.metrics.credentials) }}</span>
+                                    <span class="metric-value">{{ formatNumber(category.metrics.credentials) }}</span>
                                     <span class="metric-label">{{ $t("Credentials") }}</span>
                                 </div>
                                 <div class="metric">
-                                    <span class="metric-value">{{ formatNumber(service.metrics.tokensUsed) }}</span>
+                                    <span class="metric-value">{{ formatNumber(category.metrics.tokensUsed) }}</span>
                                     <span class="metric-label">{{ $t("Tokens used") }}</span>
                                 </div>
                             </div>
 
-                            <!-- Informacion para ciudadano -->
-                            <div v-if="!isAdmin" class="service-citizen-info">
-                                <div class="citizen-info-item">
-                                    <i class="mdi mdi-clock-outline" aria-hidden="true"></i>
-                                    <span>{{ $t("Processing time") }}: {{ service.processingTime || '24-48h' }}</span>
-                                </div>
-                                <div class="citizen-info-item">
-                                    <i class="mdi mdi-currency-eur" aria-hidden="true"></i>
-                                    <span>{{ service.price === 0 ? $t("Free") : service.price + ' EUR' }}</span>
-                                </div>
+                            <!-- Info para ciudadano: número de servicios -->
+                            <div v-if="!isAdmin" class="category-services-count">
+                                <i class="mdi mdi-view-grid" aria-hidden="true"></i>
+                                <span>{{ category.servicesCount }} {{ $t("services available") }}</span>
                             </div>
 
-                            <!-- Administrador del servicio - Solo admin -->
-                            <div v-if="isAdmin" class="service-admin">
-                                <span class="admin-label">{{ $t("Service administrator") }}:</span>
-                                <span class="admin-name">{{ service.admin.name }}</span>
-                                <span class="admin-email a11y-text-secondary">{{ service.admin.email }}</span>
+                            <!-- Administrador - Solo admin -->
+                            <div v-if="isAdmin && category.admin" class="service-admin">
+                                <span class="admin-label">{{ $t("Department head") }}:</span>
+                                <span class="admin-name">{{ category.admin.name }}</span>
+                                <span class="admin-email a11y-text-secondary">{{ category.admin.email }}</span>
                             </div>
 
-                            <!-- Tipos de credenciales que acepta -->
+                            <!-- Credenciales requeridas -->
                             <div class="service-credentials">
-                                <span class="credentials-label">{{ isAdmin ? $t("Required credentials") : $t("You will need") }}:</span>
+                                <span class="credentials-label">{{ $t("Required credentials") }}:</span>
                                 <ul class="credentials-list" role="list">
                                     <li 
-                                        v-for="cred in service.requiredCredentials" 
+                                        v-for="cred in category.requiredCredentials" 
                                         :key="cred"
                                         class="credential-tag"
                                     >
@@ -166,61 +147,44 @@
                                     </li>
                                 </ul>
                             </div>
-
-                            <!-- Token asociado - Solo admin -->
-                            <div v-if="isAdmin" class="service-token">
-                                <span class="token-label">{{ $t("Associated token") }}:</span>
-                                <span class="token-name">
-                                    <i class="mdi mdi-hand-coin" aria-hidden="true"></i>
-                                    {{ service.token.name }}
-                                </span>
-                                <span class="token-type a11y-text-secondary">
-                                    ({{ $t(service.token.type === 'uses' ? 'Uses' : 'Points') }})
-                                </span>
-                            </div>
-
-                            <!-- Beneficio para ciudadano -->
-                            <div v-if="!isAdmin && service.citizenBenefit" class="service-benefit">
-                                <i class="mdi mdi-gift-outline" aria-hidden="true"></i>
-                                <span>{{ $t(service.citizenBenefit) }}</span>
-                            </div>
                         </div>
+
                         <footer class="service-footer">
-                            <!-- Admin: Configurar servicio -->
+                            <!-- Admin: Configurar categoría -->
                             <button 
-                            v-if="isAdmin"
-                            @click="editService(service)"
-                            class="a11y-btn a11y-btn-primary"
+                                v-if="isAdmin"
+                                @click="editService(category)"
+                                class="a11y-btn a11y-btn-primary"
                             >
                                 {{ $t("Configure") }}
                             </button>
-                            <!-- Ciudadano: Solicitar/Inscribirse -->
+                            <!-- Ciudadano: Solicitar credencial, Obtener QR y Acceder al portal -->
                             <template v-if="!isAdmin">
-                                <!-- Special button for Family Parking - Loyalty System -->
                                 <button 
-                                    v-if="service.id === 'srv-mobility-familia'"
-                                    @click="openPaymentModal(service)"
-                                    class="a11y-btn a11y-btn-primary family-reserve-btn"
-                                >
-                                    <i class="mdi mdi-car-brake-parking" aria-hidden="true"></i>
-                                    {{ $t("Reserve Space") }} (50 Pts)
-                                </button>
-                                <!-- Regular request button for other services -->
-                                <button 
-                                    v-else-if="!isEnrolled(service.id)"
-                                    @click="requestService(service)"
+                                    @click="requestService(category)"
                                     class="a11y-btn a11y-btn-primary"
                                 >
                                     <i class="mdi mdi-plus" aria-hidden="true"></i>
                                     {{ $t("Request") }}
                                 </button>
                                 <button 
-                                    v-else
+                                    @click="openCredentialQR(category)"
                                     class="a11y-btn a11y-btn-secondary"
-                                    disabled
+                                    :disabled="category.disabled"
+                                    :title="hasApprovedCredentials ? $t('Get your credential QR code') : $t('No approved credentials available')"
                                 >
-                                    <i class="mdi mdi-check" aria-hidden="true"></i>
-                                    {{ $t("Enrolled") }}
+                                    <i class="mdi mdi-qrcode" aria-hidden="true"></i>
+                                    {{ $t("My Credential") }}
+                                </button>
+                                <button 
+                                    @click="accessService(category)"
+                                    class="a11y-btn"
+                                    :class="isCredentialVerified(category.id) ? 'a11y-btn-success' : 'a11y-btn-secondary'"
+                                    :disabled="!isCredentialVerified(category.id)"
+                                    :title="!isCredentialVerified(category.id) ? $t('Verify your credential to access services') : $t('Access services portal')"
+                                >
+                                    <i class="mdi" :class="isCredentialVerified(category.id) ? 'mdi-arrow-right-circle' : 'mdi-lock'" aria-hidden="true"></i>
+                                    {{ $t("Access") }}
                                 </button>
                             </template>
                         </footer>
@@ -229,14 +193,14 @@
 
                 <!-- Estado vacío -->
                 <div 
-                    v-if="filteredServices.length === 0" 
+                    v-if="filteredCategories.length === 0" 
                     class="empty-state a11y-card"
                     role="status"
                 >
                     <i class="mdi mdi-magnify empty-icon" aria-hidden="true"></i>
                     <p class="empty-title">{{ $t("No services found") }}</p>
                     <p class="empty-desc a11y-text-secondary">
-                        {{ $t("Try adjusting your filters or create a new service") }}
+                        {{ $t("Try adjusting your filters") }}
                     </p>
                 </div>
             </section>
@@ -309,7 +273,7 @@
                                 v-model="newService.name"
                                 class="a11y-input"
                                 required
-                                :placeholder="$t('e.g., Family Parking')"
+                                :placeholder="$t('e.g., PMR Parking')"
                             />
                         </div>
 
@@ -445,7 +409,7 @@
             aria-modal="true"
             aria-labelledby="request-service-title"
         >
-            <div class="modal-content a11y-card request-service-modal">
+            <div class="modal-content a11y-card">
                 <header class="modal-header">
                     <h2 id="request-service-title" class="a11y-heading-2">
                         {{ $t("Request Service") }}
@@ -459,28 +423,25 @@
                     </button>
                 </header>
                 
-                <div class="modal-body">
+                <form @submit.prevent="submitServiceRequest" class="modal-body">
                     <!-- Información del servicio seleccionado -->
-                    <div class="selected-service-info">
-                        <div class="service-info-header">
-                            <i :class="'mdi ' + selectedService.icon + ' service-info-icon'" aria-hidden="true"></i>
-                            <div>
-                                <h3 class="service-info-title">{{ $t(selectedService.name) }}</h3>
-                                <p class="service-info-desc a11y-text-secondary">
-                                    {{ $t(selectedService.description) }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <fieldset class="form-fieldset" :disabled="uploading">
+                        <legend class="form-legend">
+                            {{ $t(selectedService.name) }}
+                        </legend>
+                        <p class="fieldset-description a11y-text-secondary">
+                            {{ $t(selectedService.description) }}
+                        </p>
+                    </fieldset>
 
-                    <!-- Formulario de solicitud -->
-                    <form @submit.prevent="submitServiceRequest" class="request-form">
-                        <!-- Tipo de credencial -->
+                    <!-- Tipo de credencial -->
+                    <fieldset class="form-fieldset" :disabled="uploading">
+                        <legend class="form-legend">
+                            {{ $t("Credential type") }}
+                        </legend>
+                        
                         <div class="a11y-form-group">
-                            <label for="request-credential-type" class="a11y-label a11y-label-required">
-                                {{ $t("Credential type") }}
-                            </label>
-                            <div class="credential-types-grid">
+                            <div class="credential-types-list">
                                 <label 
                                     v-for="credType in credentialTypes" 
                                     :key="credType.id"
@@ -491,25 +452,28 @@
                                         type="radio"
                                         :value="credType.id"
                                         v-model="serviceRequest.credentialType"
-                                        class="a11y-visually-hidden"
+                                        class="a11y-radio"
                                         name="request-credential-type"
+                                        required
                                     />
-                                    <i :class="'mdi ' + credType.icon + ' option-icon'" aria-hidden="true"></i>
-                                    <div class="option-content">
-                                        <span class="option-title">{{ $t(credType.name) }}</span>
-                                        <span class="option-desc">{{ $t(credType.description) }}</span>
-                                    </div>
-                                    <span v-if="serviceRequest.credentialType === credType.id" class="option-check">
-                                        <i class="mdi mdi-check-circle"></i>
+                                    <i :class="'mdi ' + credType.icon" aria-hidden="true"></i>
+                                    <span class="option-label">
+                                        <strong>{{ $t(credType.name) }}</strong>
+                                        <span class="a11y-text-secondary">{{ $t(credType.description) }}</span>
                                     </span>
                                 </label>
                             </div>
                         </div>
+                    </fieldset>
 
-                        <!-- Campos dinámicos según tipo de credencial -->
-                        <div v-if="serviceRequest.credentialType" class="credential-data-section">
-                            <!-- Campos para Credencial de Discapacidad -->
-                            <template v-if="serviceRequest.credentialType === 'disability'">
+                    <!-- Campos dinámicos según tipo de credencial -->
+                    <fieldset v-if="serviceRequest.credentialType" class="form-fieldset" :disabled="uploading">
+                        <legend class="form-legend">
+                            {{ $t("Credential data") }}
+                        </legend>
+                        
+                        <!-- Campos para Credencial de Discapacidad -->
+                        <template v-if="serviceRequest.credentialType === 'disability'">
                                 <div class="a11y-form-group">
                                     <label for="request-disability-grade" class="a11y-label a11y-label-required">
                                         {{ $t("Disability grade") }}
@@ -603,9 +567,15 @@
                                         <option value="oeste">Oeste</option>
                                     </select>
                                 </div>
-                            </template>
-                        </div>
+                        </template>
+                    </fieldset>
 
+                    <!-- Documento de identificación -->
+                    <fieldset class="form-fieldset" :disabled="uploading">
+                        <legend class="form-legend">
+                            {{ $t("Documentation") }}
+                        </legend>
+                        
                         <div class="a11y-form-group">
                             <label for="request-document" class="a11y-label a11y-label-required">
                                 {{ $t("Upload Identification document") }}
@@ -633,41 +603,55 @@
                                     </p>
                                 </div>
                             </div>
+                            <td>
+                                <a v-if="txid" :href="'https://whatsonchain.com/tx/' + txid" target="_blank" class="tx-link" :title="txid">
+                                        <i class="fas fa-cube"></i> {{ txid.substring(0, 8) }}...
+                                    </a>
+                                    <span v-else class="no-tx">-</span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" @click="copyToClipboard(file.hash)" :title="$t('Copy Hash')">
+                                        <i class="fas fa-fingerprint"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" @click="openFile(file.url)" :title="$t('Open')">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </button>
+                                </td>
                         </div>
+                    </fieldset>
 
-                        <!-- Mensaje de error -->
-                        <div v-if="uploadError" class="upload-message upload-error" role="alert">
-                            <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
-                            {{ uploadError }}
-                        </div>
+                    <!-- Mensaje de error -->
+                    <div v-if="uploadError" class="error-banner" role="alert">
+                        <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
+                        {{ uploadError }}
+                    </div>
 
-                        <!-- Mensaje de éxito -->
-                        <div v-if="uploadSuccess" class="upload-message upload-success" role="status">
-                            <i class="mdi mdi-check-circle" aria-hidden="true"></i>
-                            {{ $t("Document uploaded successfully!") }}
-                        </div>
+                    <!-- Mensaje de éxito -->
+                    <div v-if="uploadSuccess" class="upload-message upload-success" role="status">
+                        <i class="mdi mdi-check-circle" aria-hidden="true"></i>
+                        {{ $t("Document uploaded successfully!") }}
+                    </div>
 
-                        <footer class="modal-footer">
-                            <button 
-                                type="button"
-                                @click="closeRequestModal"
-                                class="a11y-btn a11y-btn-secondary"
-                                :disabled="uploading"
-                            >
-                                {{ $t("Cancel") }}
-                            </button>
-                            <button 
-                                type="submit"
-                                class="a11y-btn a11y-btn-primary"
-                                :disabled="!serviceRequest.credentialType || !serviceRequest.document || uploading || uploadSuccess"
-                            >
-                                <i v-if="uploading" class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
-                                <i v-else class="mdi mdi-send" aria-hidden="true"></i>
-                                {{ uploading ? $t("Uploading...") : $t("Submit request") }}
-                            </button>
-                        </footer>
-                    </form>
-                </div>
+                    <footer class="modal-footer">
+                        <button 
+                            type="button"
+                            @click="closeRequestModal"
+                            class="a11y-btn a11y-btn-secondary"
+                            :disabled="uploading"
+                        >
+                            {{ $t("Cancel") }}
+                        </button>
+                        <button 
+                            type="submit"
+                            class="a11y-btn a11y-btn-primary"
+                            :disabled="!serviceRequest.credentialType || !serviceRequest.document || uploading || uploadSuccess"
+                        >
+                            <i v-if="uploading" class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                            <i v-else class="mdi mdi-send" aria-hidden="true"></i>
+                            {{ uploading ? $t("Uploading...") : $t("Submit request") }}
+                        </button>
+                    </footer>
+                </form>
             </div>
         </div>
 
@@ -757,24 +741,94 @@
             </div>
         </div>
 
-        <!-- Service Payment Modal (Loyalty System) -->
-        <ServicePaymentModal
-            v-model:display="showPaymentModal"
-            :service-name="selectedPaymentService?.name || 'Parking Familia Numerosa'"
-            :service-id="'parking-familia'"
-            :cost="50"
-            :reward="10"
-            :current-balance="userServiceTokenBalance"
-            :user-id="identityKey || ''"
-            @payment-success="onPaymentSuccess"
-        />
+        <!-- Modal para mostrar QR de credencial -->
+        <div 
+            v-if="showCredentialQRModal && selectedCategoryForQR" 
+            class="modal-overlay"
+            @click.self="closeCredentialQRModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="credential-qr-title"
+        >
+            <div class="modal-content a11y-card qr-modal">
+                <header class="modal-header">
+                    <h2 id="credential-qr-title" class="a11y-heading-2">
+                        {{ $t("My Credential") }}
+                    </h2>
+                    <button 
+                        @click="closeCredentialQRModal"
+                        class="a11y-btn a11y-btn-icon"
+                        :aria-label="$t('Close')"
+                    >
+                        ✕
+                    </button>
+                </header>
+                
+                <div class="modal-body qr-modal-body">
+                    <!-- Información del servicio -->
+                    <div class="qr-service-info">
+                        <i :class="'mdi ' + selectedCategoryForQR.icon" aria-hidden="true"></i>
+                        <div>
+                            <h3>{{ $t(selectedCategoryForQR.name) }}</h3>
+                            <p class="a11y-text-secondary">{{ $t(selectedCategoryForQR.description) }}</p>
+                        </div>
+                    </div>
 
-        <!-- Buy Credits Modal -->
-        <BuyCreditsModal
-            v-model:display="showBuyCreditsModal"
-            :current-balance="serviceTokenBalance"
-            @purchase-success="onCreditsPurchased"
-        />
+                    <!-- QR Code -->
+                    <div class="qr-code-container">
+                        <div v-if="generatingQR" class="qr-loading">
+                            <i class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                            <p>{{ $t("Generating credential...") }}</p>
+                        </div>
+                        <div v-else-if="credentialQRData" class="qr-code-wrapper">
+                            <img 
+                                :src="credentialQRData" 
+                                :alt="$t('Credential QR Code')" 
+                                class="qr-code-image"
+                            />
+                            <p class="qr-instruction">{{ $t("Show this QR code to verify your credential") }}</p>
+                        </div>
+                        <div v-else class="qr-error">
+                            <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
+                            <p>{{ $t("Could not generate credential") }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Información de la credencial -->
+                    <div class="credential-details">
+                        <div class="credential-detail-item">
+                            <span class="detail-label">{{ $t("Credential ID") }}:</span>
+                            <span class="detail-value">{{ credentialId || '---' }}</span>
+                        </div>
+                        <div class="credential-detail-item">
+                            <span class="detail-label">{{ $t("Valid until") }}:</span>
+                            <span class="detail-value">{{ credentialExpiry || '---' }}</span>
+                        </div>
+                        <div class="credential-detail-item">
+                            <span class="detail-label">{{ $t("Status") }}:</span>
+                            <span class="a11y-badge a11y-badge-success">{{ $t("Active") }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="modal-footer">
+                    <button 
+                        @click="downloadCredentialQR"
+                        class="a11y-btn a11y-btn-secondary"
+                        :disabled="!credentialQRData"
+                    >
+                        <i class="mdi mdi-download" aria-hidden="true"></i>
+                        {{ $t("Download QR") }}
+                    </button>
+                    <button 
+                        @click="closeCredentialQRModal"
+                        class="a11y-btn a11y-btn-primary"
+                    >
+                        {{ $t("Close") }}
+                    </button>
+                </footer>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -783,8 +837,10 @@ import { defineComponent, ref, computed, onMounted } from "vue";
 import { AuthController } from "@/control/auth";
 import { useWallet } from "@/composables/useWallet";
 import { getApiUrl } from "@/api/utils";
-import ServicePaymentModal from "@/components/modals/ServicePaymentModal.vue";
-import BuyCreditsModal from "@/components/modals/BuyCreditsModal.vue";
+import { Request } from "@asanrom/request-browser";
+import { ApiCredentials } from "@/api/api-group-credentials";
+import { ApiFiles } from "@/api/api-group-files";
+import { RequestCredentialRequest } from "@/api/definitions";
 
 // Configuración fija para tokens de servicios municipales
 const TOKEN_FIXED_CONFIG = {
@@ -796,6 +852,21 @@ interface ServiceMetrics {
     users: number;
     credentials: number;
     tokensUsed: number;
+}
+
+interface ServiceCategory {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    category: string;
+    status: "active" | "inactive" | "maintenance";
+    servicesCount: number;
+    disabled: boolean;
+    requiredCredentials: string[];
+    // Solo para admin
+    metrics?: ServiceMetrics;
+    admin?: ServiceAdmin;
 }
 
 interface ServiceAdmin {
@@ -838,32 +909,21 @@ interface NewServiceForm {
 }
 
 export default defineComponent({
-    components: {
-        ServicePaymentModal,
-        BuyCreditsModal
-    },
+    components: {},
     name: "ServiciosPage",
     setup() {
+        const txid = ref<string | null>(null);
         // Wallet composable
         const { wallet, identityKey, isConnected, isConnecting, connect } = useWallet();
-
-        // Payment Modal State (Loyalty System)
-        const showPaymentModal = ref(false);
-        const selectedPaymentService = ref<Service | null>(null);
-        const userServiceTokenBalance = ref(0);
         
         // Estado del formulario
         const showNewServiceModal = ref(false);
         const showNewCredentialTypeModal = ref(false);
         const showRequestServiceModal = ref(false);
-        const showBuyCreditsModal = ref(false);
         const selectedService = ref<Service | null>(null);
         const isCreating = ref(false);
         const currentStep = ref(0);
         const errorMessage = ref("");
-        
-        // Token balances for display
-        const serviceTokenBalance = ref(0);
         
         const creationSteps = [
             "Preparing",
@@ -914,6 +974,18 @@ export default defineComponent({
         const credentialTypeError = ref("");
         const credentialTypeSuccess = ref(false);
 
+        // Estado para modal de QR de credencial
+        const showCredentialQRModal = ref(false);
+        const selectedCategoryForQR = ref<ServiceCategory | null>(null);
+        const generatingQR = ref(false);
+        const credentialQRData = ref<string | null>(null);
+        const credentialId = ref<string | null>(null);
+        const credentialExpiry = ref<string | null>(null);
+        
+        // Estado para conteo de requests aprobados
+        const approvedCount = ref(0);
+        const loadingApprovedCount = ref(false);
+
         const newService = ref<NewServiceForm>({
             name: "",
             category: "",
@@ -935,41 +1007,39 @@ export default defineComponent({
             { id: "admin3", name: "Ana Martínez", email: "a.martinez@ciudad.es" },
         ]);
 
-        const services = ref<Service[]>([
+        // Categorías de servicios municipales
+        const serviceCategories = ref<ServiceCategory[]>([
             {
-                id: "srv-mobility-familia",
-                name: "Parking Familia Numerosa",
-                description: "Reserved parking for large families. Use your Family Card credential to access exclusive spaces with discounted rates.",
-                icon: "mdi-human-male-child",
+                id: "cat-mobility",
+                name: "Mobility",
+                description: "Services related to urban mobility, accessible parking, public transport and sustainable movement in the city.",
+                icon: "mdi-car",
                 category: "mobility",
                 status: "active",
+                servicesCount: 3,
+                requiredCredentials: ["Disability Credential", "Census Credential"],
+                disabled: false,
                 metrics: {
-                    users: 1256,
-                    credentials: 1489,
-                    tokensUsed: 8721,
+                    users: 1250,
+                    credentials: 1580,
+                    tokensUsed: 12500,
                 },
                 admin: {
                     id: "admin1",
                     name: "María García",
                     email: "m.garcia@ciudad.es",
                 },
-                requiredCredentials: ["Large Family Credential"],
-                token: {
-                    name: "parking_familia",
-                    symbol: "PARK",
-                    type: "uses",
-                },
-                processingTime: "Immediate",
-                price: 50,
-                citizenBenefit: "Discounted access to reserved family parking spaces throughout the city",
             },
             {
-                id: "srv-env-ecopuntos",
-                name: "EcoPoints Recycling",
-                description: "Rewards system for sustainable actions. Earn points for recycling at authorized points that can be redeemed for discounts.",
-                icon: "mdi-recycle",
+                id: "cat-environment",
+                name: "Environment",
+                description: "Sustainability initiatives, recycling programs, green spaces and environmental actions with rewards for citizens.",
+                icon: "mdi-leaf",
                 category: "environment",
                 status: "active",
+                servicesCount: 4,
+                requiredCredentials: ["Census Credential"],
+                disabled: true,
                 metrics: {
                     users: 8456,
                     credentials: 8456,
@@ -980,21 +1050,34 @@ export default defineComponent({
                     name: "Carlos López",
                     email: "c.lopez@ciudad.es",
                 },
-                requiredCredentials: ["Census Credential"],
-                token: {
-                    name: "eco_puntos",
-                    symbol: "ECO",
-                    type: "points",
-                },
-                processingTime: "24-48h",
-                price: 0,
-                citizenBenefit: "Earn points redeemable for discounts at local shops and services",
             },
         ]);
+
+        // Mantener services para compatibilidad con admin
+        const services = ref<Service[]>([]);
 
         // Computed
         const isAdmin = computed(() => {
             return AuthController.Role === "admin" || AuthController.Role === "root";
+        });
+
+        const filteredCategories = computed(() => {
+            return serviceCategories.value.filter((cat) => {
+                if (filters.value.status && cat.status !== filters.value.status) {
+                    return false;
+                }
+                if (filters.value.category && cat.category !== filters.value.category) {
+                    return false;
+                }
+                if (filters.value.search) {
+                    const search = filters.value.search.toLowerCase();
+                    return (
+                        cat.name.toLowerCase().includes(search) ||
+                        cat.description.toLowerCase().includes(search)
+                    );
+                }
+                return true;
+            });
         });
 
         const filteredServices = computed(() => {
@@ -1179,9 +1262,34 @@ export default defineComponent({
 
         // Funciones para ciudadanos
         const enrolledServices = ref<string[]>([]);
+        
+        // Servicios con credencial verificada (tras escanear QR)
+        const verifiedServices = ref<string[]>([]);
 
         const isEnrolled = (serviceId: string): boolean => {
             return enrolledServices.value.includes(serviceId);
+        };
+        
+        const isCredentialVerified = (serviceId: string): boolean => {
+            return verifiedServices.value.includes(serviceId);
+        };
+        
+        const getCategoryLabel = (category: string): string => {
+            const labels: Record<string, string> = {
+                mobility: "Mobility",
+                environment: "Environment",
+                social: "Social Services",
+                culture: "Culture",
+            };
+            return labels[category] || category;
+        };
+        
+        const accessService = (service: Service) => {
+            if (!isCredentialVerified(service.id)) {
+                return;
+            }
+            // TODO: Implementar acceso al servicio
+            console.log("Accessing service:", service.id);
         };
 
         const requestService = (service: Service) => {
@@ -1190,82 +1298,6 @@ export default defineComponent({
             selectedService.value = service;
             showRequestServiceModal.value = true;
         };
-
-        // ==========================================
-        // LOYALTY SYSTEM FUNCTIONS
-        // ==========================================
-
-        const loadUserBalance = async () => {
-            if (!identityKey.value) return;
-            
-            try {
-                const response = await fetch(getApiUrl('/api/v1/gamification/status'), {
-                    headers: {
-                        'x-bsv-identity-key': identityKey.value
-                    },
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    userServiceTokenBalance.value = data.balances?.serviceToken || 0;
-                    console.log('[ServiciosPage] User balance loaded:', userServiceTokenBalance.value);
-                }
-            } catch (error) {
-                console.error('[ServiciosPage] Error loading balance:', error);
-            }
-        };
-
-        const openPaymentModal = async (service: Service) => {
-            console.log('[ServiciosPage] Opening payment modal for:', service.id);
-            selectedPaymentService.value = service;
-            
-            // Load user balance before showing modal
-            await loadUserBalance();
-            
-            showPaymentModal.value = true;
-        };
-
-        const onPaymentSuccess = (data: any) => {
-            console.log('[ServiciosPage] Payment successful:', data);
-            // Update local balance
-            userServiceTokenBalance.value = data.balances?.serviceToken || 0;
-            serviceTokenBalance.value = data.balances?.serviceToken || 0;
-            // Could add notification or update UI here
-        };
-
-        const onCreditsPurchased = (data: any) => {
-            console.log('[ServiciosPage] Credits purchased:', data);
-            // Update local balance
-            serviceTokenBalance.value = data.balance || 0;
-            userServiceTokenBalance.value = data.balance || 0;
-        };
-
-        // Load service token balance
-        const loadServiceTokenBalance = async () => {
-            if (!identityKey.value) return;
-            try {
-                const response = await fetch(getApiUrl('/api/v1/gamification/status'), {
-                    headers: {
-                        'x-bsv-identity-key': identityKey.value
-                    }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    serviceTokenBalance.value = data.balances?.serviceToken || 0;
-                }
-            } catch (error) {
-                console.error('Error loading balance:', error);
-            }
-        };
-
-        // Load balance when identity changes
-        onMounted(() => {
-            if (identityKey.value) {
-                loadUserBalance();
-                loadServiceTokenBalance();
-            }
-        });
 
         const closeRequestModal = () => {
             showRequestServiceModal.value = false;
@@ -1283,8 +1315,94 @@ export default defineComponent({
         };
 
         const submitServiceRequest = () => {
-            // TODO: Implementar envío de solicitud
-            console.log("Submit service request:", serviceRequest.value);
+            if (!selectedService.value || !serviceRequest.value.credentialType || !serviceRequest.value.document) {
+                uploadError.value = "Por favor, complete todos los campos requeridos";
+                return;
+            }
+
+            uploading.value = true;
+            uploadError.value = "";
+            uploadSuccess.value = false;
+
+            // Paso 1: Subir el documento
+            Request.Do(ApiFiles.PostFilesUpload({
+                file: serviceRequest.value.document,
+                bucket: "documents",
+                isPublic: false,
+            }))
+                .onSuccess((uploadResult: any) => {
+                    const documentId = uploadResult.documentId;
+
+                    if (!documentId) {
+                        uploading.value = false;
+                        uploadError.value = "No se recibió el ID del documento";
+                        return;
+                    }
+
+                    // Paso 2: Hacer la petición de credencial
+                    const credentialRequest: RequestCredentialRequest = {
+                        credentialId: serviceRequest.value.credentialType,
+                        serviceId: selectedService.value.id,
+                        documentId: documentId,
+                    };
+
+                    Request.Do(ApiCredentials.RequestCredential(credentialRequest))
+                        .onSuccess((credentialResult) => {
+                            txid.value = credentialResult.txid;
+                            // Éxito
+                            uploading.value = false;
+                            uploadSuccess.value = true;
+                            uploadError.value = "";
+                            
+                            console.log("Solicitud de credencial creada:", credentialResult);
+
+                            // Cerrar el modal después de un breve delay
+                            setTimeout(() => {
+                                closeRequestModal();
+                            }, 2000);
+                        })
+                        .onRequestError((err: any, handleErr: any) => {
+                            uploading.value = false;
+                            handleErr(err, {
+                                badRequest: () => {
+                                    uploadError.value = "Error en los datos de la solicitud";
+                                },
+                                serverError: () => {
+                                    uploadError.value = "Error del servidor al procesar la solicitud";
+                                },
+                                temporalError: () => {
+                                    uploadError.value = "Error temporal. Por favor, intente nuevamente";
+                                },
+                                networkError: () => {
+                                    uploadError.value = "Error de conexión. Verifique su internet";
+                                },
+                            });
+                        })
+                        .onUnexpectedError((err) => {
+                            console.error("Error inesperado al solicitar credencial:", err);
+                            uploading.value = false;
+                            uploadError.value = "Error inesperado al procesar la solicitud";
+                        });
+                })
+                .onRequestError((err: any, handleErr: any) => {
+                    uploading.value = false;
+                    handleErr(err, {
+                        serverError: () => {
+                            uploadError.value = "Error del servidor al subir el documento";
+                        },
+                        temporalError: () => {
+                            uploadError.value = "Error temporal al subir el documento. Por favor, intente nuevamente";
+                        },
+                        networkError: () => {
+                            uploadError.value = "Error de conexión al subir el documento. Verifique su internet";
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error("Error inesperado al subir documento:", err);
+                    uploading.value = false;
+                    uploadError.value = "Error inesperado al subir el documento";
+                });
         };
 
         const createCredentialType = () => {
@@ -1292,18 +1410,124 @@ export default defineComponent({
             console.log("Create credential type:", newCredentialType.value);
         };
 
+        // Funciones para modal de QR de credencial
+        const openCredentialQR = async (category: ServiceCategory) => {
+            selectedCategoryForQR.value = category;
+            showCredentialQRModal.value = true;
+            generatingQR.value = true;
+            credentialQRData.value = null;
+            
+            try {
+                // Simular generación de QR
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Generar datos de credencial simulados
+                const credId = `CRED-${category.id.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+                credentialId.value = credId;
+                
+                // Fecha de expiración (1 año desde ahora)
+                const expiry = new Date();
+                expiry.setFullYear(expiry.getFullYear() + 1);
+                credentialExpiry.value = expiry.toLocaleDateString();
+                
+                // URL que irá codificada en el QR (PEGA TU URL AQUÍ)
+                const qrUrl = "http://localhost:3000/api/credentials";
+                
+                // Generar imagen QR usando API de qrserver.com
+                credentialQRData.value = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
+                
+            } catch (error) {
+                console.error("Error generating credential QR:", error);
+                credentialQRData.value = null;
+            } finally {
+                generatingQR.value = false;
+            }
+        };
+
+        const closeCredentialQRModal = () => {
+            showCredentialQRModal.value = false;
+            selectedCategoryForQR.value = null;
+            credentialQRData.value = null;
+            credentialId.value = null;
+            credentialExpiry.value = null;
+        };
+
+        const downloadCredentialQR = () => {
+            if (!credentialQRData.value) return;
+            
+            const link = document.createElement('a');
+            link.href = credentialQRData.value;
+            link.download = `credential-${selectedCategoryForQR.value?.id || 'qr'}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        // Función para cargar el conteo de requests aprobados
+        const loadApprovedCount = () => {
+            if (!AuthController.isAuthenticated()) {
+                approvedCount.value = 0;
+                return;
+            }
+            
+            loadingApprovedCount.value = true;
+            Request.Do(ApiCredentials.GetApprovedCount())
+                .onSuccess((response) => {
+                    approvedCount.value = response.count || 0;
+                    loadingApprovedCount.value = false;
+                })
+                .onRequestError((err: any, handleErr: any) => {
+                    handleErr(err, {
+                        unauthorized: () => {
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                        serverError: () => {
+                            console.error("Error al obtener conteo de requests aprobados");
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                        networkError: () => {
+                            console.error("Error de red al obtener conteo de requests aprobados");
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                        temporalError: () => {
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error("Error inesperado al obtener conteo:", err);
+                    approvedCount.value = 0;
+                    loadingApprovedCount.value = false;
+                });
+        };
+
+        // Computed para saber si hay requests aprobados
+        const hasApprovedCredentials = computed(() => {
+            return approvedCount.value > 0;
+        });
+
+        // Cargar el conteo cuando se monta el componente
+        onMounted(() => {
+            if (AuthController.isAuthenticated()) {
+                loadApprovedCount();
+            }
+        });
+
         return {
             // State
             filters,
             showNewServiceModal,
             showNewCredentialTypeModal,
             showRequestServiceModal,
-            showBuyCreditsModal,
-            serviceTokenBalance,
             selectedService,
             newService,
             availableAdmins,
             services,
+            serviceCategories,
             isCreating,
             currentStep,
             creationSteps,
@@ -1317,11 +1541,14 @@ export default defineComponent({
             creatingCredentialType,
             credentialTypeError,
             credentialTypeSuccess,
-            
-            // Payment Modal State (Loyalty System)
-            showPaymentModal,
-            selectedPaymentService,
-            userServiceTokenBalance,
+            showCredentialQRModal,
+            selectedCategoryForQR,
+            generatingQR,
+            credentialQRData,
+            credentialId,
+            credentialExpiry,
+            approvedCount,
+            hasApprovedCredentials,
             
             // Wallet
             wallet,
@@ -1332,6 +1559,7 @@ export default defineComponent({
             // Computed
             isAdmin,
             filteredServices,
+            filteredCategories,
             
             // Methods
             connectWallet,
@@ -1344,18 +1572,17 @@ export default defineComponent({
             viewServiceDetails,
             editService,
             isEnrolled,
+            isCredentialVerified,
+            getCategoryLabel,
+            accessService,
             requestService,
             closeRequestModal,
             handleFileUpload,
             submitServiceRequest,
             createCredentialType,
-            
-            // Loyalty System Methods
-            openPaymentModal,
-            onPaymentSuccess,
-            onCreditsPurchased,
-            loadUserBalance,
-            loadServiceTokenBalance,
+            openCredentialQR,
+            closeCredentialQRModal,
+            downloadCredentialQR,
         };
     },
 });
@@ -1363,6 +1590,19 @@ export default defineComponent({
 
 <style scoped>
 
+/* Spin animation for loading icons */
+.mdi-spin {
+    animation: mdi-spin 1s infinite linear;
+}
+
+@keyframes mdi-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 
 /* Header */
 .page-header {
@@ -1386,40 +1626,30 @@ export default defineComponent({
     flex-wrap: wrap;
 }
 
-/* Buy Credits Button */
-.buy-credits-btn {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    border: none !important;
-    position: relative;
-}
-
-.buy-credits-btn:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-}
-
-.credits-badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 10px;
-    min-width: 20px;
-    text-align: center;
-}
-
 /* Filters */
-.filters-section {
-    padding: var(--a11y-spacing-lg);
+.filters-section.a11y-card {
+    padding: 0.75rem 1rem;
 }
 
 .filters-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--a11y-spacing-md);
+    gap: 0.5rem;
+}
+
+.filters-section .a11y-form-group {
+    margin-bottom: 0;
+}
+
+.filters-section .a11y-label {
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+}
+
+.filters-section .a11y-select,
+.filters-section .a11y-input {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.9rem;
 }
 
 /* Services Grid */
@@ -1440,10 +1670,17 @@ export default defineComponent({
 
 .service-header {
     display: flex;
-    align-items: center;
-    gap: var(--a11y-spacing-sm);
+    align-items: flex-start;
+    gap: var(--a11y-spacing-md);
     margin-bottom: var(--a11y-spacing-md);
     padding-right: 5rem; /* Espacio para el badge */
+}
+
+.category-icon {
+    font-size: 2.5rem;
+    color: var(--a11y-primary);
+    flex-shrink: 0;
+    line-height: 1;
 }
 
 .service-icon {
@@ -1524,6 +1761,23 @@ export default defineComponent({
     margin-left: 0;
 }
 
+/* Category Services Count */
+.category-services-count {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-md);
+    background-color: var(--a11y-info-bg, #e3f2fd);
+    color: var(--a11y-info, #1976d2);
+    border-radius: var(--a11y-border-radius);
+    margin-bottom: var(--a11y-spacing-md);
+    font-weight: 500;
+}
+
+.category-services-count i {
+    font-size: 1.25rem;
+}
+
 /* Credentials List */
 .credentials-list {
     display: flex;
@@ -1557,6 +1811,27 @@ export default defineComponent({
     gap: var(--a11y-spacing-sm);
     padding-top: var(--a11y-spacing-md);
     margin-top: auto;
+}
+
+/* Access Button States */
+.a11y-btn-success {
+    background-color: var(--a11y-success, #28a745);
+    color: white;
+    border-color: var(--a11y-success, #28a745);
+}
+
+.a11y-btn-success:hover:not(:disabled) {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.service-footer .a11y-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.service-footer .a11y-btn .mdi-lock {
+    font-size: 1rem;
 }
 
 /* Empty State */
@@ -1891,25 +2166,277 @@ export default defineComponent({
     text-transform: uppercase;
 }
 
-/* Family Parking Reserve Button */
-.family-reserve-btn {
+/* Credential Types List - Request Service Modal */
+.credential-types-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--a11y-spacing-sm);
+}
+
+.credential-type-option {
     display: flex;
     align-items: center;
-    gap: var(--a11y-spacing-xs);
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    border: none;
-    font-weight: 600;
+    gap: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-md);
+    border: 2px solid #e0e0e0;
+    border-radius: var(--a11y-border-radius);
+    cursor: pointer;
     transition: all 0.2s ease;
 }
 
-.family-reserve-btn:hover {
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+.credential-type-option:hover {
+    border-color: var(--a11y-primary);
+    background-color: rgba(var(--a11y-primary-rgb, 0, 86, 179), 0.05);
 }
 
-.family-reserve-btn i {
-    font-size: 1.1rem;
+.credential-type-option.option-selected {
+    border-color: var(--a11y-primary);
+    background-color: rgba(var(--a11y-primary-rgb, 0, 86, 179), 0.1);
+}
+
+.credential-type-option i {
+    font-size: 1.5rem;
+    color: var(--a11y-primary);
+}
+
+.credential-type-option .a11y-radio {
+    flex-shrink: 0;
+}
+
+.option-label {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.option-label strong {
+    font-size: var(--a11y-font-size-base);
+}
+
+.option-label .a11y-text-secondary {
+    font-size: var(--a11y-font-size-small);
+}
+
+/* File Upload Area */
+.file-upload-area {
+    position: relative;
+    border: 2px dashed #ccc;
+    border-radius: var(--a11y-border-radius);
+    padding: var(--a11y-spacing-lg);
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.file-upload-area:hover {
+    border-color: var(--a11y-primary);
+    background-color: rgba(var(--a11y-primary-rgb, 0, 86, 179), 0.05);
+}
+
+.file-upload-area.has-file {
+    border-color: var(--a11y-success);
+    border-style: solid;
+    background-color: rgba(40, 167, 69, 0.05);
+}
+
+.file-upload-area .file-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.file-upload-content {
+    pointer-events: none;
+}
+
+.file-upload-icon {
+    font-size: 2.5rem;
+    color: #999;
+    margin-bottom: var(--a11y-spacing-sm);
+}
+
+.file-upload-area:hover .file-upload-icon {
+    color: var(--a11y-primary);
+}
+
+.file-upload-area.has-file .file-upload-icon {
+    color: var(--a11y-success);
+}
+
+.file-upload-text {
+    margin: 0;
+    color: var(--a11y-primary);
+    font-weight: 500;
+}
+
+.file-upload-text.file-selected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--a11y-spacing-xs);
+    color: var(--a11y-success);
+}
+
+.file-upload-hint {
+    margin: var(--a11y-spacing-xs) 0 0 0;
+    font-size: var(--a11y-font-size-small);
+}
+
+/* Upload Messages */
+.upload-message {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-md);
+    border-radius: var(--a11y-border-radius);
+    margin-bottom: var(--a11y-spacing-md);
+}
+
+.upload-message.upload-success {
+    background-color: #d4edda;
+    border: 1px solid #28a745;
+    color: #155724;
+}
+
+/* Checkbox wrapper */
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.checkbox-wrapper label {
+    margin: 0;
+    cursor: pointer;
+}
+
+/* QR Modal */
+.qr-modal {
+    max-width: 480px;
+}
+
+.qr-modal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--a11y-spacing-lg);
+}
+
+.qr-service-info {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-md);
+    width: 100%;
+    padding: var(--a11y-spacing-md);
+    background-color: var(--a11y-info-bg, #e3f2fd);
+    border-radius: var(--a11y-border-radius);
+}
+
+.qr-service-info i {
+    font-size: 2.5rem;
+    color: var(--a11y-primary);
+}
+
+.qr-service-info h3 {
+    margin: 0;
+    font-size: var(--a11y-font-size-large);
+}
+
+.qr-service-info p {
+    margin: 0.25rem 0 0 0;
+    font-size: var(--a11y-font-size-small);
+}
+
+.qr-code-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 280px;
+    width: 100%;
+}
+
+.qr-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    color: var(--a11y-text-secondary);
+}
+
+.qr-loading i {
+    font-size: 3rem;
+    color: var(--a11y-primary);
+}
+
+.qr-code-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--a11y-spacing-md);
+}
+
+.qr-code-image {
+    width: 250px;
+    height: 250px;
+    padding: var(--a11y-spacing-md);
+    background: white;
+    border: 2px solid var(--a11y-primary);
+    border-radius: var(--a11y-border-radius);
+}
+
+.qr-instruction {
+    margin: 0;
+    text-align: center;
+    color: var(--a11y-text-secondary);
+    font-size: var(--a11y-font-size-small);
+}
+
+.qr-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    color: var(--a11y-error, #dc3545);
+}
+
+.qr-error i {
+    font-size: 3rem;
+}
+
+.credential-details {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-md);
+    background-color: #f8f9fa;
+    border-radius: var(--a11y-border-radius);
+}
+
+.credential-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: var(--a11y-text-secondary);
+}
+
+.detail-value {
+    font-family: monospace;
+    font-size: var(--a11y-font-size-small);
 }
 </style>
 

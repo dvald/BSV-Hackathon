@@ -103,7 +103,7 @@ export class VerifiableCredentialsService {
     public async getPendingRequests(credentialType?: string): Promise<any[]> {
         try {
             // Use the static helper method
-            const requests = await CredentialRequest.findPending(credentialType);
+            const requests = await CredentialRequest.findPending();
 
             return requests.map(r => ({
                 requestId: r.id,

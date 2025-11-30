@@ -1,71 +1,68 @@
 <template>
     <div class="modal-container modal-container-login modal-container-opaque no-transition" tabindex="-1" role="dialog">
-        <form class="modal-dialog modal-md" role="document">
-        <!-- <form @submit="submit" class="modal-dialog modal-md" role="document"> -->
-            <div class="modal-header">
-                <div class="modal-title no-close">{{ $t("Login") }}</div>
-                <button type="button" class="modal-close-btn" :title="$t('Select your language')" @click="selectLanguage">
-                    <i class="fas fa-language"></i>
-                </button>
-                <button type="button" class="modal-close-btn" :title="$t('Change theme')" @click="invertTheme">
-                    <i v-if="theme === 'dark'" class="fas fa-sun"></i>
-                    <i v-else class="fas fa-moon"></i>
-                </button>
+        <form class="modal-dialog modal-md a11y-card login-form" role="document">
+            <!-- Logo Section -->
+            <div class="login-logo-section">
+                <img src="@/assets/logo.png" alt="MiCiudadID" class="login-logo" />
             </div>
-            <!-- <div class="modal-body">
-                <div class="form-group">
-                    <label>{{ $t("Username") }}:</label>
-                    <input
-                        type="text"
-                        name="username"
-                        v-model="username"
-                        :disabled="busy"
-                        maxlength="255"
-                        class="form-control form-control-full-width auto-focus"
-                    />
+
+            <!-- Header -->
+            <div class="modal-header login-header">
+                <div class="modal-title no-close">{{ $t("Login") }}</div>
+                <div class="login-header-actions">
+                    <button 
+                        type="button" 
+                        class="modal-close-btn login-action-btn" 
+                        :title="$t('Select your language')" 
+                        @click="selectLanguage"
+                        :aria-label="$t('Select your language')"
+                    >
+                        <i class="fas fa-language"></i>
+                    </button>
+                    <!-- <button 
+                        type="button" 
+                        class="modal-close-btn login-action-btn" 
+                        :title="$t('Change theme')" 
+                        @click="invertTheme"
+                        :aria-label="$t('Change theme')"
+                    >
+                        <i v-if="theme === 'dark'" class="fas fa-sun"></i>
+                        <i v-else class="fas fa-moon"></i>
+                    </button> -->
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body login-body">
+                <div class="login-welcome">
+                    <h2 class="login-subtitle">{{ $t("Welcome to MiCiudadID") }}</h2>
+                    <p class="login-description">{{ $t("Access your digital identity and municipal services securely") }}</p>
                 </div>
 
-                <div class="form-group">
-                    <label>{{ $t("Password") }}:</label>
-                    <PasswordInput :disabled="busy" v-model:val="password" name="password"></PasswordInput>
-                    <div class="form-error" v-if="errorCredentials">{{ errorCredentials }}</div>
+                <!-- Error Message -->
+                <div v-if="error" class="login-error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>{{ error }}</span>
                 </div>
 
-                <div class="form-group">
-                    <label>{{ $t("Remember me?") }}:</label>
-                </div>
-                <div class="form-group">
-                    <ToggleSwitch v-model:val="remember"></ToggleSwitch>
-                </div>
-            </div> -->
-            <div class="modal-footer">
-                <!-- <div class="form-group">
-                    <button type="submit" :disabled="busy" class="btn btn-login"><i class="fas fa-sign-in"></i> {{ $t("Login") }}</button>
-                </div> -->
-                <div class="form-error" v-if="error">{{ error }}</div>
-                <!-- <div class="tp-services-group" v-if="tpServices.length > 0">
-                    <p v-for="tp of tpServices" :key="tp.id">
-                        <a :href="tp.url"> {{ $t("Login with") }} {{ tp.name }} </a>
-                    </p>
-                </div> -->
-                
-                <!-- BSV Wallet Login -->
+                <!-- Wallet Login Section -->
                 <div class="wallet-login-section">
                     <WalletLoginButton />
                 </div>
-                
-                <!-- <p>
-                    <router-link class="link-deco" :to="{ name: 'signup' }">{{ $t("Create an account") }}</router-link>
-                </p>
-                <p>
-                    <router-link class="link-deco" :to="{ name: 'forgot-password' }">{{ $t("Forgot your password?") }}</router-link>
-                </p>
-                <p>
-                    <router-link class="link-deco" :to="{ name: 'home' }">{{ $t("Continue without an account") }}</router-link>
-                </p> -->
-                <p>
-                    <a class="link-deco" href="javascript:;" @click="openCookiesModal">{{ $t("Change cookies preferences") }}</a>
-                </p>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer login-footer">
+                <div class="login-footer-links">
+                    <a 
+                        class="login-footer-link" 
+                        href="javascript:;" 
+                        @click="openCookiesModal"
+                    >
+                        <i class="fas fa-cookie-bite"></i>
+                        {{ $t("Change cookies preferences") }}
+                    </a>
+                </div>
             </div>
         </form>
 
@@ -77,14 +74,11 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 
-import ToggleSwitch from "@/components/utils/ToggleSwitch.vue";
-import PasswordInput from "@/components/utils/PasswordInput.vue";
 import { AuthController } from "@/control/auth";
 import { Request } from "@asanrom/request-browser";
 import { ApiAuth } from "@/api/api-group-auth";
 import { ColorThemeName, getTheme, setTheme } from "@/control/app-preferences";
 import CookiesModal from "@/components/modals/CookiesModal.vue";
-
 import ChangeLanguageModal from "@/components/modals/ChangeLanguageModal.vue";
 import { getUniqueStringId } from "@/utils/unique-id";
 import { Timeouts } from "@/utils/timeout";
@@ -92,9 +86,7 @@ import WalletLoginButton from "@/components/wallet/WalletLoginButton.vue";
 
 export default defineComponent({
     components: {
-        ToggleSwitch,
         ChangeLanguageModal,
-        PasswordInput,
         CookiesModal,
         WalletLoginButton,
     },
@@ -216,7 +208,7 @@ export default defineComponent({
         },
 
         invertTheme: function () {
-            setTheme(this.theme === "dark" ? "light" : "dark");
+            setTheme("light");
         },
 
         onThemeChanged: function (t: ColorThemeName) {
@@ -246,4 +238,203 @@ export default defineComponent({
 });
 </script>
 
-<style></style>
+<style scoped>
+/* Login Form Container */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    max-width: 500px;
+    margin: auto;
+}
+
+/* Logo Section */
+.login-logo-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--mci-space-8, 2rem) var(--mci-space-6, 1.5rem) var(--mci-space-6, 1.5rem);
+    margin-bottom: var(--mci-space-2, 0.5rem);
+}
+
+.login-logo {
+    max-width: 200px;
+    max-height: 120px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Header */
+.login-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--mci-space-4, 1rem) var(--mci-space-6, 1.5rem);
+    border-bottom: 1px solid var(--theme-border-color, var(--mci-gray-200));
+    margin-bottom: 0;
+}
+
+.login-header .modal-title {
+    font-size: var(--mci-font-size-2xl, 1.75rem);
+    font-weight: 600;
+    color: var(--mci-primary-800, #004080);
+    padding: 0;
+}
+
+.login-header-actions {
+    display: flex;
+    gap: var(--mci-space-2, 0.5rem);
+}
+
+.login-action-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--mci-radius-md, 6px);
+    transition: all var(--mci-transition, 0.15s ease-in-out);
+    color: var(--mci-gray-700, #4d4d4d);
+}
+
+.login-action-btn:hover {
+    background-color: var(--mci-gray-100, #f2f2f2);
+    color: var(--mci-primary-700, #004d99);
+}
+
+.login-action-btn:focus-visible {
+    outline: var(--mci-focus-ring, 3px solid var(--mci-primary-500));
+    outline-offset: var(--mci-focus-offset, 2px);
+}
+
+/* Body */
+.login-body {
+    padding: var(--mci-space-6, 1.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: var(--mci-space-5, 1.25rem);
+}
+
+.login-welcome {
+    text-align: center;
+    margin-bottom: var(--mci-space-2, 0.5rem);
+}
+
+.login-subtitle {
+    font-size: var(--mci-font-size-xl, 1.5rem);
+    font-weight: 600;
+    color: var(--mci-gray-900, #1a1a1a);
+    margin: 0 0 var(--mci-space-2, 0.5rem) 0;
+    line-height: 1.4;
+}
+
+.login-description {
+    font-size: var(--mci-font-size-base, 1.125rem);
+    color: var(--mci-gray-600, #666666);
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* Error Message */
+.login-error-message {
+    display: flex;
+    align-items: center;
+    gap: var(--mci-space-2, 0.5rem);
+    padding: var(--mci-space-3, 0.75rem) var(--mci-space-4, 1rem);
+    background-color: var(--mci-error-50, #fdf2f2);
+    border: 1px solid var(--mci-error-100, #f8d7da);
+    border-left: 4px solid var(--mci-error-600, #c82333);
+    border-radius: var(--mci-radius-md, 6px);
+    color: var(--mci-error-700, #a71d2a);
+    font-size: var(--mci-font-size-sm, 1rem);
+}
+
+.login-error-message i {
+    flex-shrink: 0;
+    font-size: 1.125rem;
+}
+
+/* Wallet Login Section */
+.wallet-login-section {
+    margin: var(--mci-space-4, 1rem) 0;
+}
+
+/* Footer */
+.login-footer {
+    padding: var(--mci-space-4, 1rem) var(--mci-space-6, 1.5rem);
+    border-top: 1px solid var(--theme-border-color, var(--mci-gray-200));
+    margin-top: 0;
+}
+
+.login-footer-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--mci-space-4, 1rem);
+}
+
+.login-footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mci-space-2, 0.5rem);
+    color: var(--mci-gray-600, #666666);
+    text-decoration: none;
+    font-size: var(--mci-font-size-sm, 1rem);
+    transition: color var(--mci-transition, 0.15s ease-in-out);
+    padding: var(--mci-space-2, 0.5rem);
+    border-radius: var(--mci-radius-sm, 4px);
+}
+
+.login-footer-link:hover {
+    color: var(--mci-primary-700, #004d99);
+    background-color: var(--mci-primary-50, #f0f6fc);
+}
+
+.login-footer-link:focus-visible {
+    outline: var(--mci-focus-ring, 3px solid var(--mci-primary-500));
+    outline-offset: var(--mci-focus-offset, 2px);
+}
+
+.login-footer-link i {
+    font-size: 0.875rem;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .login-form {
+        max-width: 100%;
+    }
+
+    .login-logo {
+        max-width: 160px;
+        max-height: 100px;
+    }
+
+    .login-header {
+        padding: var(--mci-space-3, 0.75rem) var(--mci-space-4, 1rem);
+    }
+
+    .login-header .modal-title {
+        font-size: var(--mci-font-size-xl, 1.5rem);
+    }
+
+    .login-body {
+        padding: var(--mci-space-4, 1rem);
+    }
+
+    .login-subtitle {
+        font-size: var(--mci-font-size-lg, 1.25rem);
+    }
+
+    .login-description {
+        font-size: var(--mci-font-size-sm, 1rem);
+    }
+
+    .login-footer {
+        padding: var(--mci-space-3, 0.75rem) var(--mci-space-4, 1rem);
+    }
+}
+</style>

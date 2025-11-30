@@ -367,7 +367,7 @@ export default defineComponent({
                 {
                     id: "bonus-pmr-1",
                     name: "Reserved PMR Parking",
-                    description: "Access to reserved parking spaces for people with reduced mobility in municipal areas.",
+                    description: "Access to reserved parking spaces for large families in municipal areas.",
                     icon: "mdi mdi-parking",
                     type: "parking",
                     usedCount: 23,
