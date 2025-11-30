@@ -429,12 +429,12 @@ export default defineComponent({
 .stat-card {
     display: flex;
     align-items: center;
-    gap: var(--a11y-spacing-md);
-    padding: var(--a11y-spacing-lg);
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
 }
 
 .stat-icon {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     color: var(--a11y-primary);
     flex-shrink: 0;
 }
@@ -442,29 +442,52 @@ export default defineComponent({
 .stat-content {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-width: 0;
 }
 
 .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--a11y-primary);
     line-height: 1.2;
+    margin: 0;
 }
 
 .stat-label {
-    font-size: var(--a11y-font-size-small);
+    font-size: 0.875rem;
+    font-weight: 500;
     color: var(--a11y-text-secondary);
+    margin: 0;
+    margin-top: 0.125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Filters */
-.filters-section {
-    padding: var(--a11y-spacing-lg);
+.filters-section.a11y-card {
+    padding: 0.75rem 1rem;
 }
 
 .filters-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: var(--a11y-spacing-md);
+    gap: 0.5rem;
+}
+
+.filters-section .a11y-form-group {
+    margin-bottom: 0;
+}
+
+.filters-section .a11y-label {
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+}
+
+.filters-section .a11y-select {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.9rem;
 }
 
 /* Activity Timeline */

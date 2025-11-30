@@ -74,79 +74,72 @@
                 </div>
             </section>
 
-            <!-- Lista de servicios -->
+            <!-- Lista de categorías de servicios -->
             <section aria-labelledby="services-heading" class="a11y-mt-lg">
                 <h2 id="services-heading" class="a11y-heading-2">
-                    {{ $t("Services") }} ({{ filteredServices.length }})
+                    {{ $t("Municipal Services") }} ({{ filteredCategories.length }})
                 </h2>
 
                 <div class="services-grid a11y-grid a11y-grid-2">
-                    <!-- Servicio de Movilidad - Parking PMR -->
                     <article 
-                        v-for="service in filteredServices" 
-                        :key="service.id"
+                        v-for="category in filteredCategories" 
+                        :key="category.id"
                         class="service-card a11y-card"
-                        :class="{ 'service-inactive': service.status !== 'active' }"
+                        :class="{ 'service-inactive': category.status !== 'active' }"
                     >
                         <header class="service-header">
-                            <i :class="'mdi ' + service.icon + ' service-icon'" aria-hidden="true"></i>
+                            <i :class="'mdi ' + category.icon + ' category-icon'" aria-hidden="true"></i>
                             <div class="service-title-group">
-                                <h3 class="service-title">{{ $t(service.name) }}</h3>
+                                <h3 class="service-title">{{ $t(category.name) }}</h3>
                                 <span 
                                     class="a11y-badge" 
-                                    :class="getStatusBadgeClass(service.status)"
+                                    :class="getStatusBadgeClass(category.status)"
                                 >
-                                    {{ $t(getStatusLabel(service.status)) }}
+                                    {{ $t(getStatusLabel(category.status)) }}
                                 </span>
                             </div>
                         </header>
 
                         <div class="service-body">
                             <p class="service-description a11y-text">
-                                {{ $t(service.description) }}
+                                {{ $t(category.description) }}
                             </p>
 
-                            <!-- Estadísticas del servicio - Solo admin -->
-                            <div v-if="isAdmin" class="service-metrics">
+                            <!-- Estadísticas - Solo admin -->
+                            <div v-if="isAdmin && category.metrics" class="service-metrics">
                                 <div class="metric">
-                                    <span class="metric-value">{{ formatNumber(service.metrics.users) }}</span>
+                                    <span class="metric-value">{{ formatNumber(category.metrics.users) }}</span>
                                     <span class="metric-label">{{ $t("Citizens") }}</span>
                                 </div>
                                 <div class="metric">
-                                    <span class="metric-value">{{ formatNumber(service.metrics.credentials) }}</span>
+                                    <span class="metric-value">{{ formatNumber(category.metrics.credentials) }}</span>
                                     <span class="metric-label">{{ $t("Credentials") }}</span>
                                 </div>
                                 <div class="metric">
-                                    <span class="metric-value">{{ formatNumber(service.metrics.tokensUsed) }}</span>
+                                    <span class="metric-value">{{ formatNumber(category.metrics.tokensUsed) }}</span>
                                     <span class="metric-label">{{ $t("Tokens used") }}</span>
                                 </div>
                             </div>
 
-                            <!-- Informacion para ciudadano -->
-                            <div v-if="!isAdmin" class="service-citizen-info">
-                                <div class="citizen-info-item">
-                                    <i class="mdi mdi-clock-outline" aria-hidden="true"></i>
-                                    <span>{{ $t("Processing time") }}: {{ service.processingTime || '24-48h' }}</span>
-                                </div>
-                                <div class="citizen-info-item">
-                                    <i class="mdi mdi-currency-eur" aria-hidden="true"></i>
-                                    <span>{{ service.price === 0 ? $t("Free") : service.price + ' EUR' }}</span>
-                                </div>
+                            <!-- Info para ciudadano: número de servicios -->
+                            <div v-if="!isAdmin" class="category-services-count">
+                                <i class="mdi mdi-view-grid" aria-hidden="true"></i>
+                                <span>{{ category.servicesCount }} {{ $t("services available") }}</span>
                             </div>
 
-                            <!-- Administrador del servicio - Solo admin -->
-                            <div v-if="isAdmin" class="service-admin">
-                                <span class="admin-label">{{ $t("Service administrator") }}:</span>
-                                <span class="admin-name">{{ service.admin.name }}</span>
-                                <span class="admin-email a11y-text-secondary">{{ service.admin.email }}</span>
+                            <!-- Administrador - Solo admin -->
+                            <div v-if="isAdmin && category.admin" class="service-admin">
+                                <span class="admin-label">{{ $t("Department head") }}:</span>
+                                <span class="admin-name">{{ category.admin.name }}</span>
+                                <span class="admin-email a11y-text-secondary">{{ category.admin.email }}</span>
                             </div>
 
-                            <!-- Tipos de credenciales que acepta -->
+                            <!-- Credenciales requeridas -->
                             <div class="service-credentials">
-                                <span class="credentials-label">{{ isAdmin ? $t("Required credentials") : $t("You will need") }}:</span>
+                                <span class="credentials-label">{{ $t("Required credentials") }}:</span>
                                 <ul class="credentials-list" role="list">
                                     <li 
-                                        v-for="cred in service.requiredCredentials" 
+                                        v-for="cred in category.requiredCredentials" 
                                         :key="cred"
                                         class="credential-tag"
                                     >
@@ -154,51 +147,43 @@
                                     </li>
                                 </ul>
                             </div>
-
-                            <!-- Token asociado - Solo admin -->
-                            <div v-if="isAdmin" class="service-token">
-                                <span class="token-label">{{ $t("Associated token") }}:</span>
-                                <span class="token-name">
-                                    <i class="mdi mdi-hand-coin" aria-hidden="true"></i>
-                                    {{ service.token.name }}
-                                </span>
-                                <span class="token-type a11y-text-secondary">
-                                    ({{ $t(service.token.type === 'uses' ? 'Uses' : 'Points') }})
-                                </span>
-                            </div>
-
-                            <!-- Beneficio para ciudadano -->
-                            <div v-if="!isAdmin && service.citizenBenefit" class="service-benefit">
-                                <i class="mdi mdi-gift-outline" aria-hidden="true"></i>
-                                <span>{{ $t(service.citizenBenefit) }}</span>
-                            </div>
                         </div>
+
                         <footer class="service-footer">
-                            <!-- Admin: Configurar servicio -->
+                            <!-- Admin: Configurar categoría -->
                             <button 
-                            v-if="isAdmin"
-                            @click="editService(service)"
-                            class="a11y-btn a11y-btn-primary"
+                                v-if="isAdmin"
+                                @click="editService(category)"
+                                class="a11y-btn a11y-btn-primary"
                             >
                                 {{ $t("Configure") }}
                             </button>
-                            <!-- Ciudadano: Solicitar/Inscribirse -->
+                            <!-- Ciudadano: Solicitar credencial, Obtener QR y Acceder al portal -->
                             <template v-if="!isAdmin">
                                 <button 
-                                    v-if="!isEnrolled(service.id)"
-                                    @click="requestService(service)"
+                                    @click="requestService(category)"
                                     class="a11y-btn a11y-btn-primary"
                                 >
                                     <i class="mdi mdi-plus" aria-hidden="true"></i>
                                     {{ $t("Request") }}
                                 </button>
                                 <button 
-                                    v-else
+                                    @click="openCredentialQR(category)"
                                     class="a11y-btn a11y-btn-secondary"
-                                    disabled
+                                    :title="$t('Get your credential QR code')"
                                 >
-                                    <i class="mdi mdi-check" aria-hidden="true"></i>
-                                    {{ $t("Enrolled") }}
+                                    <i class="mdi mdi-qrcode" aria-hidden="true"></i>
+                                    {{ $t("My Credential") }}
+                                </button>
+                                <button 
+                                    @click="accessService(category)"
+                                    class="a11y-btn"
+                                    :class="isCredentialVerified(category.id) ? 'a11y-btn-success' : 'a11y-btn-secondary'"
+                                    :disabled="!isCredentialVerified(category.id)"
+                                    :title="!isCredentialVerified(category.id) ? $t('Verify your credential to access services') : $t('Access services portal')"
+                                >
+                                    <i class="mdi" :class="isCredentialVerified(category.id) ? 'mdi-arrow-right-circle' : 'mdi-lock'" aria-hidden="true"></i>
+                                    {{ $t("Access") }}
                                 </button>
                             </template>
                         </footer>
@@ -207,14 +192,14 @@
 
                 <!-- Estado vacío -->
                 <div 
-                    v-if="filteredServices.length === 0" 
+                    v-if="filteredCategories.length === 0" 
                     class="empty-state a11y-card"
                     role="status"
                 >
                     <i class="mdi mdi-magnify empty-icon" aria-hidden="true"></i>
                     <p class="empty-title">{{ $t("No services found") }}</p>
                     <p class="empty-desc a11y-text-secondary">
-                        {{ $t("Try adjusting your filters or create a new service") }}
+                        {{ $t("Try adjusting your filters") }}
                     </p>
                 </div>
             </section>
@@ -740,6 +725,95 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal para mostrar QR de credencial -->
+        <div 
+            v-if="showCredentialQRModal && selectedCategoryForQR" 
+            class="modal-overlay"
+            @click.self="closeCredentialQRModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="credential-qr-title"
+        >
+            <div class="modal-content a11y-card qr-modal">
+                <header class="modal-header">
+                    <h2 id="credential-qr-title" class="a11y-heading-2">
+                        {{ $t("My Credential") }}
+                    </h2>
+                    <button 
+                        @click="closeCredentialQRModal"
+                        class="a11y-btn a11y-btn-icon"
+                        :aria-label="$t('Close')"
+                    >
+                        ✕
+                    </button>
+                </header>
+                
+                <div class="modal-body qr-modal-body">
+                    <!-- Información del servicio -->
+                    <div class="qr-service-info">
+                        <i :class="'mdi ' + selectedCategoryForQR.icon" aria-hidden="true"></i>
+                        <div>
+                            <h3>{{ $t(selectedCategoryForQR.name) }}</h3>
+                            <p class="a11y-text-secondary">{{ $t(selectedCategoryForQR.description) }}</p>
+                        </div>
+                    </div>
+
+                    <!-- QR Code -->
+                    <div class="qr-code-container">
+                        <div v-if="generatingQR" class="qr-loading">
+                            <i class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                            <p>{{ $t("Generating credential...") }}</p>
+                        </div>
+                        <div v-else-if="credentialQRData" class="qr-code-wrapper">
+                            <img 
+                                :src="credentialQRData" 
+                                :alt="$t('Credential QR Code')" 
+                                class="qr-code-image"
+                            />
+                            <p class="qr-instruction">{{ $t("Show this QR code to verify your credential") }}</p>
+                        </div>
+                        <div v-else class="qr-error">
+                            <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
+                            <p>{{ $t("Could not generate credential") }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Información de la credencial -->
+                    <div class="credential-details">
+                        <div class="credential-detail-item">
+                            <span class="detail-label">{{ $t("Credential ID") }}:</span>
+                            <span class="detail-value">{{ credentialId || '---' }}</span>
+                        </div>
+                        <div class="credential-detail-item">
+                            <span class="detail-label">{{ $t("Valid until") }}:</span>
+                            <span class="detail-value">{{ credentialExpiry || '---' }}</span>
+                        </div>
+                        <div class="credential-detail-item">
+                            <span class="detail-label">{{ $t("Status") }}:</span>
+                            <span class="a11y-badge a11y-badge-success">{{ $t("Active") }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="modal-footer">
+                    <button 
+                        @click="downloadCredentialQR"
+                        class="a11y-btn a11y-btn-secondary"
+                        :disabled="!credentialQRData"
+                    >
+                        <i class="mdi mdi-download" aria-hidden="true"></i>
+                        {{ $t("Download QR") }}
+                    </button>
+                    <button 
+                        @click="closeCredentialQRModal"
+                        class="a11y-btn a11y-btn-primary"
+                    >
+                        {{ $t("Close") }}
+                    </button>
+                </footer>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -759,6 +833,20 @@ interface ServiceMetrics {
     users: number;
     credentials: number;
     tokensUsed: number;
+}
+
+interface ServiceCategory {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    category: string;
+    status: "active" | "inactive" | "maintenance";
+    servicesCount: number;
+    requiredCredentials: string[];
+    // Solo para admin
+    metrics?: ServiceMetrics;
+    admin?: ServiceAdmin;
 }
 
 interface ServiceAdmin {
@@ -865,6 +953,14 @@ export default defineComponent({
         const credentialTypeError = ref("");
         const credentialTypeSuccess = ref(false);
 
+        // Estado para modal de QR de credencial
+        const showCredentialQRModal = ref(false);
+        const selectedCategoryForQR = ref<ServiceCategory | null>(null);
+        const generatingQR = ref(false);
+        const credentialQRData = ref<string | null>(null);
+        const credentialId = ref<string | null>(null);
+        const credentialExpiry = ref<string | null>(null);
+
         const newService = ref<NewServiceForm>({
             name: "",
             category: "",
@@ -886,39 +982,37 @@ export default defineComponent({
             { id: "admin3", name: "Ana Martínez", email: "a.martinez@ciudad.es" },
         ]);
 
-        const services = ref<Service[]>([
+        // Categorías de servicios municipales
+        const serviceCategories = ref<ServiceCategory[]>([
             {
-                id: "srv-mobility-pmr",
-                name: "PMR Parking",
-                description: "Accessible parking management for people with reduced mobility. Allows use of reserved spaces with disability credential.",
+                id: "cat-mobility",
+                name: "Mobility",
+                description: "Services related to urban mobility, accessible parking, public transport and sustainable movement in the city.",
+                icon: "mdi-car",
                 category: "mobility",
                 status: "active",
+                servicesCount: 3,
+                requiredCredentials: ["Disability Credential", "Census Credential"],
                 metrics: {
-                    users: 342,
-                    credentials: 412,
-                    tokensUsed: 2847,
+                    users: 1250,
+                    credentials: 1580,
+                    tokensUsed: 12500,
                 },
                 admin: {
                     id: "admin1",
                     name: "María García",
                     email: "m.garcia@ciudad.es",
                 },
-                requiredCredentials: ["Disability Credential"],
-                token: {
-                    name: "parking_pmr",
-                    symbol: "PARK",
-                    type: "uses",
-                },
-                processingTime: "Immediate",
-                price: 0,
-                citizenBenefit: "Free access to reserved PMR parking spaces throughout the city",
             },
             {
-                id: "srv-env-ecopuntos",
-                name: "EcoPoints Recycling",
-                description: "Rewards system for sustainable actions. Earn points for recycling at authorized points that can be redeemed for discounts.",
+                id: "cat-environment",
+                name: "Environment",
+                description: "Sustainability initiatives, recycling programs, green spaces and environmental actions with rewards for citizens.",
+                icon: "mdi-leaf",
                 category: "environment",
                 status: "active",
+                servicesCount: 4,
+                requiredCredentials: ["Census Credential"],
                 metrics: {
                     users: 8456,
                     credentials: 8456,
@@ -929,21 +1023,34 @@ export default defineComponent({
                     name: "Carlos López",
                     email: "c.lopez@ciudad.es",
                 },
-                requiredCredentials: ["Census Credential"],
-                token: {
-                    name: "eco_puntos",
-                    symbol: "ECO",
-                    type: "points",
-                },
-                processingTime: "24-48h",
-                price: 0,
-                citizenBenefit: "Earn points redeemable for discounts at local shops and services",
             },
         ]);
+
+        // Mantener services para compatibilidad con admin
+        const services = ref<Service[]>([]);
 
         // Computed
         const isAdmin = computed(() => {
             return AuthController.Role === "admin" || AuthController.Role === "root";
+        });
+
+        const filteredCategories = computed(() => {
+            return serviceCategories.value.filter((cat) => {
+                if (filters.value.status && cat.status !== filters.value.status) {
+                    return false;
+                }
+                if (filters.value.category && cat.category !== filters.value.category) {
+                    return false;
+                }
+                if (filters.value.search) {
+                    const search = filters.value.search.toLowerCase();
+                    return (
+                        cat.name.toLowerCase().includes(search) ||
+                        cat.description.toLowerCase().includes(search)
+                    );
+                }
+                return true;
+            });
         });
 
         const filteredServices = computed(() => {
@@ -1128,9 +1235,34 @@ export default defineComponent({
 
         // Funciones para ciudadanos
         const enrolledServices = ref<string[]>([]);
+        
+        // Servicios con credencial verificada (tras escanear QR)
+        const verifiedServices = ref<string[]>([]);
 
         const isEnrolled = (serviceId: string): boolean => {
             return enrolledServices.value.includes(serviceId);
+        };
+        
+        const isCredentialVerified = (serviceId: string): boolean => {
+            return verifiedServices.value.includes(serviceId);
+        };
+        
+        const getCategoryLabel = (category: string): string => {
+            const labels: Record<string, string> = {
+                mobility: "Mobility",
+                environment: "Environment",
+                social: "Social Services",
+                culture: "Culture",
+            };
+            return labels[category] || category;
+        };
+        
+        const accessService = (service: Service) => {
+            if (!isCredentialVerified(service.id)) {
+                return;
+            }
+            // TODO: Implementar acceso al servicio
+            console.log("Accessing service:", service.id);
         };
 
         const requestService = (service: Service) => {
@@ -1165,6 +1297,59 @@ export default defineComponent({
             console.log("Create credential type:", newCredentialType.value);
         };
 
+        // Funciones para modal de QR de credencial
+        const openCredentialQR = async (category: ServiceCategory) => {
+            selectedCategoryForQR.value = category;
+            showCredentialQRModal.value = true;
+            generatingQR.value = true;
+            credentialQRData.value = null;
+            
+            try {
+                // Simular generación de QR
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Generar datos de credencial simulados
+                const credId = `CRED-${category.id.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+                credentialId.value = credId;
+                
+                // Fecha de expiración (1 año desde ahora)
+                const expiry = new Date();
+                expiry.setFullYear(expiry.getFullYear() + 1);
+                credentialExpiry.value = expiry.toLocaleDateString();
+                
+                // URL que irá codificada en el QR (PEGA TU URL AQUÍ)
+                const qrUrl = "http://localhost:3000/api/credentials";
+                
+                // Generar imagen QR usando API de qrserver.com
+                credentialQRData.value = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
+                
+            } catch (error) {
+                console.error("Error generating credential QR:", error);
+                credentialQRData.value = null;
+            } finally {
+                generatingQR.value = false;
+            }
+        };
+
+        const closeCredentialQRModal = () => {
+            showCredentialQRModal.value = false;
+            selectedCategoryForQR.value = null;
+            credentialQRData.value = null;
+            credentialId.value = null;
+            credentialExpiry.value = null;
+        };
+
+        const downloadCredentialQR = () => {
+            if (!credentialQRData.value) return;
+            
+            const link = document.createElement('a');
+            link.href = credentialQRData.value;
+            link.download = `credential-${selectedCategoryForQR.value?.id || 'qr'}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
         return {
             // State
             filters,
@@ -1175,6 +1360,7 @@ export default defineComponent({
             newService,
             availableAdmins,
             services,
+            serviceCategories,
             isCreating,
             currentStep,
             creationSteps,
@@ -1188,6 +1374,12 @@ export default defineComponent({
             creatingCredentialType,
             credentialTypeError,
             credentialTypeSuccess,
+            showCredentialQRModal,
+            selectedCategoryForQR,
+            generatingQR,
+            credentialQRData,
+            credentialId,
+            credentialExpiry,
             
             // Wallet
             wallet,
@@ -1198,6 +1390,7 @@ export default defineComponent({
             // Computed
             isAdmin,
             filteredServices,
+            filteredCategories,
             
             // Methods
             connectWallet,
@@ -1210,11 +1403,17 @@ export default defineComponent({
             viewServiceDetails,
             editService,
             isEnrolled,
+            isCredentialVerified,
+            getCategoryLabel,
+            accessService,
             requestService,
             closeRequestModal,
             handleFileUpload,
             submitServiceRequest,
             createCredentialType,
+            openCredentialQR,
+            closeCredentialQRModal,
+            downloadCredentialQR,
         };
     },
 });
@@ -1246,14 +1445,29 @@ export default defineComponent({
 }
 
 /* Filters */
-.filters-section {
-    padding: var(--a11y-spacing-lg);
+.filters-section.a11y-card {
+    padding: 0.75rem 1rem;
 }
 
 .filters-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--a11y-spacing-md);
+    gap: 0.5rem;
+}
+
+.filters-section .a11y-form-group {
+    margin-bottom: 0;
+}
+
+.filters-section .a11y-label {
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+}
+
+.filters-section .a11y-select,
+.filters-section .a11y-input {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.9rem;
 }
 
 /* Services Grid */
@@ -1274,10 +1488,17 @@ export default defineComponent({
 
 .service-header {
     display: flex;
-    align-items: center;
-    gap: var(--a11y-spacing-sm);
+    align-items: flex-start;
+    gap: var(--a11y-spacing-md);
     margin-bottom: var(--a11y-spacing-md);
     padding-right: 5rem; /* Espacio para el badge */
+}
+
+.category-icon {
+    font-size: 2.5rem;
+    color: var(--a11y-primary);
+    flex-shrink: 0;
+    line-height: 1;
 }
 
 .service-icon {
@@ -1358,6 +1579,23 @@ export default defineComponent({
     margin-left: 0;
 }
 
+/* Category Services Count */
+.category-services-count {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-sm) var(--a11y-spacing-md);
+    background-color: var(--a11y-info-bg, #e3f2fd);
+    color: var(--a11y-info, #1976d2);
+    border-radius: var(--a11y-border-radius);
+    margin-bottom: var(--a11y-spacing-md);
+    font-weight: 500;
+}
+
+.category-services-count i {
+    font-size: 1.25rem;
+}
+
 /* Credentials List */
 .credentials-list {
     display: flex;
@@ -1391,6 +1629,27 @@ export default defineComponent({
     gap: var(--a11y-spacing-sm);
     padding-top: var(--a11y-spacing-md);
     margin-top: auto;
+}
+
+/* Access Button States */
+.a11y-btn-success {
+    background-color: var(--a11y-success, #28a745);
+    color: white;
+    border-color: var(--a11y-success, #28a745);
+}
+
+.a11y-btn-success:hover:not(:disabled) {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.service-footer .a11y-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.service-footer .a11y-btn .mdi-lock {
+    font-size: 1rem;
 }
 
 /* Empty State */
@@ -1876,6 +2135,126 @@ export default defineComponent({
 .checkbox-wrapper label {
     margin: 0;
     cursor: pointer;
+}
+
+/* QR Modal */
+.qr-modal {
+    max-width: 480px;
+}
+
+.qr-modal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--a11y-spacing-lg);
+}
+
+.qr-service-info {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-md);
+    width: 100%;
+    padding: var(--a11y-spacing-md);
+    background-color: var(--a11y-info-bg, #e3f2fd);
+    border-radius: var(--a11y-border-radius);
+}
+
+.qr-service-info i {
+    font-size: 2.5rem;
+    color: var(--a11y-primary);
+}
+
+.qr-service-info h3 {
+    margin: 0;
+    font-size: var(--a11y-font-size-large);
+}
+
+.qr-service-info p {
+    margin: 0.25rem 0 0 0;
+    font-size: var(--a11y-font-size-small);
+}
+
+.qr-code-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 280px;
+    width: 100%;
+}
+
+.qr-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    color: var(--a11y-text-secondary);
+}
+
+.qr-loading i {
+    font-size: 3rem;
+    color: var(--a11y-primary);
+}
+
+.qr-code-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--a11y-spacing-md);
+}
+
+.qr-code-image {
+    width: 250px;
+    height: 250px;
+    padding: var(--a11y-spacing-md);
+    background: white;
+    border: 2px solid var(--a11y-primary);
+    border-radius: var(--a11y-border-radius);
+}
+
+.qr-instruction {
+    margin: 0;
+    text-align: center;
+    color: var(--a11y-text-secondary);
+    font-size: var(--a11y-font-size-small);
+}
+
+.qr-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+    color: var(--a11y-error, #dc3545);
+}
+
+.qr-error i {
+    font-size: 3rem;
+}
+
+.credential-details {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--a11y-spacing-sm);
+    padding: var(--a11y-spacing-md);
+    background-color: #f8f9fa;
+    border-radius: var(--a11y-border-radius);
+}
+
+.credential-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: var(--a11y-text-secondary);
+}
+
+.detail-value {
+    font-family: monospace;
+    font-size: var(--a11y-font-size-small);
 }
 </style>
 
