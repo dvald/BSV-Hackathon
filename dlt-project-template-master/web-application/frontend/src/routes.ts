@@ -292,6 +292,14 @@ const routes: (RouteRecordRaw & {
         },
 
         {
+            name: "services-details",
+            path: "/services-details",
+            component: () => import("@/components/sections/ServiciosDetallePage.vue"),
+            meta: {
+                sidebarSticky: true,
+            },
+        },
+        {
             name: "services",
             path: "/services",
             component: () => import("@/components/sections/ServiciosPage.vue"),
