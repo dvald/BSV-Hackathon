@@ -535,6 +535,43 @@ export interface RoleModifyBody {
     permissions: GlobalRolePermission[];
 }
 
+export interface PurchaseTokenRequest {
+    /**
+     * Token ID to purchase
+     */
+    token_id: string;
+
+    /**
+     * Amount of tokens to purchase
+     */
+    amount: number;
+
+    /**
+     * BSV identity key of the recipient
+     */
+    holder_identity_key: string;
+}
+
+export interface PurchaseTokenResponse {
+    /**
+     * Stripe checkout URL
+     */
+    url: string;
+}
+
+export interface PurchaseTokenBadRequest {
+    /**
+     * Error code:
+     * - MISSING_TOKEN_ID
+     * - MISSING_AMOUNT
+     * - MISSING_HOLDER_IDENTITY_KEY
+     * - INVALID_AMOUNT
+     * - TOKEN_NOT_FOUND
+     * - STRIPE_NOT_CONFIGURED
+     */
+    code: string;
+}
+
 export interface UserProfileMin {
     /**
      * User ID

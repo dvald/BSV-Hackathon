@@ -59,6 +59,7 @@
     "nodemailer": "7.0.10",
     "rimraf": "5.0.1",
     "speakeasy": "2.0.0",
+    "stripe": "^18.2.0",
     "swagger2-to-postmanv2": "^2.1.0",
     "tsbean-driver-mongo": "4.0.2",
     "tsbean-driver-mysql": "3.0.0",
