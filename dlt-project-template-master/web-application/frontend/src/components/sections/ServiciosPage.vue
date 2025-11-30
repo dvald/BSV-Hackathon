@@ -168,7 +168,7 @@
                                     {{ $t("Request") }}
                                 </button>
                                 <button 
-                                    v-if="!canAccessService"
+                                    v-if="!canAccessService && credentialCount > 0"
                                     @click="openCredentialQR(category)"
                                     class="a11y-btn a11y-btn-secondary"
                                     :title="hasApprovedCredentials ? $t('Get your credential QR code') : $t('No approved credentials available')"
@@ -177,6 +177,7 @@
                                     {{ $t("My Credential") }}
                                 </button>
                                 <button 
+                                    v-if = "credentialCount > 0"
                                     @click="accessService(category)"
                                     class="a11y-btn"
                                     :class="isCredentialVerified(category.id) ? 'a11y-btn-success' : 'a11y-btn-secondary'"
