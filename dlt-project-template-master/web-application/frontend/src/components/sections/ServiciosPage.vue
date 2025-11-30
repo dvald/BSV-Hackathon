@@ -26,7 +26,7 @@
                     {{ $t("New service") }}
                 </button>
                 <button 
-                    @click="showNewCredentialTypeModal = true"
+                    @click="openNewCredentialTypeModal"
                     class="a11y-btn a11y-btn-secondary a11y-btn-large"
                     :aria-label="$t('Create new credential type')"
                 >
@@ -455,23 +455,26 @@
                         <label for="credential-type-service" class="a11y-label">
                             {{ $t("Associated service") }}
                         </label>
-                        <select 
-                            id="credential-type-service"
-                            v-model="newCredentialType.serviceId"
-                            class="a11y-select"
-                        >
-                            <option value="">{{ $t("No service (general credential)") }}</option>
-                            <option 
-                                v-for="service in services" 
-                                :key="service.id"
-                                :value="service.id"
+                        <div class="select-with-loading">
+                            <select 
+                                id="credential-type-service"
+                                v-model="newCredentialType.serviceId"
+                                class="a11y-select"
+                                :disabled="loadingServicesForModal || (!loadingServicesForModal && availableServicesFromApi.length === 0)"
                             >
-                                {{ $t(service.name) }}
-                            </option>
-                        </select>
-                        <p class="a11y-help-text">
-                            {{ $t("Optional: link this credential type to a specific service") }}
-                        </p>
+                                <option value="" v-if="loadingServicesForModal">{{ $t("Loading services...") }}</option>
+                                <option value="" v-else-if="availableServicesFromApi.length === 0">{{ $t("No services available") }}</option>
+                                <option value="" v-else>{{ $t("No service (general credential)") }}</option>
+                                <option 
+                                    v-for="service in availableServicesFromApi" 
+                                    :key="service.id"
+                                    :value="service.id"
+                                >
+                                    {{ service.name }}
+                                </option>
+                            </select>
+                            <i v-if="loadingServicesForModal" class="mdi mdi-loading mdi-spin loading-indicator" aria-hidden="true"></i>
+                        </div>
                     </div>
 
                     <!-- Mensaje de error -->
@@ -517,6 +520,7 @@ import { AuthController } from "@/control/auth";
 import { Request } from "@asanrom/request-browser";
 import { ApiFiles } from "@/api/api-group-files";
 import { ApiCredential } from "@/api/api-group-credential";
+import { ApiService } from "@/api/api-group-service";
 import { getUniqueStringId } from "@/utils/unique-id";
 import { Timeouts } from "@/utils/timeout";
 
@@ -570,9 +574,12 @@ export default defineComponent({
                 serviceId: "",
             },
             credentialTypeRequestId: getUniqueStringId(),
+            servicesListRequestId: getUniqueStringId(),
             creatingCredentialType: false,
             credentialTypeError: "",
             credentialTypeSuccess: false,
+            availableServicesFromApi: [] as { id: string; name: string }[],
+            loadingServicesForModal: false,
             serviceRequest: {
                 document: null as File | null,
             },
@@ -770,6 +777,36 @@ export default defineComponent({
             this.uploadError = "";
             this.uploadSuccess = false;
         },
+        openNewCredentialTypeModal() {
+            this.showNewCredentialTypeModal = true;
+            this.loadServicesForCredentialType();
+        },
+        loadServicesForCredentialType() {
+            this.loadingServicesForModal = true;
+            
+            Request.Abort(this.servicesListRequestId);
+            
+            Request.Pending(this.servicesListRequestId, ApiService.ListServices())
+                .onSuccess((response) => {
+                    this.loadingServicesForModal = false;
+                    this.availableServicesFromApi = response.services.map(s => ({
+                        id: s.id,
+                        name: s.name
+                    }));
+                })
+                .onRequestError((err, handleErr) => {
+                    this.loadingServicesForModal = false;
+                    handleErr(err, {
+                        temporalError: () => {
+                            console.error("Error loading services");
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error(err);
+                    this.loadingServicesForModal = false;
+                });
+        },
         createCredentialType() {
             if (!this.newCredentialType.name) return;
             
@@ -825,6 +862,7 @@ export default defineComponent({
         Timeouts.Abort(this.uploadRequestId);
         Request.Abort(this.uploadRequestId);
         Request.Abort(this.credentialTypeRequestId);
+        Request.Abort(this.servicesListRequestId);
     },
 });
 </script>
@@ -1184,6 +1222,33 @@ export default defineComponent({
 /* Loading spinner */
 .mdi-spin {
     animation: mdi-spin 1s infinite linear;
+}
+
+/* Select with loading indicator */
+.select-with-loading {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.select-with-loading .a11y-select {
+    flex: 1;
+}
+
+.select-with-loading .loading-indicator {
+    position: absolute;
+    right: 2.5rem;
+    color: var(--a11y-primary);
+    font-size: 1.25rem;
+}
+
+/* Disabled select styles */
+.a11y-select:disabled {
+    background-color: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.7;
+    border-color: #ddd;
 }
 
 @keyframes mdi-spin {
