@@ -6,10 +6,11 @@ import Express from "express";
 import { Session } from "../../models/users/session";
 import { User } from "../../models/users/user";
 import { ADMIN_ROLE, UsersService } from "../../services/users-service";
-import { BAD_REQUEST, ensureObjectBody, FORBIDDEN, getRequestRemoteAddress, noCache, NOT_FOUND, sendApiError, sendApiResult, sendApiSuccess, sendUnauthorized } from "../../utils/http-utils";
+import { BAD_REQUEST, ensureObjectBody, FORBIDDEN, getRequestRemoteAddress, INTERNAL_SERVER_ERROR, noCache, NOT_FOUND, sendApiError, sendApiResult, sendApiSuccess, sendUnauthorized } from "../../utils/http-utils";
 import { Controller } from "../controller";
 import { UserRole } from "../../models/users/user-role";
 import { validateEmail } from "../../utils/text-utils";
+import { BsvService } from "../../services/bsv-service";
 
 const USERS_LIST_PAGE_LIMIT = 100;
 
@@ -32,6 +33,12 @@ export class UsersAdminController extends Controller {
         application.post(prefix + "/admin/users/:id/email", ensureObjectBody(this.changeEmail.bind(this)));
         application.post(prefix + "/admin/users/:id/password", ensureObjectBody(this.changePassword.bind(this)));
         application.post(prefix + "/admin/users/:id/username", ensureObjectBody(this.changeUsername.bind(this)));
+
+        // Wallet status endpoint
+        application.get(prefix + "/admin/wallet-status", noCache(this.getWalletStatus.bind(this)));
+        
+        // Internalize incoming payment (BRC-29)
+        application.post(prefix + "/admin/wallet-internalize", ensureObjectBody(this.internalizePayment.bind(this)));
     }
 
     /**
@@ -832,6 +839,125 @@ export class UsersAdminController extends Controller {
         });
 
         sendApiSuccess(request, response);
+    }
+
+    /**
+     * @typedef WalletStatusResponse
+     * @property {number} satoshis.required - Balance in satoshis
+     * @property {number} bsv.required - Balance in BSV
+     * @property {string} address.required - Wallet address
+     * @property {string} identityKey.required - Wallet identity key (for BSV Desktop)
+     */
+
+    /**
+     * Gets the backend wallet status (balance and address)
+     * Public endpoint for demo purposes
+     * Binding: GetWalletStatus
+     * @route GET /admin/wallet-status
+     * @group users_admin
+     * @returns {WalletStatusResponse.model} 200 - Wallet status
+     */
+    public async getWalletStatus(request: Express.Request, response: Express.Response) {
+        // Public endpoint for hackathon demo - shows backend wallet balance
+        try {
+            const bsvService = BsvService.getInstance();
+            await bsvService.ready();
+            const balance = await bsvService.getBalance();
+            const identityKey = bsvService.getIdentityKey();
+            const fundedAddress = await bsvService.getFundedAddress();
+
+            sendApiResult(request, response, {
+                satoshis: balance.satoshis,
+                bsv: balance.bsv,
+                address: balance.address,
+                identityKey: identityKey,
+                fundedAddress: fundedAddress,
+                outputCount: balance.outputCount,
+            });
+        } catch (error: any) {
+            request.logger.error("Error fetching wallet status: " + error.message);
+            sendApiError(
+                request,
+                response,
+                INTERNAL_SERVER_ERROR,
+                "WALLET_ERROR",
+                "Failed to fetch wallet status: " + error.message,
+            );
+        }
+    }
+
+    /**
+     * @typedef InternalizePaymentBody
+     * @property {string} txid.required - Transaction ID to internalize
+     * @property {string} senderIdentityKey.required - Sender's identity key
+     */
+
+    /**
+     * Internalizes an incoming BRC-29 payment
+     * Public endpoint for demo purposes
+     * Binding: InternalizePayment
+     * @route POST /admin/wallet-internalize
+     * @group users_admin
+     * @param {InternalizePaymentBody.model} request.body - Payment details
+     * @returns {void} 200 - Success
+     */
+    public async internalizePayment(request: Express.Request, response: Express.Response) {
+        try {
+            const { txid, senderIdentityKey } = request.body;
+
+            if (!txid || !senderIdentityKey) {
+                sendApiError(request, response, BAD_REQUEST, "MISSING_PARAMS", "txid and senderIdentityKey are required");
+                return;
+            }
+
+            const bsvService = BsvService.getInstance();
+            await bsvService.ready();
+
+            // Fetch the transaction from blockchain
+            const txHex = await bsvService.getTransaction(txid);
+            if (!txHex) {
+                sendApiError(request, response, BAD_REQUEST, "TX_NOT_FOUND", "Transaction not found on blockchain");
+                return;
+            }
+
+            // Try to internalize the payment
+            const wallet = bsvService.getWallet();
+            
+            // Standard BRC-29 derivation parameters
+            const derivationPrefix = Buffer.from('keyID', 'utf8').toString('base64');
+            const derivationSuffix = Buffer.from('somethingIwontforget', 'utf8').toString('base64');
+
+            await wallet.internalizeAction({
+                tx: Array.from(Buffer.from(txHex, 'hex')),
+                outputs: [{
+                    outputIndex: 0,
+                    protocol: 'wallet payment',
+                    paymentRemittance: {
+                        derivationPrefix,
+                        derivationSuffix,
+                        senderIdentityKey
+                    }
+                }],
+                description: 'Internalized incoming payment'
+            });
+
+            request.logger.info(`[Admin] Internalized payment: ${txid} from ${senderIdentityKey}`);
+
+            sendApiResult(request, response, {
+                success: true,
+                message: "Payment internalized successfully",
+                txid: txid
+            });
+        } catch (error: any) {
+            request.logger.error("Error internalizing payment: " + error.message);
+            sendApiError(
+                request,
+                response,
+                INTERNAL_SERVER_ERROR,
+                "INTERNALIZE_ERROR",
+                "Failed to internalize payment: " + error.message,
+            );
+        }
     }
 }
 
