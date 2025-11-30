@@ -1560,6 +1560,12 @@ export default defineComponent({
             // Generar QR con el link http://hola.com
             const qrUrl = "http://localhost:3000/api/presentation";
             accessQRData.value = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
+            
+            // Redirigir a /services-details después de 5 segundos
+            setTimeout(() => {
+                closeAccessQRModal();
+                router.push({ name: 'services-details' });
+            }, 8000);
         };
 
         const closeAccessQRModal = () => {
