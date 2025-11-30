@@ -12,6 +12,7 @@ import { UsersService } from "../../services/users-service";
 import { CredentialRequest } from "../../models/credential-request";
 import { BsvConfig } from "../../config/config-bsv";
 import { Credential } from "../../models/credential";
+import { WebSocketManager } from "../../services/websocket-manager";
 
 /**
  * Verifiable Credentials API Controller
@@ -25,6 +26,9 @@ export class CredentialsController extends Controller {
         application.post(prefix + "/credentials/close-emssion", ensureObjectBody(this.updateCredentialStatus.bind(this)));
 
         application.get(prefix + "/credentials/check-status", noCache(this.checkCredentialStatus.bind(this)));
+
+        // Endpoint para redirigir cuando se escanea el QR de acceso
+        application.get(prefix + "/credentials/access", noCache(this.accessCredential.bind(this)));
         // Step 1: User requests a credential
         application.post(prefix + "/credentials/request", ensureObjectBody(this.requestCredential.bind(this)));
 
@@ -526,6 +530,20 @@ export class CredentialsController extends Controller {
             credential.status = "ACTIVE";
             await credential.save();
 
+            // Emit WebSocket event to notify the user that their credential status was updated
+            const userDID = credential.did;
+            if (userDID) {
+                WebSocketManager.getInstance().sendToUser(userDID, {
+                    event: "credential_status_updated",
+                    credentialId: credential.id,
+                    status: credential.status,
+                    timestamp: Date.now(),
+                    redirect: true,
+                    redirectTo: "services-details"
+                });
+                Monitor.info(`WebSocket: Sent credential_status_updated event to ${userDID.substring(0, 20)}...`);
+            }
+
             return sendApiResult(request, response, {
                 success: true,
                 redirect: "false"
@@ -560,6 +578,35 @@ export class CredentialsController extends Controller {
         } catch (error) {
             Monitor.error(`Error checking credential status: ${error.message}`);
             return sendApiError(request, response, INTERNAL_SERVER_ERROR, "CHECK_CREDENTIAL_STATUS_FAILED", error.message);
+        }
+    }
+
+    /**
+     * Access Credential via QR
+     * When QR is scanned, this endpoint is called and redirects to services page
+     * @route GET /credentials/access
+     * @group credentials
+     * @returns {void} 302 - Redirects to services page
+     * @returns {Error} 500 - Internal server error
+     */
+    public async accessCredential(request: Express.Request, response: Express.Response): Promise<void> {
+        try {
+            const credentialId = request.query.credentialId as string;
+            
+            // Get frontend URL from config or use default
+            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+            const redirectUrl = `${frontendUrl}/services-details`;
+            
+            // If credentialId is provided, we could update status here
+            // For now, just redirect to services page
+            Monitor.info(`QR access scanned, redirecting to: ${redirectUrl}`);
+            
+            response.redirect(302, redirectUrl);
+        } catch (error) {
+            Monitor.error(`Error in access credential: ${error.message}`);
+            // Even on error, redirect to services page
+            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+            response.redirect(302, `${frontendUrl}/services-details`);
         }
     }
 

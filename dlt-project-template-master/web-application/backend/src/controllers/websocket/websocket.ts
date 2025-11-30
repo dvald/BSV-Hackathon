@@ -7,6 +7,8 @@ import HTTP from "http";
 import { AsyncQueue } from "@asanrom/async-tools";
 import { Monitor } from "../../monitor";
 import { RequestLogger } from "../../utils/request-log";
+import { WebSocketManager } from "../../services/websocket-manager";
+import { UsersService } from "../../services/users-service";
 
 const WS_QUEUE_SIZE = 20;
 
@@ -28,6 +30,8 @@ export class WebsocketController {
     public logger: RequestLogger;
 
     public eventListeners: { [event: string]: (any) => any };
+
+    private userDID: string | null = null;
 
     constructor(ws: WebSocket.WebSocket, req: HTTP.IncomingMessage) {
         this.closed = false;
@@ -101,6 +105,14 @@ export class WebsocketController {
             case "promise":
                 this.send({ event: "resolved" });
                 break;
+            case "register":
+                // Client wants to register with their DID
+                if (msg.did) {
+                    this.userDID = msg.did;
+                    WebSocketManager.getInstance().registerConnection(msg.did, this);
+                    this.send({ event: "registered", did: msg.did });
+                }
+                break;
             default:
                 Monitor.debug("Unknown message type: " + msg.type);
         }
@@ -111,6 +123,11 @@ export class WebsocketController {
     public async close() {
         // Close
         this.closed = true;
+
+        // Unregister from WebSocketManager
+        if (this.userDID) {
+            WebSocketManager.getInstance().unregisterConnection(this);
+        }
 
         // Destroy intervals
         if (this.interval) {
@@ -126,7 +143,7 @@ export class WebsocketController {
         this.socket.close();
     }
 
-    public start() {
+    public async start() {
         this.logger.info("WEBSOCKET " + this.request.url + " FOR " + this.request.socket.remoteAddress);
 
         this.initT = Date.now();
@@ -136,6 +153,18 @@ export class WebsocketController {
         this.socket.on("close", this.close.bind(this));
 
         this.interval = setInterval(this.tick.bind(this), 1000);
+
+        // Try to authenticate user from session/cookies
+        try {
+            const auth = await UsersService.getInstance().auth(this.request as any);
+            if (auth.isRegisteredUser() && auth.user.did) {
+                this.userDID = auth.user.did;
+                WebSocketManager.getInstance().registerConnection(auth.user.did, this);
+                Monitor.debug(`WebSocket: Auto-registered connection for DID ${auth.user.did.substring(0, 20)}...`);
+            }
+        } catch (error) {
+            Monitor.debug("WebSocket: Could not auto-authenticate user: " + error.message);
+        }
 
         // Send client version
         this.send({ event: "hello" });

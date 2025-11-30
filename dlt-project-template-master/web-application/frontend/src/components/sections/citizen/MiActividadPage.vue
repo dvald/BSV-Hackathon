@@ -85,6 +85,7 @@
                         >
                             <option value="">{{ $t("All services") }}</option>
                             <option value="parking_pmr">{{ $t("PMR Parking") }}</option>
+                            <option value="family_parking">{{ $t("Family Parking") }}</option>
                             <option value="eco_puntos">{{ $t("EcoPoints") }}</option>
                             <option value="transport">{{ $t("Public Transport") }}</option>
                         </select>
@@ -250,9 +251,9 @@ export default defineComponent({
                 period: "30",
             },
             stats: {
-                verifications: 12,
-                shares: 8,
-                services: 3,
+                verifications: 15,
+                shares: 10,
+                services: 4,
             },
             activities: [
                 {
@@ -267,6 +268,17 @@ export default defineComponent({
                     txId: "abc123verification456def789",
                 },
                 {
+                    id: "act-007",
+                    type: "verification",
+                    title: "Credential verified",
+                    description: "Your Large Family Credential was verified for parking discount",
+                    timestamp: new Date(Date.now() - 3 * 3600000).toISOString(),
+                    service: "Family Parking - Centro Comercial",
+                    accessor: "Sistema Parking Familias",
+                    dataShared: ["Family status", "Number of children"],
+                    txId: "fam456verification789xyz012",
+                },
+                {
                     id: "act-002",
                     type: "token_use",
                     title: "Token used",
@@ -274,6 +286,15 @@ export default defineComponent({
                     timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
                     service: "PMR Parking - Plaza Mayor",
                     txId: "xyz789tokenuse123abc456",
+                },
+                {
+                    id: "act-008",
+                    type: "token_use",
+                    title: "Family parking used",
+                    description: "Reserved family parking space used at discounted rate",
+                    timestamp: new Date(Date.now() - 5 * 3600000).toISOString(),
+                    service: "Family Parking - Centro Comercial",
+                    txId: "fam789parking012abc345",
                 },
                 {
                     id: "act-003",
@@ -296,6 +317,15 @@ export default defineComponent({
                     accessor: "Sistema EcoPuntos",
                     dataShared: ["Census status"],
                     txId: "ghi012verification345jkl678",
+                },
+                {
+                    id: "act-009",
+                    type: "credential_issued",
+                    title: "Credential issued",
+                    description: "You received your Large Family Credential",
+                    timestamp: new Date(Date.now() - 5 * 24 * 3600000).toISOString(),
+                    service: "Ayuntamiento - Servicios Sociales",
+                    txId: "fam345credential678family901",
                 },
                 {
                     id: "act-005",

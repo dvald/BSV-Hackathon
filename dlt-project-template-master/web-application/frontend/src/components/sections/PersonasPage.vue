@@ -109,6 +109,7 @@
                         >
                             <option value="">{{ $t("All") }}</option>
                             <option value="disability">{{ $t("Disability") }}</option>
+                            <option value="large_family">{{ $t("Large Family") }}</option>
                             <option value="census">{{ $t("Census") }}</option>
                             <option value="none">{{ $t("No credentials") }}</option>
                         </select>
@@ -733,6 +734,39 @@ export default defineComponent({
                     },
                     registeredAt: "2023-11-15T14:20:00Z",
                 },
+                {
+                    id: "cit-005",
+                    name: "Laura Fernández García",
+                    nationalId: "99887766E",
+                    did: "did:bsv:1LFaGgH3bsnXmGsJYXrT8sB3yJZ8qzXvP2",
+                    email: "l.fernandez@email.com",
+                    status: "active" as const,
+                    credentials: [
+                        {
+                            id: "cred-005",
+                            type: "Large Family Credential",
+                            status: "active" as const,
+                            issuer: "Ayuntamiento MiCiudad",
+                            issuedAt: "2024-04-10T11:00:00Z",
+                            expiresAt: "2026-04-10T11:00:00Z",
+                            txId: "fam567xyz890123",
+                        },
+                        {
+                            id: "cred-006",
+                            type: "Census Credential",
+                            status: "active" as const,
+                            issuer: "Ayuntamiento MiCiudad",
+                            issuedAt: "2024-04-10T11:30:00Z",
+                            expiresAt: "2025-04-10T11:30:00Z",
+                            txId: "cen890abc123456",
+                        },
+                    ],
+                    tokens: {
+                        parking: 15,
+                        eco: 780,
+                    },
+                    registeredAt: "2024-04-08T09:15:00Z",
+                },
             ] as Citizen[],
         };
     },
@@ -814,6 +848,7 @@ export default defineComponent({
         getCredentialIcon(type: string): string {
             const icons: Record<string, string> = {
                 "Disability Credential": "mdi-wheelchair-accessibility",
+                "Large Family Credential": "mdi-human-male-female-child",
                 "Census Credential": "mdi-clipboard-account",
             };
             return icons[type] || "mdi-certificate";

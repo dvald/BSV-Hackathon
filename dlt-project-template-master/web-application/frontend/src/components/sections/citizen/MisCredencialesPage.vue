@@ -46,7 +46,7 @@
                         <i class="mdi mdi-alert-circle stat-icon stat-icon-warning" aria-hidden="true"></i>
                         <div class="stat-content">
                             <p class="stat-value stat-value-warning">{{ expiringCredentials.length }}</p>
-                            <h3 id="stat-expiring" class="stat-label">{{ $t("Expiring soon") }}</h3>
+                            <h3 id="stat-expiring" class="stat-label">{{ $t("Expired") }}</h3>
                         </div>
                     </article>
                 </div>
@@ -238,6 +238,17 @@ export default defineComponent({
                     expiresAt: "2025-06-01T09:00:00Z",
                     txId: "xyz789abc123def456ghi012jkl345mno678pqr901stu234vw",
                 },
+                {
+                    id: "cred-003",
+                    name: "Large Family Credential",
+                    type: "large_family",
+                    description: "Official recognition as large family member with access to special benefits and discounts",
+                    status: "Active",
+                    issuer: "Ayuntamiento - Servicios Sociales",
+                    issuedAt: "2024-03-10T11:30:00Z",
+                    expiresAt: "2026-03-10T11:30:00Z",
+                    txId: "fam123large456family789cred012xyz345abc678def901ghi",
+                },
             ] as Credential[],
             pendingCredentials: [] as PendingRequest[],
         };
@@ -271,6 +282,7 @@ export default defineComponent({
                 disability: "mdi-wheelchair-accessibility",
                 census: "mdi-clipboard-account",
                 senior: "mdi-account-clock",
+                large_family: "mdi-human-male-female-child",
             };
             return icons[type] || "mdi-certificate";
         },
@@ -415,6 +427,9 @@ export default defineComponent({
     font-size: var(--a11y-font-size-large);
     font-weight: 600;
     margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .credential-body {
@@ -423,6 +438,9 @@ export default defineComponent({
 
 .credential-description {
     margin-bottom: var(--a11y-spacing-md);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .credential-details {
@@ -439,14 +457,19 @@ export default defineComponent({
     display: flex;
     justify-content: space-between;
     font-size: var(--a11y-font-size-small);
+    white-space: nowrap;
 }
 
 .detail-label {
     color: var(--a11y-text-secondary);
+    flex-shrink: 0;
 }
 
 .detail-value {
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
 }
 
 .expiring-text {
@@ -466,16 +489,20 @@ export default defineComponent({
     border-radius: var(--a11y-border-radius);
     font-size: var(--a11y-font-size-small);
     margin-bottom: var(--a11y-spacing-md);
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .verification-icon {
     color: var(--a11y-success);
     font-size: 1.25rem;
+    flex-shrink: 0;
 }
 
 .verification-text {
     color: var(--a11y-success);
     font-weight: 500;
+    flex-shrink: 0;
 }
 
 .verification-link {
@@ -486,6 +513,7 @@ export default defineComponent({
     display: flex;
     align-items: center;
     gap: var(--a11y-spacing-xs);
+    flex-shrink: 0;
 }
 
 .verification-link:hover {
