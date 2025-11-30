@@ -603,6 +603,20 @@
                                     </p>
                                 </div>
                             </div>
+                            <td>
+                                <a v-if="txid" :href="'https://whatsonchain.com/tx/' + txid" target="_blank" class="tx-link" :title="txid">
+                                        <i class="fas fa-cube"></i> {{ txid.substring(0, 8) }}...
+                                    </a>
+                                    <span v-else class="no-tx">-</span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" @click="copyToClipboard(file.hash)" :title="$t('Copy Hash')">
+                                        <i class="fas fa-fingerprint"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" @click="openFile(file.url)" :title="$t('Open')">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </button>
+                                </td>
                         </div>
                     </fieldset>
 
@@ -898,6 +912,7 @@ export default defineComponent({
     components: {},
     name: "ServiciosPage",
     setup() {
+        const txid = ref<string | null>(null);
         // Wallet composable
         const { wallet, identityKey, isConnected, isConnecting, connect } = useWallet();
         
@@ -1333,6 +1348,7 @@ export default defineComponent({
 
                     Request.Do(ApiCredentials.RequestCredential(credentialRequest))
                         .onSuccess((credentialResult) => {
+                            txid.value = credentialResult.txid;
                             // Éxito
                             uploading.value = false;
                             uploadSuccess.value = true;
