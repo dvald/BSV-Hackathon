@@ -491,9 +491,30 @@ export default function WebWalletApp() {
       console.log("QR reconocido. Prueba con 'www.example.com'", scannedContent);
 
       // Esperar 2 segundos mostrando el tick verde antes de mostrar la tarjeta
-      setTimeout(() => {
+      setTimeout(async () => {
         // Agregar nueva credencial al array
         setCredentials(prev => [...prev, credentialData]);
+
+        // --- WEBHOOK LOGIC (CREDENTIAL RECEIVED) ---
+        const webhookUrl = import.meta.env.VITE_CREDENTIAL_RECEIVED_CALLBACK_URL;
+        if (webhookUrl) {
+          try {
+            console.log("Enviando webhook de credencial recibida a:", webhookUrl);
+
+            await fetch(webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(credentialData),
+            });
+            console.log("Webhook de credencial recibida enviado con éxito");
+          } catch (error) {
+            console.error("Error enviando webhook de credencial recibida:", error);
+          }
+        }
+        // ---------------------
+
         setViewState('credential');
 
         // Liberar el bloqueo
