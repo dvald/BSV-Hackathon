@@ -357,6 +357,137 @@
 
                     <!-- Formulario de solicitud -->
                     <form @submit.prevent="submitServiceRequest" class="request-form">
+                        <!-- Tipo de credencial -->
+                        <div class="a11y-form-group">
+                            <label for="request-credential-type" class="a11y-label a11y-label-required">
+                                {{ $t("Credential type") }}
+                            </label>
+                            <div class="credential-types-grid">
+                                <label 
+                                    v-for="credType in credentialTypes" 
+                                    :key="credType.id"
+                                    class="credential-type-option"
+                                    :class="{ 'option-selected': serviceRequest.credentialType === credType.id }"
+                                >
+                                    <input 
+                                        type="radio"
+                                        :value="credType.id"
+                                        v-model="serviceRequest.credentialType"
+                                        class="a11y-visually-hidden"
+                                        name="request-credential-type"
+                                    />
+                                    <i :class="'mdi ' + credType.icon + ' option-icon'" aria-hidden="true"></i>
+                                    <div class="option-content">
+                                        <span class="option-title">{{ $t(credType.name) }}</span>
+                                        <span class="option-desc">{{ $t(credType.description) }}</span>
+                                    </div>
+                                    <span v-if="serviceRequest.credentialType === credType.id" class="option-check">
+                                        <i class="mdi mdi-check-circle"></i>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Campos dinámicos según tipo de credencial -->
+                        <div v-if="serviceRequest.credentialType" class="credential-data-section">
+                            <!-- Campos para Credencial de Discapacidad -->
+                            <template v-if="serviceRequest.credentialType === 'disability'">
+                                <div class="a11y-form-group">
+                                    <label for="request-disability-grade" class="a11y-label a11y-label-required">
+                                        {{ $t("Disability grade") }}
+                                    </label>
+                                    <select 
+                                        id="request-disability-grade"
+                                        v-model="serviceRequest.credentialData.disabilityGrade"
+                                        class="a11y-select"
+                                        required
+                                    >
+                                        <option value="">{{ $t("Select grade") }}</option>
+                                        <option value="33-64">33% - 64%</option>
+                                        <option value="65-74">65% - 74%</option>
+                                        <option value="75+">75% {{ $t("or more") }}</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="a11y-form-group">
+                                    <label for="request-mobility-reduced" class="a11y-label">
+                                        {{ $t("Reduced mobility") }}
+                                    </label>
+                                    <div class="checkbox-wrapper">
+                                        <input 
+                                            id="request-mobility-reduced"
+                                            type="checkbox"
+                                            v-model="serviceRequest.credentialData.mobilityReduced"
+                                        />
+                                        <label for="request-mobility-reduced">
+                                            {{ $t("Has officially recognized reduced mobility") }}
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="a11y-form-group">
+                                    <label for="request-official-doc" class="a11y-label a11y-label-required">
+                                        {{ $t("Official document number") }}
+                                    </label>
+                                    <input 
+                                        id="request-official-doc"
+                                        type="text"
+                                        v-model="serviceRequest.credentialData.officialDocNumber"
+                                        class="a11y-input"
+                                        required
+                                        :placeholder="$t('Certificate number from autonomous community')"
+                                    />
+                                </div>
+                            </template>
+
+                            <!-- Campos para Credencial de Empadronamiento -->
+                            <template v-if="serviceRequest.credentialType === 'census'">
+                                <div class="a11y-form-group">
+                                    <label for="request-census-address" class="a11y-label a11y-label-required">
+                                        {{ $t("Registered address") }}
+                                    </label>
+                                    <input 
+                                        id="request-census-address"
+                                        type="text"
+                                        v-model="serviceRequest.credentialData.address"
+                                        class="a11y-input"
+                                        required
+                                    />
+                                </div>
+
+                                <div class="a11y-form-group">
+                                    <label for="request-census-since" class="a11y-label a11y-label-required">
+                                        {{ $t("Registered since") }}
+                                    </label>
+                                    <input 
+                                        id="request-census-since"
+                                        type="date"
+                                        v-model="serviceRequest.credentialData.censusSince"
+                                        class="a11y-input"
+                                        required
+                                    />
+                                </div>
+
+                                <div class="a11y-form-group">
+                                    <label for="request-census-district" class="a11y-label">
+                                        {{ $t("District") }}
+                                    </label>
+                                    <select 
+                                        id="request-census-district"
+                                        v-model="serviceRequest.credentialData.district"
+                                        class="a11y-select"
+                                    >
+                                        <option value="">{{ $t("Select district") }}</option>
+                                        <option value="centro">Centro</option>
+                                        <option value="norte">Norte</option>
+                                        <option value="sur">Sur</option>
+                                        <option value="este">Este</option>
+                                        <option value="oeste">Oeste</option>
+                                    </select>
+                                </div>
+                            </template>
+                        </div>
+
                         <div class="a11y-form-group">
                             <label for="request-document" class="a11y-label a11y-label-required">
                                 {{ $t("Upload Identification document") }}
@@ -410,7 +541,7 @@
                             <button 
                                 type="submit"
                                 class="a11y-btn a11y-btn-primary"
-                                :disabled="!serviceRequest.document || uploading || uploadSuccess"
+                                :disabled="!serviceRequest.credentialType || !serviceRequest.document || uploading || uploadSuccess"
                             >
                                 <i v-if="uploading" class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
                                 <i v-else class="mdi mdi-send" aria-hidden="true"></i>
@@ -573,8 +704,33 @@ export default defineComponent({
             credentialTypeError: "",
             credentialTypeSuccess: false,
             serviceRequest: {
+                credentialType: "",
+                credentialData: {
+                    // Disability
+                    disabilityGrade: "",
+                    mobilityReduced: false,
+                    officialDocNumber: "",
+                    // Census
+                    address: "",
+                    censusSince: "",
+                    district: "",
+                },
                 document: null as File | null,
             },
+            credentialTypes: [
+                {
+                    id: "disability",
+                    name: "Disability Credential",
+                    description: "For citizens with official disability recognition",
+                    icon: "mdi-wheelchair-accessibility",
+                },
+                {
+                    id: "census",
+                    name: "Census Credential",
+                    description: "Proof of registration in the municipal census",
+                    icon: "mdi-clipboard-account",
+                },
+            ],
             uploadRequestId: getUniqueStringId(),
             uploading: false,
             uploadError: "",
@@ -749,6 +905,15 @@ export default defineComponent({
         requestService(service: Service) {
             this.selectedService = service;
             this.serviceRequest = {
+                credentialType: "",
+                credentialData: {
+                    disabilityGrade: "",
+                    mobilityReduced: false,
+                    officialDocNumber: "",
+                    address: "",
+                    censusSince: "",
+                    district: "",
+                },
                 document: null,
             };
             this.uploading = false;
@@ -1125,6 +1290,89 @@ export default defineComponent({
 .service-info-desc {
     margin: 0;
     font-size: var(--a11y-font-size-small);
+}
+
+/* Credential Types Grid */
+.credential-types-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--a11y-spacing-sm);
+}
+
+.credential-type-option {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-md);
+    padding: var(--a11y-spacing-md);
+    border: 2px solid #e0e0e0;
+    border-radius: var(--a11y-border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #fff;
+}
+
+.credential-type-option:hover {
+    border-color: var(--a11y-primary);
+    background-color: rgba(var(--a11y-primary-rgb), 0.05);
+}
+
+.credential-type-option.option-selected {
+    border-color: var(--a11y-primary);
+    background-color: rgba(var(--a11y-primary-rgb), 0.1);
+}
+
+.option-icon {
+    font-size: 1.75rem;
+    color: var(--a11y-primary);
+    flex-shrink: 0;
+}
+
+.option-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.option-title {
+    font-weight: 600;
+    font-size: var(--a11y-font-size-base);
+}
+
+.option-desc {
+    font-size: var(--a11y-font-size-small);
+    color: var(--a11y-text-secondary);
+}
+
+.option-check {
+    color: var(--a11y-primary);
+    font-size: 1.5rem;
+}
+
+/* Credential Data Section */
+.credential-data-section {
+    background-color: #f8f9fa;
+    border-radius: var(--a11y-border-radius);
+    padding: var(--a11y-spacing-md);
+    margin-bottom: var(--a11y-spacing-md);
+}
+
+/* Checkbox wrapper */
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--a11y-spacing-sm);
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
+}
+
+.checkbox-wrapper label {
+    cursor: pointer;
+    font-size: var(--a11y-font-size-base);
 }
 
 /* File Upload Area */
