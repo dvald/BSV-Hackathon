@@ -501,6 +501,7 @@ export default defineComponent({
                     console.error(err);
                     Timeouts.Set(this.loadRequestId, 1500, this.loadDashboardStats.bind(this));
                 });
+        },
         useParking(): void {
             // TODO: Implementar uso de parking
             console.log("Use parking");
