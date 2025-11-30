@@ -966,6 +966,101 @@ export interface UpdateCredentialTypeRequest {
     serviceId?: string;
 }
 
+export interface CitizenItem {
+    /**
+     * Citizen ID
+     */
+    id: string;
+
+    /**
+     * User ID
+     */
+    uid: string;
+
+    /**
+     * Citizen status
+     */
+    status: string;
+
+    /**
+     * Creation timestamp
+     */
+    createdAt: number;
+
+    /**
+     * Last update timestamp
+     */
+    updatedAt: number;
+
+    /**
+     * Decentralized identifier
+     */
+    did?: string;
+}
+
+export interface CitizenListResponse {
+    citizens: CitizenItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateCitizenRequest {
+    /**
+     * User ID
+     */
+    uid: string;
+
+    /**
+     * Citizen status (default: active)
+     */
+    status?: string;
+
+    /**
+     * Decentralized identifier
+     */
+    did?: string;
+}
+
+export interface CreateCitizenBadRequest {
+    /**
+     * Error code:
+     * - MISSING_UID
+     * - CITIZEN_ALREADY_EXISTS
+     */
+    code: string;
+}
+
+export interface UpdateCitizenRequest {
+    /**
+     * Citizen status
+     */
+    status?: string;
+
+    /**
+     * Decentralized identifier
+     */
+    did?: string;
+}
+
+export interface UpdateCitizenBadRequest {
+    /**
+     * Error code:
+     * - NOT_FOUND
+     */
+    code: string;
+}
+
+export interface DeleteCitizenBadRequest {
+    /**
+     * Error code:
+     * - NOT_FOUND
+     */
+    code: string;
+}
+
 export interface CitizenServiceItem {
     /**
      * Record ID

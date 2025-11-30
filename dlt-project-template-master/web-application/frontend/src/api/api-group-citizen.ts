@@ -2,11 +2,126 @@
 
 "use strict";
 
-import { RequestErrorHandler, RequestParams, CommonErrorHandler } from "@asanrom/request-browser";
+import { RequestErrorHandler, RequestParams, CommonAuthenticatedErrorHandler, CommonErrorHandler } from "@asanrom/request-browser";
 import { getApiUrl } from "./utils";
-import { CitizenServiceListResponse, CitizenServiceItem, CreateCitizenServiceRequest } from "./definitions";
+import { CitizenListResponse, CitizenItem, CreateCitizenRequest, UpdateCitizenRequest, CitizenServiceListResponse, CitizenServiceItem, CreateCitizenServiceRequest } from "./definitions";
 
 export class ApiCitizen {
+    /**
+     * Method: GET
+     * Path: /citizens
+     * List all citizens
+     * @returns The request parameters
+     */
+    public static ListCitizens(): RequestParams<CitizenListResponse, CommonAuthenticatedErrorHandler> {
+        return {
+            method: "GET",
+            url: getApiUrl(`/citizens`),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(401, "*", handler.unauthorized)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
+
+    /**
+     * Method: POST
+     * Path: /citizens
+     * Create a new citizen
+     * @param body Body parameters
+     * @returns The request parameters
+     */
+    public static CreateCitizen(body: CreateCitizenRequest): RequestParams<CitizenItem, CreateCitizenErrorHandler> {
+        return {
+            method: "POST",
+            url: getApiUrl(`/citizens`),
+            json: body,
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(400, "CITIZEN_ALREADY_EXISTS", handler.badRequestCitizenAlreadyExists)
+                    .add(400, "MISSING_UID", handler.badRequestMissingUid)
+                    .add(400, "*", handler.badRequest)
+                    .add(401, "*", handler.unauthorized)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
+
+    /**
+     * Method: GET
+     * Path: /citizens/{id}
+     * Get citizen by ID
+     * @param id Citizen ID
+     * @returns The request parameters
+     */
+    public static GetCitizen(id: string): RequestParams<CitizenItem, GetCitizenErrorHandler> {
+        return {
+            method: "GET",
+            url: getApiUrl(`/citizens/${encodeURIComponent(id)}`),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(404, "*", handler.notFound)
+                    .add(401, "*", handler.unauthorized)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
+
+    /**
+     * Method: PUT
+     * Path: /citizens/{id}
+     * Update a citizen
+     * @param id Citizen ID
+     * @param body Body parameters
+     * @returns The request parameters
+     */
+    public static UpdateCitizen(id: string, body: UpdateCitizenRequest): RequestParams<CitizenItem, UpdateCitizenErrorHandler> {
+        return {
+            method: "PUT",
+            url: getApiUrl(`/citizens/${encodeURIComponent(id)}`),
+            json: body,
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(404, "NOT_FOUND", handler.notFoundNotFound)
+                    .add(404, "*", handler.notFound)
+                    .add(401, "*", handler.unauthorized)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
+
+    /**
+     * Method: DELETE
+     * Path: /citizens/{id}
+     * Delete a citizen
+     * @param id Citizen ID
+     * @returns The request parameters
+     */
+    public static DeleteCitizen(id: string): RequestParams<void, DeleteCitizenErrorHandler> {
+        return {
+            method: "DELETE",
+            url: getApiUrl(`/citizens/${encodeURIComponent(id)}`),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(404, "NOT_FOUND", handler.notFoundNotFound)
+                    .add(404, "*", handler.notFound)
+                    .add(401, "*", handler.unauthorized)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
+
     /**
      * Method: GET
      * Path: /citizen-services
@@ -130,6 +245,50 @@ export class ApiCitizen {
         };
     }
 }
+
+/**
+ * Error handler for CreateCitizen
+ */
+export type CreateCitizenErrorHandler = CommonAuthenticatedErrorHandler & {
+    /**
+     * General handler for status = 400
+     */
+    badRequest: () => void;
+
+
+};
+
+/**
+ * Error handler for GetCitizen
+ */
+export type GetCitizenErrorHandler = CommonAuthenticatedErrorHandler & {
+    /**
+     * General handler for status = 404
+     */
+    notFound: () => void;
+};
+
+/**
+ * Error handler for UpdateCitizen
+ */
+export type UpdateCitizenErrorHandler = CommonAuthenticatedErrorHandler & {
+    /**
+     * General handler for status = 404
+     */
+    notFound: () => void;
+
+};
+
+/**
+ * Error handler for DeleteCitizen
+ */
+export type DeleteCitizenErrorHandler = CommonAuthenticatedErrorHandler & {
+    /**
+     * General handler for status = 404
+     */
+    notFound: () => void;
+
+};
 
 /**
  * Error handler for CreateCitizenService
