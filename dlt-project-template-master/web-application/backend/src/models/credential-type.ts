@@ -18,10 +18,6 @@ export class CredentialType extends DataModel {
         return credentialTypes;
     }
 
-    public static async findByService(serviceId: string): Promise<CredentialType[]> {
-        return await CredentialType.finder.find(DataFilter.equals("serviceId", serviceId));
-    }
-
     /* db-type: VARCHAR */
     public id: string;
 
@@ -30,9 +26,6 @@ export class CredentialType extends DataModel {
 
     /* db-type: VARCHAR */
     public description: string;
-
-    /* db-type: VARCHAR */
-    public serviceId: string;
 
     constructor(data: TypedRow<CredentialType>) {
         // First, we call DataModel constructor 
@@ -46,7 +39,6 @@ export class CredentialType extends DataModel {
         this.id = enforceType(data.id, "string") || '';
         this.name = enforceType(data.name, "string") || '';
         this.description = enforceType(data.description, "string") || '';
-        this.serviceId = enforceType(data.serviceId, "string") || '';
 
         // Finally, we must call init()
         this.init();

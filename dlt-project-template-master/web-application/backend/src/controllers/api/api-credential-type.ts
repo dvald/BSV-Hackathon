@@ -22,7 +22,6 @@ export class CredentialTypeController extends Controller {
     public registerAPI(prefix: string, application: Express.Express): void {
         application.get(prefix + "/credential-types", noCache(this.listCredentialTypes.bind(this)));
         application.get(prefix + "/credential-types/:id", noCache(this.getCredentialType.bind(this)));
-        application.get(prefix + "/services/:serviceId/credential-types", noCache(this.getCredentialTypesByService.bind(this)));
         application.post(prefix + "/credential-types", ensureObjectBody(this.createCredentialType.bind(this)));
         application.put(prefix + "/credential-types/:id", ensureObjectBody(this.updateCredentialType.bind(this)));
         application.delete(prefix + "/credential-types/:id", noCache(this.deleteCredentialType.bind(this)));
@@ -33,7 +32,6 @@ export class CredentialTypeController extends Controller {
      * @property {string} id.required - Credential type ID
      * @property {string} name.required - Credential type name
      * @property {string} description - Description
-     * @property {string} serviceId - Associated service ID
      */
 
     /**
@@ -101,42 +99,9 @@ export class CredentialTypeController extends Controller {
     }
 
     /**
-     * Get credential types by service
-     * Binding: GetCredentialTypesByService
-     * @route GET /services/{serviceId}/credential-types
-     * @group credential-type
-     * @param {string} serviceId.path.required - Service ID
-     * @returns {CredentialTypeListResponse.model} 200 - List of credential types for this service
-     */
-    public async getCredentialTypesByService(request: Express.Request, response: Express.Response): Promise<void> {
-        const auth = await UsersService.getInstance().auth(request);
-        if (!auth.isRegisteredUser) {
-            sendUnauthorized(request, response);
-            return;
-        }
-
-        try {
-            const serviceId = request.params.serviceId;
-            const types = await CredentialType.finder.find(
-                DataFilter.equals("serviceId", serviceId),
-                OrderBy.asc("name")
-            );
-
-            sendApiResult(request, response, {
-                credentialTypes: types.map(t => t.toObject()),
-                count: types.length
-            });
-        } catch (error) {
-            Monitor.exception(error, "CredentialTypeController.getCredentialTypesByService");
-            sendApiError(request, response, INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", error.message);
-        }
-    }
-
-    /**
      * @typedef CreateCredentialTypeRequest
      * @property {string} name.required - Credential type name
      * @property {string} description - Description
-     * @property {string} serviceId - Associated service ID
      */
 
     /**
@@ -172,19 +137,9 @@ export class CredentialTypeController extends Controller {
                 id: createRandomUID(),
                 name: body.name,
                 description: body.description || "",
-                serviceId: body.serviceId || ""
             });
 
             await type.insert();
-
-            // Update service credential count if serviceId provided
-            if (body.serviceId) {
-                const service = await Service.finder.findByKey(body.serviceId);
-                if (service) {
-                    service.credentialCount = service.credentialCount + 1;
-                    await service.save();
-                }
-            }
 
             Monitor.info(`Credential type created: ${type.id} - ${type.name}`);
             sendApiResult(request, response, type.toObject());
@@ -198,7 +153,6 @@ export class CredentialTypeController extends Controller {
      * @typedef UpdateCredentialTypeRequest
      * @property {string} name - Credential type name
      * @property {string} description - Description
-     * @property {string} serviceId - Associated service ID
      */
 
     /**
@@ -237,7 +191,6 @@ export class CredentialTypeController extends Controller {
 
             if (body.name !== undefined) type.name = body.name;
             if (body.description !== undefined) type.description = body.description;
-            if (body.serviceId !== undefined) type.serviceId = body.serviceId;
 
             await type.save();
 
@@ -271,15 +224,6 @@ export class CredentialTypeController extends Controller {
             const type = await CredentialType.finder.findByKey(id);
             if (!type) {
                 return sendApiError(request, response, NOT_FOUND, "NOT_FOUND", "Credential type not found");
-            }
-
-            // Update service credential count
-            if (type.serviceId) {
-                const service = await Service.finder.findByKey(type.serviceId);
-                if (service && service.credentialCount > 0) {
-                    service.credentialCount = service.credentialCount - 1;
-                    await service.save();
-                }
             }
 
             await type.delete();

@@ -26,7 +26,7 @@
                     {{ $t("New service") }}
                 </button>
                 <button 
-                    @click="openNewCredentialTypeModal"
+                    @click="showNewCredentialTypeModal = true"
                     class="a11y-btn a11y-btn-secondary a11y-btn-large"
                     :aria-label="$t('Create new credential type')"
                 >
@@ -218,30 +218,14 @@
                             type="text"
                             v-model="newService.name"
                             class="a11y-input"
+                            :placeholder="$t('e.g. PMR Parking')"
+                            :disabled="creatingService"
                             required
                         />
                     </div>
 
                     <div class="a11y-form-group">
-                        <label for="service-category" class="a11y-label a11y-label-required">
-                            {{ $t("Category") }}
-                        </label>
-                        <select 
-                            id="service-category"
-                            v-model="newService.category"
-                            class="a11y-select"
-                            required
-                        >
-                            <option value="">{{ $t("Select category") }}</option>
-                            <option value="mobility">{{ $t("Mobility") }}</option>
-                            <option value="environment">{{ $t("Environment") }}</option>
-                            <option value="social">{{ $t("Social Services") }}</option>
-                            <option value="culture">{{ $t("Culture") }}</option>
-                        </select>
-                    </div>
-
-                    <div class="a11y-form-group">
-                        <label for="service-description" class="a11y-label a11y-label-required">
+                        <label for="service-description" class="a11y-label">
                             {{ $t("Description") }}
                         </label>
                         <textarea 
@@ -249,32 +233,66 @@
                             v-model="newService.description"
                             class="a11y-textarea"
                             rows="3"
-                            required
+                            :placeholder="$t('Describe the service and its benefits for citizens...')"
+                            :disabled="creatingService"
                         ></textarea>
+                    </div>
+
+                    <div class="a11y-form-group">
+                        <label for="service-admin" class="a11y-label">
+                            {{ $t("Admin user") }}
+                        </label>
+                        <input 
+                            id="service-admin"
+                            type="text"
+                            v-model="newService.adminUser"
+                            class="a11y-input"
+                            :placeholder="$t('Admin user ID (optional)')"
+                            :disabled="creatingService"
+                        />
+                    </div>
+
+                    <div class="a11y-form-group">
+                        <label for="service-credentials" class="a11y-label">
+                            {{ $t("Required credentials") }}
+                        </label>
+                        <input 
+                            id="service-credentials"
+                            type="text"
+                            v-model="newService.requiredCredentials"
+                            class="a11y-input"
+                            :placeholder="$t('e.g. Disability Certificate, Census Certificate')"
+                            :disabled="creatingService"
+                        />
                         <p class="a11y-help-text">
-                            {{ $t("Write a clear and simple description for all citizens") }}
+                            {{ $t("Comma-separated list of required credentials") }}
                         </p>
                     </div>
 
                     <div class="a11y-form-group">
-                        <label for="service-admin" class="a11y-label a11y-label-required">
-                            {{ $t("Service administrator") }}
+                        <label for="service-token" class="a11y-label">
+                            {{ $t("Associated token") }}
                         </label>
-                        <select 
-                            id="service-admin"
-                            v-model="newService.adminId"
-                            class="a11y-select"
-                            required
-                        >
-                            <option value="">{{ $t("Select administrator") }}</option>
-                            <option 
-                                v-for="admin in availableAdmins" 
-                                :key="admin.id"
-                                :value="admin.id"
-                            >
-                                {{ admin.name }} ({{ admin.email }})
-                            </option>
-                        </select>
+                        <input 
+                            id="service-token"
+                            type="text"
+                            v-model="newService.associatedToken"
+                            class="a11y-input"
+                            :placeholder="$t('e.g. parking_pmr')"
+                            :disabled="creatingService"
+                        />
+                    </div>
+
+                    <!-- Mensaje de error -->
+                    <div v-if="serviceError" class="upload-message upload-error" role="alert">
+                        <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
+                        {{ serviceError }}
+                    </div>
+
+                    <!-- Mensaje de éxito -->
+                    <div v-if="serviceSuccess" class="upload-message upload-success" role="status">
+                        <i class="mdi mdi-check-circle" aria-hidden="true"></i>
+                        {{ $t("Service created successfully!") }}
                     </div>
 
                     <footer class="modal-footer">
@@ -282,14 +300,18 @@
                             type="button"
                             @click="showNewServiceModal = false"
                             class="a11y-btn a11y-btn-secondary"
+                            :disabled="creatingService"
                         >
                             {{ $t("Cancel") }}
                         </button>
                         <button 
                             type="submit"
                             class="a11y-btn a11y-btn-primary"
+                            :disabled="creatingService || serviceSuccess"
                         >
-                            {{ $t("Create service") }}
+                            <i v-if="creatingService" class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                            <i v-else class="mdi mdi-domain" aria-hidden="true"></i>
+                            {{ creatingService ? $t("Creating...") : $t("Create service") }}
                         </button>
                     </footer>
                 </form>
@@ -451,32 +473,6 @@
                         ></textarea>
                     </div>
 
-                    <div class="a11y-form-group">
-                        <label for="credential-type-service" class="a11y-label">
-                            {{ $t("Associated service") }}
-                        </label>
-                        <div class="select-with-loading">
-                            <select 
-                                id="credential-type-service"
-                                v-model="newCredentialType.serviceId"
-                                class="a11y-select"
-                                :disabled="loadingServicesForModal || (!loadingServicesForModal && availableServicesFromApi.length === 0)"
-                            >
-                                <option value="" v-if="loadingServicesForModal">{{ $t("Loading services...") }}</option>
-                                <option value="" v-else-if="availableServicesFromApi.length === 0">{{ $t("No services available") }}</option>
-                                <option value="" v-else>{{ $t("No service (general credential)") }}</option>
-                                <option 
-                                    v-for="service in availableServicesFromApi" 
-                                    :key="service.id"
-                                    :value="service.id"
-                                >
-                                    {{ service.name }}
-                                </option>
-                            </select>
-                            <i v-if="loadingServicesForModal" class="mdi mdi-loading mdi-spin loading-indicator" aria-hidden="true"></i>
-                        </div>
-                    </div>
-
                     <!-- Mensaje de error -->
                     <div v-if="credentialTypeError" class="upload-message upload-error" role="alert">
                         <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
@@ -571,15 +567,11 @@ export default defineComponent({
             newCredentialType: {
                 name: "",
                 description: "",
-                serviceId: "",
             },
             credentialTypeRequestId: getUniqueStringId(),
-            servicesListRequestId: getUniqueStringId(),
             creatingCredentialType: false,
             credentialTypeError: "",
             credentialTypeSuccess: false,
-            availableServicesFromApi: [] as { id: string; name: string }[],
-            loadingServicesForModal: false,
             serviceRequest: {
                 document: null as File | null,
             },
@@ -589,15 +581,15 @@ export default defineComponent({
             uploadSuccess: false,
             newService: {
                 name: "",
-                category: "",
                 description: "",
-                adminId: "",
+                adminUser: "",
+                requiredCredentials: "",
+                associatedToken: "",
             },
-            availableAdmins: [
-                { id: "admin1", name: "María García", email: "m.garcia@ciudad.es" },
-                { id: "admin2", name: "Carlos López", email: "c.lopez@ciudad.es" },
-                { id: "admin3", name: "Ana Martínez", email: "a.martinez@ciudad.es" },
-            ],
+            serviceRequestId: getUniqueStringId(),
+            creatingService: false,
+            serviceError: "",
+            serviceSuccess: false,
             services: [
                 {
                     id: "srv-mobility-pmr",
@@ -704,15 +696,55 @@ export default defineComponent({
             console.log("Edit service:", service.id);
         },
         createService() {
-            // TODO: Enviar al API para crear servicio
-            console.log("Create service:", this.newService);
-            this.showNewServiceModal = false;
-            this.newService = {
-                name: "",
-                category: "",
-                description: "",
-                adminId: "",
-            };
+            if (!this.newService.name) return;
+            
+            this.creatingService = true;
+            this.serviceError = "";
+            this.serviceSuccess = false;
+
+            Request.Abort(this.serviceRequestId);
+
+            Request.Pending(this.serviceRequestId, ApiService.CreateService({
+                name: this.newService.name,
+                description: this.newService.description || undefined,
+                adminUser: this.newService.adminUser || undefined,
+                requiredCredentials: this.newService.requiredCredentials || undefined,
+                associatedToken: this.newService.associatedToken || undefined,
+            }))
+                .onSuccess((response) => {
+                    this.creatingService = false;
+                    this.serviceSuccess = true;
+                    console.log("Service created:", response);
+                    
+                    // Cerrar modal después de éxito
+                    setTimeout(() => {
+                        this.showNewServiceModal = false;
+                        this.serviceSuccess = false;
+                        this.newService = {
+                            name: "",
+                            description: "",
+                            adminUser: "",
+                            requiredCredentials: "",
+                            associatedToken: "",
+                        };
+                    }, 1500);
+                })
+                .onRequestError((err, handleErr) => {
+                    this.creatingService = false;
+                    handleErr(err, {
+                        badRequest: () => {
+                            this.serviceError = this.$t("Invalid request. Please check the data entered.");
+                        },
+                        temporalError: () => {
+                            this.serviceError = this.$t("Error creating service. Please try again.");
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error(err);
+                    this.creatingService = false;
+                    this.serviceError = this.$t("Unexpected error occurred.");
+                });
         },
         requestService(service: Service) {
             this.selectedService = service;
@@ -777,36 +809,6 @@ export default defineComponent({
             this.uploadError = "";
             this.uploadSuccess = false;
         },
-        openNewCredentialTypeModal() {
-            this.showNewCredentialTypeModal = true;
-            this.loadServicesForCredentialType();
-        },
-        loadServicesForCredentialType() {
-            this.loadingServicesForModal = true;
-            
-            Request.Abort(this.servicesListRequestId);
-            
-            Request.Pending(this.servicesListRequestId, ApiService.ListServices())
-                .onSuccess((response) => {
-                    this.loadingServicesForModal = false;
-                    this.availableServicesFromApi = response.services.map(s => ({
-                        id: s.id,
-                        name: s.name
-                    }));
-                })
-                .onRequestError((err, handleErr) => {
-                    this.loadingServicesForModal = false;
-                    handleErr(err, {
-                        temporalError: () => {
-                            console.error("Error loading services");
-                        },
-                    });
-                })
-                .onUnexpectedError((err) => {
-                    console.error(err);
-                    this.loadingServicesForModal = false;
-                });
-        },
         createCredentialType() {
             if (!this.newCredentialType.name) return;
             
@@ -819,7 +821,6 @@ export default defineComponent({
             Request.Pending(this.credentialTypeRequestId, ApiCredential.CreateCredentialType({
                 name: this.newCredentialType.name,
                 description: this.newCredentialType.description,
-                serviceId: this.newCredentialType.serviceId || undefined,
             }))
                 .onSuccess((response) => {
                     this.creatingCredentialType = false;
@@ -833,7 +834,6 @@ export default defineComponent({
                         this.newCredentialType = {
                             name: "",
                             description: "",
-                            serviceId: "",
                         };
                     }, 1500);
                 })
@@ -862,7 +862,7 @@ export default defineComponent({
         Timeouts.Abort(this.uploadRequestId);
         Request.Abort(this.uploadRequestId);
         Request.Abort(this.credentialTypeRequestId);
-        Request.Abort(this.servicesListRequestId);
+        Request.Abort(this.serviceRequestId);
     },
 });
 </script>
@@ -1078,8 +1078,6 @@ export default defineComponent({
     z-index: 1000;
 }
 
-
-
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -1100,10 +1098,6 @@ export default defineComponent({
 }
 
 /* Request Service Modal */
-.request-service-modal {
-    max-width: 500px;
-}
-
 .selected-service-info {
     background-color: #f8f9fa;
     border-radius: var(--a11y-border-radius);
@@ -1222,24 +1216,6 @@ export default defineComponent({
 /* Loading spinner */
 .mdi-spin {
     animation: mdi-spin 1s infinite linear;
-}
-
-/* Select with loading indicator */
-.select-with-loading {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.select-with-loading .a11y-select {
-    flex: 1;
-}
-
-.select-with-loading .loading-indicator {
-    position: absolute;
-    right: 2.5rem;
-    color: var(--a11y-primary);
-    font-size: 1.25rem;
 }
 
 /* Disabled select styles */

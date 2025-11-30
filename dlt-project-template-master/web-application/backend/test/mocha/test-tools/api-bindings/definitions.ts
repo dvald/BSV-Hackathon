@@ -425,10 +425,7 @@ export interface CreateServiceRequest {
      */
     adminUser?: string;
 
-    /**
-     * Required credentials (comma-separated)
-     */
-    requiredCredentials?: string;
+    requiredCredentials?: string[];
 
     /**
      * Associated token
@@ -937,11 +934,6 @@ export interface CreateCredentialTypeRequest {
      * Description
      */
     description?: string;
-
-    /**
-     * Associated service ID
-     */
-    serviceId?: string;
 }
 
 export interface UpdateCredentialTypeRequest {
@@ -954,11 +946,6 @@ export interface UpdateCredentialTypeRequest {
      * Description
      */
     description?: string;
-
-    /**
-     * Associated service ID
-     */
-    serviceId?: string;
 }
 
 export interface CitizenServiceItem {

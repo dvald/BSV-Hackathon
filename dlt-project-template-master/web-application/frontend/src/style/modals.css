@@ -20,6 +20,7 @@
 
 .modal-content {
     max-height: calc(100% - var(--top-bar-size));
+    min-width: 600px;
     margin-top: var(--top-bar-size);
     overflow-y: auto;
 } 

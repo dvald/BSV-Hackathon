@@ -109,7 +109,7 @@ export class ServiceController extends Controller {
      * @property {string} name.required - Service name
      * @property {string} description - Service description
      * @property {string} adminUser - Admin user ID
-     * @property {string} requiredCredentials - Required credentials (comma-separated)
+     * @property {Array.<string>} requiredCredentials - Required credentials (comma-separated)
      * @property {string} associatedToken - Associated token
      */
 
@@ -136,19 +136,13 @@ export class ServiceController extends Controller {
                 return sendApiError(request, response, BAD_REQUEST, "MISSING_NAME", "Service name is required");
             }
 
-            const service = new Service({
-                id: createRandomUID(),
-                name: body.name,
-                description: body.description || "",
-                adminUser: body.adminUser || "",
-                requiredCredentials: body.requiredCredentials || "",
-                associatedToken: body.associatedToken || "",
-                userCount: 0,
-                credentialCount: 0,
-                tokensUsed: 0
-            });
-
-            await service.insert();
+            const service = await Service.create(
+                body.name,
+                body.description || "",
+                body.adminUser || "",
+                body.requiredCredentials || [],
+                body.associatedToken || ""
+            );
 
             Monitor.info(`Service created: ${service.id} - ${service.name}`);
             sendApiResult(request, response, service.toObject());

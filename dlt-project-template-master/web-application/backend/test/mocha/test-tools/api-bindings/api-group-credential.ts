@@ -112,26 +112,6 @@ export class ApiCredential {
             },
         };
     }
-
-    /**
-     * Method: GET
-     * Path: /services/{serviceId}/credential-types
-     * Get credential types by service
-     * @param serviceId Service ID
-     * @returns The request parameters
-     */
-    public static GetCredentialTypesByService(serviceId: string): RequestParams<CredentialTypeListResponse, CommonErrorHandler> {
-        return {
-            method: "GET",
-            url: getApiUrl(`/services/${encodeURIComponent(serviceId)}/credential-types`),
-            handleError: (err, handler) => {
-                new RequestErrorHandler()
-                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
-                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
-                    .handle(err);
-            },
-        };
-    }
 }
 
 /**

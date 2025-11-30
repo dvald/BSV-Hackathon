@@ -3,6 +3,7 @@
 "use strict";
 
 import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter } from "tsbean-orm";
+import { createRandomUID } from "../utils/text-utils";
 
 const DATA_SOURCE = DataSource.DEFAULT;
 const TABLE = "service";
@@ -16,6 +17,28 @@ export class Service extends DataModel {
         return Service.finder.count(DataFilter.any());
     }
 
+    public static async create(
+        name: string,
+        description: string,
+        adminUser: string,
+        requiredCredentials: string[],
+        associatedToken: string
+    ): Promise<Service> {
+        const service = new Service({
+            id: createRandomUID(),
+            name,
+            description,
+            adminUser,
+            requiredCredentials,
+            associatedToken,
+            userCount: 0,
+            credentialCount: 0,
+            tokensUsed: 0,
+        });
+        await service.insert();
+        return service;
+    }
+
     /* db-type: VARCHAR */
     public id: string;
 
@@ -23,7 +46,7 @@ export class Service extends DataModel {
     public adminUser: string;
 
     /* db-type: VARCHAR */
-    public requiredCredentials: string;
+    public requiredCredentials: string[];
 
     /* db-type: VARCHAR */
     public associatedToken: string;
@@ -54,7 +77,7 @@ export class Service extends DataModel {
 
         this.id = enforceType(data.id, "string") || '';
         this.adminUser = enforceType(data.adminUser, "string") || '';
-        this.requiredCredentials = enforceType(data.requiredCredentials, "string") || '';
+        this.requiredCredentials = enforceType(data.requiredCredentials, "array") || [];
         this.associatedToken = enforceType(data.associatedToken, "string") || '';
         this.userCount = enforceType(data.userCount, "int") || 0;
         this.credentialCount = enforceType(data.credentialCount, "int") || 0;
