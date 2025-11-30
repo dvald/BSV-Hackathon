@@ -3,24 +3,22 @@
 "use strict";
 
 import { RequestErrorHandler, RequestParams, CommonErrorHandler } from "@asanrom/request-axios";
-import { getApiUrl, generateURIQuery } from "./utils";
+import { getApiUrl } from "./utils";
 import { RequestCredentialResponse, RequestCredentialRequest, GetPendingRequestsResponse, ApproveRequestResponse, ApproveRequestRequest, RejectRequestResponse, RejectRequestRequest, GetUserCredentialsResponse, GetRequestStatusResponse, VerifyCredentialResponse, VerifyCredentialRequest } from "./definitions";
 
 export class ApiCredentials {
     /**
      * Method: POST
      * Path: /credentials/request
-Binding:
      * Request a Verifiable Credential
      * User submits a request for a specific type of credential
      * @param body Body parameters
      * @returns The request parameters
      */
-    public static PostCredentialsRequestbinding(body: RequestCredentialRequest): RequestParams<RequestCredentialResponse, PostCredentialsRequestbindingErrorHandler> {
+    public static RequestCredential(body: RequestCredentialRequest): RequestParams<RequestCredentialResponse, RequestCredentialErrorHandler> {
         return {
             method: "POST",
-            url: getApiUrl(`/credentials/request
-Binding:`),
+            url: getApiUrl(`/credentials/request`),
             json: body,
             handleError: (err, handler) => {
                 new RequestErrorHandler()
@@ -36,14 +34,12 @@ Binding:`),
      * Method: GET
      * Path: /credentials/requests/pending
      * Get Pending Credential Requests
-     * For issuers to review pending requests
-     * @param queryParams Query parameters
      * @returns The request parameters
      */
-    public static GetCredentialsRequestsPending(queryParams: GetCredentialsRequestsPendingQueryParameters): RequestParams<GetPendingRequestsResponse, CommonErrorHandler> {
+    public static GetPendingRequests(): RequestParams<GetPendingRequestsResponse, CommonErrorHandler> {
         return {
             method: "GET",
-            url: getApiUrl(`/credentials/requests/pending` + generateURIQuery(queryParams)),
+            url: getApiUrl(`/credentials/requests/pending`),
             handleError: (err, handler) => {
                 new RequestErrorHandler()
                     .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
@@ -168,24 +164,14 @@ Binding:`),
 }
 
 /**
- * Error handler for PostCredentialsRequestbinding
+ * Error handler for RequestCredential
  */
-export type PostCredentialsRequestbindingErrorHandler = CommonErrorHandler & {
+export type RequestCredentialErrorHandler = CommonErrorHandler & {
     /**
      * General handler for status = 400
      */
     badRequest: () => void;
 };
-
-/**
- * Query parameters for GetCredentialsRequestsPending
- */
-export interface GetCredentialsRequestsPendingQueryParameters {
-    /**
-     * Optional filter by credential type
-     */
-    credentialType?: string;
-}
 
 /**
  * Error handler for PostCredentialsApprove

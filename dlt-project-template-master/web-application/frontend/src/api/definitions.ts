@@ -759,9 +759,14 @@ export interface RequestCredentialRequest {
     credentialId: string;
 
     /**
-     * Data for this credential type (dynamic)
+     * Service ID
      */
-    requestData: any;
+    serviceId: string;
+
+    /**
+     * Document ID
+     */
+    documentId: string;
 }
 
 export interface RequestCredentialResponse {
@@ -777,7 +782,7 @@ export interface RequestCredentialResponse {
 }
 
 export interface GetPendingRequestsResponse {
-    requests: any[];
+    requests: CredentialRequest[];
 
     /**
      * Total count
@@ -806,7 +811,7 @@ export interface ApproveRequestResponse {
     /**
      * The issued credential ID
      */
-    credentialId: string;
+    credentialRequestId: string;
 
     /**
      * Blockchain anchor transaction ID

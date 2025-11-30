@@ -470,6 +470,10 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import { AuthController } from "@/control/auth";
+import { ApiCredentials } from "@/api/api-group-credentials";
+import { Request } from "@asanrom/request-browser";
+import { getUniqueStringId } from "@/utils/unique-id";
+import { Timeouts } from "@/utils/timeout";
 
 interface Citizen {
     id: string;
@@ -501,11 +505,16 @@ interface Revocation {
 export default defineComponent({
     components: {},
     name: "PermisosPage",
+    setup: function () {
+        return {
+            loadRequestId: getUniqueStringId(),
+        };
+    },
     data: function () {
         return {
-            activeTab: "emit",
+            loadRequestId: getUniqueStringId(),
+            activeTab: "pending",
             tabs: [
-                { id: "emit", label: "Issue", icon: "mdi-file-document-edit", count: 0 },
                 { id: "pending", label: "Pending", icon: "mdi-clock-outline", count: 2 },
                 { id: "revocations", label: "Revocations", icon: "mdi-cancel", count: 0 },
             ],
@@ -528,7 +537,7 @@ export default defineComponent({
             },
             citizenSearchResults: [] as Citizen[],
             isSubmitting: false,
-            credentialTypes: [
+            credentials: [
                 {
                     id: "disability",
                     name: "Disability Credential",
@@ -596,6 +605,9 @@ export default defineComponent({
     computed: {
         isAdmin(): boolean {
             return AuthController.Role === "admin" || AuthController.Role === "root";
+        },
+        credentialTypes() {
+            return this.credentials;
         },
         canSubmit(): boolean {
             if (!this.emitForm.selectedCitizen) return false;
@@ -744,6 +756,82 @@ export default defineComponent({
             this.pendingRequests = this.pendingRequests.filter(r => r.id !== request.id);
             this.tabs[1].count--;
         },
+        loadPendingRequests(): void {
+            Timeouts.Abort(this.loadRequestId);
+            Request.Abort(this.loadRequestId);
+
+            Request.Pending(this.loadRequestId, ApiCredentials.GetPendingRequests())
+                .onSuccess((data) => {
+                    console.log("Pending requests:", data);
+                    // Añadir los datos del API al array de pendingRequests
+                    if (data.requests && Array.isArray(data.requests)) {
+                        data.requests.forEach((request: any) => {
+                            // Formatear el tipo de credencial
+                            const credentialTypeMap: Record<string, string> = {
+                                "disability": "Disability Credential",
+                                "census": "Census Credential",
+                            };
+                            const credentialType = credentialTypeMap[request.credentialType] || request.credentialType || "Unknown Credential";
+
+                            // Obtener nombre del ciudadano desde el DID o usar DID truncado
+                            let citizenName = "Unknown Citizen";
+                            const citizen = this.allCitizens.find(c => c.did === request.userDID);
+                            if (citizen) {
+                                citizenName = citizen.name;
+                            } else if (request.userDID) {
+                                // Truncar DID si no encontramos el ciudadano
+                                const didParts = request.userDID.split(":");
+                                citizenName = didParts.length > 2 ? `DID: ...${didParts[2].slice(-8)}` : request.userDID;
+                            }
+
+                            // Formatear la fecha (el API devuelve timestamp en milisegundos)
+                            const requestedDate = request.requestedAt 
+                                ? new Date(request.requestedAt).toISOString() 
+                                : new Date().toISOString();
+
+                            // Crear razón basada en los datos disponibles
+                            let reason = `Solicitud de ${credentialType}`;
+                            if (request.serviceId) {
+                                reason += ` para servicio ${request.serviceId}`;
+                            }
+                            if (request.requestData && request.requestData !== "{}") {
+                                try {
+                                    const requestData = JSON.parse(request.requestData);
+                                    if (requestData.disabilityGrade) {
+                                        reason += ` - Grado de discapacidad: ${requestData.disabilityGrade}`;
+                                    }
+                                } catch {
+                                    // Ignorar error de parsing
+                                }
+                            }
+
+                            // Añadir al array de pendingRequests
+                            this.pendingRequests.push({
+                                id: request.id,
+                                citizenId: citizen?.id || request.userDID || "",
+                                citizenName: citizenName,
+                                credentialType: credentialType,
+                                reason: reason,
+                                documentsCount: request.documentId ? 1 : 0,
+                                requestedAt: requestedDate,
+                            });
+                        });
+
+                        // Actualizar el contador de la pestaña
+                        this.tabs[0].count = this.pendingRequests.length;
+                    }
+                })
+                .onRequestError((err, handleErr) => {
+                    handleErr(err, {
+                        temporalError: () => {
+                            Timeouts.Set(this.loadRequestId, 1500, this.loadPendingRequests.bind(this));
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error("Error loading pending requests:", err);
+                });
+        },
     },
     mounted: function () {
         // Check URL params for tab
@@ -753,9 +841,13 @@ export default defineComponent({
             this.activeTab = tab;
         }
         
-        // TODO: Cargar datos desde el API
+        // Cargar solicitudes pendientes desde el API
+        this.loadPendingRequests();
     },
-    beforeUnmount: function () {},
+    beforeUnmount: function () {
+        Timeouts.Abort(this.loadRequestId);
+        Request.Abort(this.loadRequestId);
+    },
 });
 </script>
 

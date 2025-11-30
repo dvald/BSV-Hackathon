@@ -748,6 +748,10 @@ import { defineComponent, ref, computed } from "vue";
 import { AuthController } from "@/control/auth";
 import { useWallet } from "@/composables/useWallet";
 import { getApiUrl } from "@/api/utils";
+import { Request } from "@asanrom/request-browser";
+import { ApiCredentials } from "@/api/api-group-credentials";
+import { ApiFiles } from "@/api/api-group-files";
+import { RequestCredentialRequest } from "@/api/definitions";
 
 // Configuración fija para tokens de servicios municipales
 const TOKEN_FIXED_CONFIG = {
@@ -1156,8 +1160,93 @@ export default defineComponent({
         };
 
         const submitServiceRequest = () => {
-            // TODO: Implementar envío de solicitud
-            console.log("Submit service request:", serviceRequest.value);
+            if (!selectedService.value || !serviceRequest.value.credentialType || !serviceRequest.value.document) {
+                uploadError.value = "Por favor, complete todos los campos requeridos";
+                return;
+            }
+
+            uploading.value = true;
+            uploadError.value = "";
+            uploadSuccess.value = false;
+
+            // Paso 1: Subir el documento
+            Request.Do(ApiFiles.PostFilesUpload({
+                file: serviceRequest.value.document,
+                bucket: "documents",
+                isPublic: false,
+            }))
+                .onSuccess((uploadResult: any) => {
+                    const documentId = uploadResult.documentId;
+
+                    if (!documentId) {
+                        uploading.value = false;
+                        uploadError.value = "No se recibió el ID del documento";
+                        return;
+                    }
+
+                    // Paso 2: Hacer la petición de credencial
+                    const credentialRequest: RequestCredentialRequest = {
+                        credentialId: serviceRequest.value.credentialType,
+                        serviceId: selectedService.value.id,
+                        documentId: documentId,
+                    };
+
+                    Request.Do(ApiCredentials.RequestCredential(credentialRequest))
+                        .onSuccess((credentialResult) => {
+                            // Éxito
+                            uploading.value = false;
+                            uploadSuccess.value = true;
+                            uploadError.value = "";
+                            
+                            console.log("Solicitud de credencial creada:", credentialResult);
+
+                            // Cerrar el modal después de un breve delay
+                            setTimeout(() => {
+                                closeRequestModal();
+                            }, 2000);
+                        })
+                        .onRequestError((err: any, handleErr: any) => {
+                            uploading.value = false;
+                            handleErr(err, {
+                                badRequest: () => {
+                                    uploadError.value = "Error en los datos de la solicitud";
+                                },
+                                serverError: () => {
+                                    uploadError.value = "Error del servidor al procesar la solicitud";
+                                },
+                                temporalError: () => {
+                                    uploadError.value = "Error temporal. Por favor, intente nuevamente";
+                                },
+                                networkError: () => {
+                                    uploadError.value = "Error de conexión. Verifique su internet";
+                                },
+                            });
+                        })
+                        .onUnexpectedError((err) => {
+                            console.error("Error inesperado al solicitar credencial:", err);
+                            uploading.value = false;
+                            uploadError.value = "Error inesperado al procesar la solicitud";
+                        });
+                })
+                .onRequestError((err: any, handleErr: any) => {
+                    uploading.value = false;
+                    handleErr(err, {
+                        serverError: () => {
+                            uploadError.value = "Error del servidor al subir el documento";
+                        },
+                        temporalError: () => {
+                            uploadError.value = "Error temporal al subir el documento. Por favor, intente nuevamente";
+                        },
+                        networkError: () => {
+                            uploadError.value = "Error de conexión al subir el documento. Verifique su internet";
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error("Error inesperado al subir documento:", err);
+                    uploading.value = false;
+                    uploadError.value = "Error inesperado al subir el documento";
+                });
         };
 
         const createCredentialType = () => {

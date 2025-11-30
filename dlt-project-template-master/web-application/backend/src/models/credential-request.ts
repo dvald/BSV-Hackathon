@@ -40,17 +40,9 @@ export class CredentialRequest extends DataModel {
     /**
      * Static helper: Find pending requests
      */
-    public static async findPending(credentialType?: string): Promise<CredentialRequest[]> {
-        let filter: any = DataFilter.equals("status", "PENDING");
-        
-        if (credentialType) {
-            filter = DataFilter.and(
-                filter,
-                DataFilter.equals("credentialType", credentialType)
-            );
-        }
+    public static async findPending(): Promise<CredentialRequest[]> {
 
-        return CredentialRequest.finder.find(filter, OrderBy.asc("requestedAt"));
+        return CredentialRequest.finder.find(DataFilter.equals("status", "PENDING"));
     }
 
     /* db-type: VARCHAR 255 */
