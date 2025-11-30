@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, X, QrCode, CheckCircle, Eye, EyeOff, ExternalLink, Wallet, User, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Camera, X, QrCode, CheckCircle, Eye, EyeOff, ExternalLink, Wallet, User, ShieldCheck, AlertCircle, Calendar, MapPin, Hash, ArrowLeft, MoreVertical } from 'lucide-react';
 
 // --- Componentes UI ---
 
@@ -19,70 +19,236 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({ onClick, children, classN
   </button>
 );
 
-export { PrimaryButton };
+// --- Interfaces de Datos (Basadas en el JSON del usuario) ---
 
-// Tarjeta de Credencial (El resultado final)
-interface CredentialData {
-  name: string;
+interface CredentialSubject {
   id: string;
-  expiry: string;
+  Nombre: string;
+  Apellido: string;
+  DNI: string;
+  Validez: string;
+  "Fecha de nacimiento": string;
+  Ciudadania: string;
 }
+
+interface Proof {
+  type: string;
+  jwt: string;
+}
+
+interface VerifiableCredential {
+  "@context": string[];
+  id: string;
+  type: string[];
+  issuer: string;
+  issuanceDate: string;
+  credentialSubject: CredentialSubject;
+  proof: Proof;
+  expirationDate: string;
+}
+
+interface CredentialWrapper {
+  credentialId: string;
+  credentialType: string;
+  credential: VerifiableCredential;
+  issuerDID: string;
+  issuedAt: number;
+  expiresAt: number;
+  anchorTxid: string;
+}
+
+// --- Componentes de Credenciales ---
 
 interface CredentialCardProps {
-  data: CredentialData;
+  data: CredentialWrapper;
+  onClick?: () => void;
 }
 
-const CredentialCard: React.FC<CredentialCardProps> = ({ data }) => (
-  <div className="w-full max-w-sm bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-2xl overflow-hidden text-white transform transition-all duration-500 animate-in fade-in slide-in-from-bottom-10">
-    <div className="p-6 relative rounded-xl">
-      {/* Patrón de fondo decorativo */}
-      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+const CredentialCard: React.FC<CredentialCardProps> = ({ data, onClick }) => {
+  const subject = data.credential.credentialSubject;
 
-      <div className="flex justify-between items-start mb-6">
-        <div className="flex flex-col">
-          <span className="text-xs uppercase tracking-wider opacity-70">Documento Oficial</span>
-          <h2 className="text-xl font-bold">Tarjeta Ciudadana</h2>
-        </div>
-        <ShieldCheck size={32} className="opacity-90" />
-      </div>
+  return (
+    <div
+      onClick={onClick}
+      className={`w-full max-w-sm bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-2xl overflow-hidden text-white transform transition-all duration-500 animate-in fade-in slide-in-from-bottom-10 ${onClick ? 'cursor-pointer hover:shadow-blue-500/50' : ''}`}
+    >
+      <div className="p-6 relative rounded-xl">
+        {/* Patrón de fondo decorativo */}
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
 
-      <div className="space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden border-2 border-white/30">
-            <User size={32} />
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex flex-col">
+            <span className="text-xs uppercase tracking-wider opacity-70">Documento Oficial</span>
+            <h2 className="text-xl font-bold">Tarjeta Ciudadana</h2>
           </div>
+          <ShieldCheck size={32} className="opacity-90" />
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden border-2 border-white/30">
+              <User size={32} />
+            </div>
+            <div>
+              <p className="text-xs opacity-70">Titular</p>
+              <p className="font-semibold text-lg">{subject.Nombre} {subject.Apellido}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            <div>
+              <p className="text-xs opacity-70">DNI</p>
+              <p className="font-mono">{subject.DNI}</p>
+            </div>
+            <div>
+              <p className="text-xs opacity-70">Validez</p>
+              <p className="font-mono">{subject.Validez}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-white/20 flex justify-between items-end">
           <div>
-            <p className="text-xs opacity-70">Titular</p>
-            <p className="font-semibold text-lg">{data.name}</p>
+            <p className="text-[10px] opacity-60">DID Emisor</p>
+            <p className="text-xs font-mono opacity-80 truncate w-32">{data.credential.issuer}</p>
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mt-2">
-          <div>
-            <p className="text-xs opacity-70">NIF / ID</p>
-            <p className="font-mono">{data.id}</p>
+          <div className="bg-white p-1 rounded">
+            <QrCode size={32} className="text-black" />
           </div>
-          <div>
-            <p className="text-xs opacity-70">Validez</p>
-            <p className="font-mono">{data.expiry}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 pt-4 border-t border-white/20 flex justify-between items-end">
-        <div>
-          <p className="text-[10px] opacity-60">DID Emisor</p>
-          <p className="text-xs font-mono opacity-80 truncate w-32">did:bsv:1Gov...</p>
-        </div>
-        <div className="bg-white p-1 rounded">
-          <QrCode size={32} className="text-black" />
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-// --- Componente de Cámara Real ---
+interface CredentialDetailProps {
+  data: CredentialWrapper;
+  onBack: () => void;
+}
+
+const CredentialDetail: React.FC<CredentialDetailProps> = ({ data, onBack }) => {
+  const subject = data.credential.credentialSubject;
+  const [showRawData, setShowRawData] = useState(false);
+
+  // Estructura envolvente solicitada por el usuario
+  const rawData = {
+    credentials: [data]
+  };
+
+  return (
+    <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden animate-in slide-in-from-right duration-300">
+      {/* Header con gradiente */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white relative">
+        <div className="flex justify-between items-start w-full">
+          <button
+            onClick={onBack}
+            className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+          >
+            <ArrowLeft size={20} />
+          </button>
+
+          <button
+            onClick={() => setShowRawData(!showRawData)}
+            className={`p-2 rounded-full transition-colors ${showRawData ? 'bg-white text-blue-800' : 'bg-white/20 hover:bg-white/30'}`}
+            title="Ver código fuente"
+          >
+            <MoreVertical size={20} />
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center mt-2">
+          <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg mb-3">
+            <div className="w-full h-full bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+              <User size={48} />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold">{subject.Nombre} {subject.Apellido}</h2>
+          <p className="opacity-80 text-sm">Ciudadano Verificado</p>
+        </div>
+      </div>
+
+      {/* Detalles o Raw Data */}
+      <div className="p-6">
+        {showRawData ? (
+          <div className="animate-in fade-in duration-300">
+            <div className="flex items-center gap-2 mb-4 text-gray-700">
+              <span className="font-bold text-lg">{'<>'}</span>
+              <h3 className="font-bold">Datos en Crudo (JSON)</h3>
+            </div>
+            <div className="bg-gray-900 text-green-400 p-4 rounded-xl overflow-x-auto text-xs font-mono shadow-inner border border-gray-700">
+              <pre>{JSON.stringify(rawData, null, 4)}</pre>
+            </div>
+            <p className="text-xs text-gray-500 mt-4 text-center">
+              Esta es la representación criptográfica exacta de tu credencial.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-2 text-blue-600 mb-1">
+                  <Hash size={16} />
+                  <span className="text-xs font-semibold uppercase">DNI</span>
+                </div>
+                <p className="font-mono font-medium text-gray-800">{subject.DNI}</p>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-2 text-blue-600 mb-1">
+                  <Calendar size={16} />
+                  <span className="text-xs font-semibold uppercase">Validez</span>
+                </div>
+                <p className="font-mono font-medium text-gray-800">{subject.Validez}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                  <Calendar size={20} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Fecha de Nacimiento</p>
+                  <p className="font-medium text-gray-800">{subject["Fecha de nacimiento"]}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                  <MapPin size={20} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Ciudadanía</p>
+                  <p className="font-medium text-gray-800">{subject.Ciudadania}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">ID de Credencial</p>
+                  <p className="font-mono text-xs text-gray-600 break-all">{data.credentialId}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400 text-center mb-2">Emitido por</p>
+              <p className="text-xs font-mono text-center text-gray-500 break-all bg-gray-50 p-2 rounded border border-gray-200">
+                {data.issuerDID}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Camera Scanner Component ---
+
 interface CameraScannerProps {
   onClose: () => void;
   onScanMock: (content: string) => void;
@@ -251,14 +417,16 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onClose, onScanMock }) =>
 
 export default function WebWalletApp() {
   // Estados de la aplicación
-  // 'home' | 'camera' | 'success' | 'credential' | 'share_selection' | 'sharing' | 'share_success'
+  // 'home' | 'camera' | 'success' | 'credential' | 'credential_detail' | 'share_selection' | 'sharing' | 'share_success'
   const [viewState, setViewState] = useState('home');
   const [showKeys, setShowKeys] = useState(false);
 
   // Array de credenciales (soporta múltiples credenciales)
-  const [credentials, setCredentials] = useState<CredentialData[]>([]);
+  const [credentials, setCredentials] = useState<CredentialWrapper[]>([]);
   // Índice de la credencial seleccionada para compartir
   const [selectedCredentialIndex, setSelectedCredentialIndex] = useState<number | null>(null);
+  // Credencial seleccionada para ver detalles
+  const [selectedDetailCredential, setSelectedDetailCredential] = useState<CredentialWrapper | null>(null);
 
   // Datos simulados (Mock Data)
   const walletData = {
@@ -267,11 +435,40 @@ export default function WebWalletApp() {
     balance: "0.042 BSV"
   };
 
-  // Datos que "aparecerán" tras leer el QR
-  const credentialData = {
-    name: "JUAN PÉREZ",
-    id: "12345678Z",
-    expiry: "11/2030"
+  // Datos que "aparecerán" tras leer el QR (Estructura actualizada)
+  const credentialData: CredentialWrapper = {
+    credentialId: "urn:uuid:7375e068-16fa-4380-83ae-f65a482266e1",
+    credentialType: "rsetrteqr",
+    credential: {
+      "@context": [
+        "https://www.w3.org/2018/credentials/v1"
+      ],
+      id: "urn:uuid:7375e068-16fa-4380-83ae-f65a482266e1",
+      type: [
+        "VerifiableCredential",
+        "rsetrteqr"
+      ],
+      issuer: "did:bsv:1B9EPveEg5UdAMPDG32eCdCYf9pwWnXRj3",
+      issuanceDate: "2025-11-29T18:52:37.809Z",
+      credentialSubject: {
+        id: "did:bsv:1MACgqXFYK3qsz9bK1cuZHooARLQk42Ubw",
+        "Nombre": "Juan",
+        "Apellido": "Pérez",
+        "DNI": "12345678Z",
+        "Validez": "11/2030",
+        "Fecha de nacimiento": "1990-06-21",
+        "Ciudadania": "ES"
+      },
+      proof: {
+        type: "JwtProof2020",
+        jwt: "eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ.eyJleHAiOm51bGwsInZjIjp7IkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCJyc2V0cnRlcXIiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsiYSI6ImEifX0sInN1YiI6ImRpZDpic3Y6MU1BQ2dxWEZZSzNxc3o5YksxY3VaSG9vQVJMUWs0MlVidyIsIm5iZiI6MTc2NDQ0MjM1NywiaXNzIjoiZGlkOmJzdjoxQjlFUHZlRWc1VWRBTVBERzMyZUNkQ1lmOXB3V25YUmozIn0.u_a-x8kLoIRLdb5TxUsbLe74EvUYgYO1XOvIdc1X7xs"
+      },
+      expirationDate: "1795972507"
+    },
+    issuerDID: "did:bsv:1B9EPveEg5UdAMPDG32eCdCYf9pwWnXRj3",
+    issuedAt: 1764442357812,
+    expiresAt: 0,
+    anchorTxid: "await this.anchorToBlockchain(anchorData, issuerPrivateKey, credentialId);"
   };
 
   // Ref para evitar procesamiento múltiple de escaneos
@@ -285,7 +482,7 @@ export default function WebWalletApp() {
     console.log("Escaneado:", scannedContent);
 
     // LÓGICA HARDCODEADA SOLICITADA
-    if (scannedContent === "http://example.com") {
+    if (scannedContent === import.meta.env.VITE_GET_CREDENTIALS_URL) {
       // Bloquear procesamiento adicional
       isProcessingScan.current = true;
 
@@ -302,7 +499,7 @@ export default function WebWalletApp() {
         // Liberar el bloqueo
         isProcessingScan.current = false;
       }, 2000);
-    } else if (scannedContent === "https://pollito.com") {
+    } else if (scannedContent === import.meta.env.VITE_GET_PRESENTATION_URL) {
       // Bloquear procesamiento adicional
       isProcessingScan.current = true;
 
@@ -315,18 +512,39 @@ export default function WebWalletApp() {
     } else {
       // Si el QR no es válido, cerrar la cámara y mostrar el error
       setViewState('home');
-      alert("QR no reconocido. Prueba con 'www.example.com' o 'https://pollito.com'");
+      alert("QR no reconocido.");
     }
   }, [credentialData]);
 
-  const handleShareCredential = () => {
+  const handleShareCredential = async () => {
     if (selectedCredentialIndex === null) return;
 
     setViewState('sharing');
 
     // Simular proceso de compartir
-    setTimeout(() => {
+    setTimeout(async () => {
       setViewState('share_success');
+
+      // --- WEBHOOK LOGIC ---
+      const webhookUrl = import.meta.env.VITE_SHARE_CALLBACK_URL;
+      if (webhookUrl) {
+        try {
+          const credentialToShare = credentials[selectedCredentialIndex];
+          console.log("Enviando webhook a:", webhookUrl);
+
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(credentialToShare),
+          });
+          console.log("Webhook enviado con éxito");
+        } catch (error) {
+          console.error("Error enviando webhook:", error);
+        }
+      }
+      // ---------------------
 
       // Volver a la lista de credenciales después del éxito
       setTimeout(() => {
@@ -334,6 +552,11 @@ export default function WebWalletApp() {
         setSelectedCredentialIndex(null);
       }, 2000);
     }, 2000);
+  };
+
+  const handleCredentialClick = (credential: CredentialWrapper) => {
+    setSelectedDetailCredential(credential);
+    setViewState('credential_detail');
   };
 
   return (
@@ -396,7 +619,10 @@ export default function WebWalletApp() {
                 </div>
 
                 {/* Mostrar solo la última credencial en home */}
-                <CredentialCard data={credentials[credentials.length - 1]} />
+                <CredentialCard
+                  data={credentials[credentials.length - 1]}
+                  onClick={() => handleCredentialClick(credentials[credentials.length - 1])}
+                />
               </div>
             )}
 
@@ -422,7 +648,7 @@ export default function WebWalletApp() {
           </div>
         )}
 
-        {/* --- VISTA: CREDENCIAL (Resultado Final) --- */}
+        {/* --- VISTA: CREDENCIAL (Lista) --- */}
         {viewState === 'credential' && (
           <div className="w-full flex flex-col gap-6 items-center animate-in slide-in-from-bottom-20 duration-700">
             <div className="w-full flex justify-start">
@@ -443,7 +669,10 @@ export default function WebWalletApp() {
             <div className="w-full flex flex-col gap-4 max-h-[60vh] overflow-y-auto">
               {credentials.map((credential, index) => (
                 <div key={index} className="relative">
-                  <CredentialCard data={credential} />
+                  <CredentialCard
+                    data={credential}
+                    onClick={() => handleCredentialClick(credential)}
+                  />
                 </div>
               ))}
             </div>
@@ -453,6 +682,14 @@ export default function WebWalletApp() {
               <p>Estas credenciales han sido firmadas criptográficamente por el Gobierno y ancladas en BSV.</p>
             </div>
           </div>
+        )}
+
+        {/* --- VISTA: DETALLE DE CREDENCIAL --- */}
+        {viewState === 'credential_detail' && selectedDetailCredential && (
+          <CredentialDetail
+            data={selectedDetailCredential}
+            onBack={() => setViewState('credential')}
+          />
         )}
 
         {/* --- VISTA: SELECCIÓN PARA COMPARTIR --- */}
@@ -479,8 +716,8 @@ export default function WebWalletApp() {
                     <div
                       key={index}
                       onClick={() => setSelectedCredentialIndex(index)}
-                      className={`relative cursor-pointer transition-all duration-200 transform rounded-xl border-2 max-w-xs w-full ${selectedCredentialIndex === index
-                        ? 'scale-105 border-blue-500 shadow-lg ring-2 ring-blue-200 bg-blue-50'
+                      className={`relative cursor-pointer transition-all duration-200 transform rounded-xl border-4 max-w-xs w-full ${selectedCredentialIndex === index
+                        ? 'border-blue-500 shadow-lg ring-2 ring-blue-200 bg-blue-50'
                         : 'border-transparent hover:scale-102 opacity-80 hover:opacity-100 hover:bg-gray-50'
                         }`}
                     >
