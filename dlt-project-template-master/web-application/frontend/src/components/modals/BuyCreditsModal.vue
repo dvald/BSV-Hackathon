@@ -52,12 +52,12 @@
                         <div class="method-tabs">
                             <button 
                                 type="button"
-                                class="method-btn"
-                                :class="{ active: paymentMethod === 'txid' }"
-                                @click="paymentMethod = 'txid'"
+                                class="method-btn stripe-btn"
+                                :class="{ active: paymentMethod === 'card' }"
+                                @click="paymentMethod = 'card'"
                             >
-                                <i class="mdi mdi-form-textbox" aria-hidden="true"></i>
-                                TXID
+                                <i class="mdi mdi-credit-card" aria-hidden="true"></i>
+                                {{ $t("Card") }}
                             </button>
                             <button 
                                 type="button"
@@ -71,43 +71,35 @@
                         </div>
                     </div>
 
-                    <!-- TXID Payment Section -->
-                    <div v-if="paymentMethod === 'txid'" class="txid-section">
-                        <div class="payment-address">
-                            <label>{{ $t("Send BSV to") }}:</label>
-                            <div class="address-box">
-                                <code>{{ backendAddress || $t("Loading...") }}</code>
-                                <button type="button" class="btn-copy" @click="copyAddress">
-                                    <i class="mdi" :class="addressCopied ? 'mdi-check' : 'mdi-content-copy'" aria-hidden="true"></i>
-                                </button>
+                    <!-- Card Payment Section (Stripe) -->
+                    <div v-if="paymentMethod === 'card'" class="card-section">
+                        <div class="card-payment-info">
+                            <div class="stripe-badge">
+                                <i class="mdi mdi-shield-check" aria-hidden="true"></i>
+                                {{ $t("Secure payment with Stripe") }}
                             </div>
-                            <a 
-                                v-if="backendAddress && selectedPackage"
-                                :href="'bitcoin:' + backendAddress + '?amount=' + (selectedPackage.sats / 100000000)" 
-                                class="btn-open-wallet"
-                                target="_blank"
-                            >
-                                <i class="mdi mdi-open-in-new" aria-hidden="true"></i>
-                                {{ $t("Open BSV Wallet") }}
-                            </a>
+                            <div class="price-display">
+                                <span class="price-label">{{ $t("Total") }}:</span>
+                                <span class="price-value">{{ stripePrice.toFixed(2) }} EUR</span>
+                            </div>
+                            <div class="tokens-display">
+                                <span>{{ $t("You will receive") }}:</span>
+                                <strong>{{ totalTokens }} {{ $t("tokens") }}</strong>
+                            </div>
                         </div>
-                        <div class="txid-input-group">
-                            <label>{{ $t("Transaction ID (TXID)") }}:</label>
-                            <input 
-                                v-model="txid" 
-                                type="text" 
-                                class="txid-input"
-                                :placeholder="$t('Paste your TXID here...')"
-                            />
+                        <div v-if="stripeError" class="stripe-error">
+                            <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
+                            {{ stripeError }}
                         </div>
                         <button 
                             type="button"
-                            class="btn btn-buy"
-                            :disabled="txid.length < 64"
-                            @click="buyWithTxid"
+                            class="btn btn-stripe"
+                            :disabled="isStripeProcessing || !selectedPackage"
+                            @click="buyWithStripe"
                         >
-                            <i class="mdi mdi-cart" aria-hidden="true"></i>
-                            {{ $t("Buy") }} {{ totalTokens }} {{ $t("Credits") }}
+                            <i v-if="isStripeProcessing" class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                            <i v-else class="mdi mdi-credit-card" aria-hidden="true"></i>
+                            {{ isStripeProcessing ? $t("Redirecting...") : $t("Pay") + ' ' + stripePrice.toFixed(2) + ' EUR' }}
                         </button>
                     </div>
 
@@ -263,27 +255,19 @@ export default defineComponent({
         });
         
         // Payment
-        const paymentMethod = ref<'txid' | 'wallet'>('txid');
-        const txid = ref('');
-        const backendAddress = ref('');
-        const addressCopied = ref(false);
+        const paymentMethod = ref<'card' | 'wallet'>('card');
+        const stripeError = ref('');
+        const isStripeProcessing = ref(false);
+        
+        // Price in EUR based on package (1 token = 0.05 EUR)
+        const stripePrice = computed(() => {
+            if (!selectedPackage.value) return 0;
+            return selectedPackage.value.tokens * 0.05;
+        });
         
         // Results
         const purchasedTokens = ref(0);
         const newBalance = ref(0);
-        
-        // Fetch backend address
-        const fetchBackendAddress = async () => {
-            try {
-                const response = await fetch(getApiUrl('/api/v1/gamification/payment-address'));
-                if (response.ok) {
-                    const data = await response.json();
-                    backendAddress.value = data.address;
-                }
-            } catch (error) {
-                console.error('Error fetching address:', error);
-            }
-        };
 
         // Fetch backend identity key
         const fetchBackendIdentityKey = async () => {
@@ -297,62 +281,56 @@ export default defineComponent({
                 console.error('Error fetching backend identity key:', error);
             }
         };
-        
-        // Copy address
-        const copyAddress = async () => {
-            if (backendAddress.value) {
-                await navigator.clipboard.writeText(backendAddress.value);
-                addressCopied.value = true;
-                setTimeout(() => { addressCopied.value = false; }, 2000);
-            }
-        };
 
         const connectWallet = async () => {
             await connect();
         };
         
-        // Buy with TXID (manual payment)
-        const buyWithTxid = async () => {
-            if (!selectedPackage.value || txid.value.length < 64) return;
+        // Buy with Stripe (card payment)
+        const buyWithStripe = async () => {
+            if (!selectedPackage.value) return;
             
-            state.value = 'processing';
-            isProcessing.value = true;
+            stripeError.value = '';
+            isStripeProcessing.value = true;
             
             try {
                 const userKey = identityKey.value;
-                if (!userKey) throw new Error('User identity not available');
+                if (!userKey) throw new Error('User identity not available. Please connect your wallet first.');
                 
-                const response = await fetch(getApiUrl('/api/v1/tokens/economy/buy-credits'), {
+                // Calculate price in cents
+                const priceCents = Math.round(stripePrice.value * 100);
+                
+                const response = await fetch(getApiUrl('/api/v1/purchase-token/checkout'), {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'x-bsv-identity-key': userKey
+                        'Content-Type': 'application/json'
                     },
+                    credentials: 'include',
                     body: JSON.stringify({
-                        txid: txid.value,
-                        tokensRequested: totalTokens.value,
-                        satsPaid: selectedPackage.value.sats
+                        token_id: 'SERVICE_TOKEN',
+                        amount: priceCents,
+                        holder_identity_key: userKey
                     })
                 });
                 
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.message || data.error || 'Purchase failed');
+                    throw new Error(data.message || data.error || 'Failed to create checkout session');
                 }
                 
-                purchasedTokens.value = totalTokens.value;
-                newBalance.value = data.balance || (props.currentBalance + purchasedTokens.value);
-                
-                state.value = 'success';
-                emit('purchase-success', { tokens: purchasedTokens.value, balance: newBalance.value });
+                // Redirect to Stripe checkout
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    throw new Error('No checkout URL received');
+                }
                 
             } catch (error: any) {
-                console.error('Purchase error:', error);
-                errorMessage.value = error.message;
-                state.value = 'error';
+                console.error('[BuyCreditsModal] Stripe error:', error);
+                stripeError.value = error.message;
             } finally {
-                isProcessing.value = false;
+                isStripeProcessing.value = false;
             }
         };
 
@@ -488,10 +466,9 @@ export default defineComponent({
             e.stopPropagation();
         };
         
-        // Fetch address when modal opens
+        // Fetch identity key when modal opens
         watch(() => props.display, (newVal) => {
             if (newVal) {
-                if (!backendAddress.value) fetchBackendAddress();
                 if (!backendIdentityKey.value) fetchBackendIdentityKey();
             }
         }, { immediate: true });
@@ -505,9 +482,9 @@ export default defineComponent({
             selectedPackage,
             totalTokens,
             paymentMethod,
-            txid,
-            backendAddress,
-            addressCopied,
+            stripePrice,
+            stripeError,
+            isStripeProcessing,
             purchasedTokens,
             newBalance,
             // Wallet
@@ -515,9 +492,8 @@ export default defineComponent({
             isConnected,
             isConnecting,
             // Methods
-            copyAddress,
             connectWallet,
-            buyWithTxid,
+            buyWithStripe,
             buyWithWallet,
             cancelPayment,
             close,
@@ -1060,5 +1036,116 @@ export default defineComponent({
 
 .btn-retry:hover {
     background-color: var(--theme-border-color, #e0e0e0);
+}
+
+/* Card/Stripe Section */
+.card-section {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+}
+
+.card-payment-info {
+    margin-bottom: 1rem;
+}
+
+.stripe-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: #635bff15;
+    border: 1px solid #635bff30;
+    border-radius: 0.375rem;
+    color: #635bff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.stripe-badge i {
+    color: #635bff;
+}
+
+.price-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    margin-bottom: 0.75rem;
+}
+
+.price-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.price-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.tokens-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+    color: #374151;
+    padding: 0.5rem 0;
+}
+
+.tokens-display strong {
+    color: #10b981;
+}
+
+.stripe-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 0.375rem;
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.btn-stripe {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #635bff 0%, #7c3aed 100%);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-stripe:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 91, 255, 0.4);
+}
+
+.btn-stripe:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.method-btn.stripe-btn.active {
+    border-color: #635bff;
+    background-color: #635bff15;
+    color: #635bff;
 }
 </style>

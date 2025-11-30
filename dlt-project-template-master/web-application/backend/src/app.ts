@@ -61,7 +61,15 @@ export class MainWebApplication {
 
         // Middleware
         this.application.use(compression());
-        this.addMiddleware(Express.json({ limit: "16mb" }));
+        
+        // JSON parser - exclude Stripe webhook which needs raw body
+        this.addMiddleware((req: Express.Request, res: Express.Response, next: () => void) => {
+            if (req.path === '/stripe/webhook') {
+                return next();
+            }
+            Express.json({ limit: "16mb" })(req, res, next);
+        });
+        
         this.addMiddleware(Express.urlencoded({ limit: "16mb", extended: true }));
         this.addMiddleware(CookieParser());
         this.application.use(ExpressUserAgent.express());
