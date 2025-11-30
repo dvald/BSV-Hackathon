@@ -39,6 +39,52 @@
                     <p class="login-description">{{ $t("Access your digital identity and municipal services securely") }}</p>
                 </div>
 
+                <form @submit.prevent="submit" class="login-form-inputs">
+                    <div class="form-group">
+                        <label for="login-username" class="form-label">{{ $t("Username") }}</label>
+                        <input
+                            id="login-username"
+                            v-model="username"
+                            type="text"
+                            class="form-control form-control-full-width"
+                            :class="{ 'form-control-error': errorCredentials }"
+                            :placeholder="$t('Enter your username')"
+                            :disabled="busy"
+                            autocomplete="username"
+                            autofocus
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="login-password" class="form-label">{{ $t("Password") }}</label>
+                        <input
+                            id="login-password"
+                            v-model="password"
+                            type="password"
+                            class="form-control form-control-full-width"
+                            :class="{ 'form-control-error': errorCredentials }"
+                            :placeholder="$t('Enter your password')"
+                            :disabled="busy"
+                            autocomplete="current-password"
+                        />
+                    </div>
+
+                    <div v-if="errorCredentials" class="form-error">
+                        {{ errorCredentials }}
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="btn btn-login"
+                        :disabled="busy"
+                    >
+                        <i v-if="busy" class="fas fa-spinner fa-spin"></i>
+                        <i v-else class="fas fa-sign-in-alt"></i>
+                        <span v-if="!busy">{{ $t("Login") }}</span>
+                        <span v-else>{{ $t("Logging in...") }}</span>
+                    </button>
+                </form>
+
                 <!-- Error Message -->
                 <div v-if="error" class="login-error-message">
                     <i class="fas fa-exclamation-circle"></i>
@@ -436,5 +482,73 @@ export default defineComponent({
     .login-footer {
         padding: var(--mci-space-3, 0.75rem) var(--mci-space-4, 1rem);
     }
+}
+
+/* Login Form Inputs */
+.login-form-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mci-space-4, 1rem);
+}
+
+.login-form-inputs .form-group {
+    margin-bottom: 0;
+}
+
+.login-form-inputs .form-label {
+    display: block;
+    font-size: var(--mci-font-size-base, 1.125rem);
+    font-weight: 500;
+    color: var(--mci-gray-800, #333333);
+    margin-bottom: var(--mci-space-2, 0.5rem);
+}
+
+.login-form-inputs .form-control {
+    width: 100%;
+    padding: var(--mci-space-3, 0.75rem) var(--mci-space-4, 1rem);
+    font-size: var(--mci-font-size-base, 1.125rem);
+    border: 2px solid var(--theme-border-color, var(--mci-gray-300));
+    border-radius: var(--mci-radius-md, 6px);
+    background-color: var(--input-bg-color, #ffffff);
+    color: var(--text-color, #1a1a1a);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.login-form-inputs .form-control:focus {
+    outline: none;
+    border-color: var(--mci-primary-500, #0066cc);
+    box-shadow: 0 0 0 3px var(--mci-primary-100, rgba(0, 102, 204, 0.2));
+}
+
+.login-form-inputs .form-control::placeholder {
+    color: var(--mci-gray-400, #999999);
+}
+
+.login-form-inputs .form-control:disabled {
+    background-color: var(--mci-gray-100, #f5f5f5);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.login-form-inputs .form-control-error {
+    border-color: var(--mci-error-600, #c82333);
+}
+
+.login-form-inputs .form-control-error:focus {
+    box-shadow: 0 0 0 3px var(--mci-error-100, rgba(200, 35, 51, 0.2));
+}
+
+.login-form-inputs .form-error {
+    color: var(--mci-error-700, #a71d2a);
+    font-size: var(--mci-font-size-sm, 1rem);
+    margin-top: calc(var(--mci-space-2, 0.5rem) * -1);
+}
+
+.login-form-inputs .btn-login {
+    margin-top: var(--mci-space-2, 0.5rem);
+}
+
+.login-form-inputs .btn-login i {
+    margin-right: var(--mci-space-2, 0.5rem);
 }
 </style>

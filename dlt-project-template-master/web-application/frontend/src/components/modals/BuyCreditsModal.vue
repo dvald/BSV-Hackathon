@@ -893,7 +893,8 @@ export default defineComponent({
     padding: var(--a11y-spacing-md, 1rem);
     background-color: var(--mci-gray-100, #f8f9fa);
     border-radius: var(--a11y-border-radius, 0.5rem);
-    border: 1px solid var(--theme-border-color, #e0e0e0);
+    border: 1px solid var(--them
+    e-border-color, #e0e0e0);
 }
 
 .payment-preview .amount {
