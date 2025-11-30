@@ -170,7 +170,8 @@
                                 <button 
                                     @click="openCredentialQR(category)"
                                     class="a11y-btn a11y-btn-secondary"
-                                    :title="$t('Get your credential QR code')"
+                                    :disabled="category.disabled"
+                                    :title="hasApprovedCredentials ? $t('Get your credential QR code') : $t('No approved credentials available')"
                                 >
                                     <i class="mdi mdi-qrcode" aria-hidden="true"></i>
                                     {{ $t("My Credential") }}
@@ -818,7 +819,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed } from "vue";
+import { defineComponent, ref, computed, onMounted } from "vue";
 import { AuthController } from "@/control/auth";
 import { useWallet } from "@/composables/useWallet";
 import { getApiUrl } from "@/api/utils";
@@ -847,6 +848,7 @@ interface ServiceCategory {
     category: string;
     status: "active" | "inactive" | "maintenance";
     servicesCount: number;
+    disabled: boolean;
     requiredCredentials: string[];
     // Solo para admin
     metrics?: ServiceMetrics;
@@ -964,6 +966,10 @@ export default defineComponent({
         const credentialQRData = ref<string | null>(null);
         const credentialId = ref<string | null>(null);
         const credentialExpiry = ref<string | null>(null);
+        
+        // Estado para conteo de requests aprobados
+        const approvedCount = ref(0);
+        const loadingApprovedCount = ref(false);
 
         const newService = ref<NewServiceForm>({
             name: "",
@@ -997,6 +1003,7 @@ export default defineComponent({
                 status: "active",
                 servicesCount: 3,
                 requiredCredentials: ["Disability Credential", "Census Credential"],
+                disabled: false,
                 metrics: {
                     users: 1250,
                     credentials: 1580,
@@ -1017,6 +1024,7 @@ export default defineComponent({
                 status: "active",
                 servicesCount: 4,
                 requiredCredentials: ["Census Credential"],
+                disabled: true,
                 metrics: {
                     users: 8456,
                     credentials: 8456,
@@ -1439,6 +1447,60 @@ export default defineComponent({
             document.body.removeChild(link);
         };
 
+        // Función para cargar el conteo de requests aprobados
+        const loadApprovedCount = () => {
+            if (!AuthController.isAuthenticated()) {
+                approvedCount.value = 0;
+                return;
+            }
+            
+            loadingApprovedCount.value = true;
+            Request.Do(ApiCredentials.GetApprovedCount())
+                .onSuccess((response) => {
+                    approvedCount.value = response.count || 0;
+                    loadingApprovedCount.value = false;
+                })
+                .onRequestError((err: any, handleErr: any) => {
+                    handleErr(err, {
+                        unauthorized: () => {
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                        serverError: () => {
+                            console.error("Error al obtener conteo de requests aprobados");
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                        networkError: () => {
+                            console.error("Error de red al obtener conteo de requests aprobados");
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                        temporalError: () => {
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error("Error inesperado al obtener conteo:", err);
+                    approvedCount.value = 0;
+                    loadingApprovedCount.value = false;
+                });
+        };
+
+        // Computed para saber si hay requests aprobados
+        const hasApprovedCredentials = computed(() => {
+            return approvedCount.value > 0;
+        });
+
+        // Cargar el conteo cuando se monta el componente
+        onMounted(() => {
+            if (AuthController.isAuthenticated()) {
+                loadApprovedCount();
+            }
+        });
+
         return {
             // State
             filters,
@@ -1469,6 +1531,8 @@ export default defineComponent({
             credentialQRData,
             credentialId,
             credentialExpiry,
+            approvedCount,
+            hasApprovedCredentials,
             
             // Wallet
             wallet,

@@ -900,6 +900,13 @@ export interface VerifyCredentialResponse {
     checks: any;
 }
 
+export interface GetApprovedCountResponse {
+    /**
+     * Number of approved credential requests
+     */
+    count: number;
+}
+
 export interface CredentialTypeListResponse {
     credentialTypes: CredentialTypeItem[];
 

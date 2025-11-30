@@ -4,7 +4,7 @@
 
 import { RequestErrorHandler, RequestParams, CommonErrorHandler } from "@asanrom/request-browser";
 import { getApiUrl } from "./utils";
-import { RequestCredentialResponse, RequestCredentialRequest, GetPendingRequestsResponse, ApproveRequestResponse, ApproveRequestRequest, RejectRequestResponse, RejectRequestRequest, GetUserCredentialsResponse, GetRequestStatusResponse, VerifyCredentialResponse, VerifyCredentialRequest } from "./definitions";
+import { RequestCredentialResponse, RequestCredentialRequest, GetPendingRequestsResponse, ApproveRequestResponse, ApproveRequestRequest, RejectRequestResponse, RejectRequestRequest, GetUserCredentialsResponse, GetRequestStatusResponse, VerifyCredentialResponse, VerifyCredentialRequest, GetApprovedCountResponse } from "./definitions";
 
 export class ApiCredentials {
     /**
@@ -161,6 +161,27 @@ export class ApiCredentials {
             },
         };
     }
+
+    /**
+     * Method: GET
+     * Path: /credentials/approved/count
+     * Get Count of Approved Credential Requests
+     * Get the number of approved credential requests for the authenticated user
+     * @returns The request parameters
+     */
+    public static GetApprovedCount(): RequestParams<GetApprovedCountResponse, GetApprovedCountErrorHandler> {
+        return {
+            method: "GET",
+            url: getApiUrl(`/credentials/approved/count`),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(401, "*", handler.status401)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
 }
 
 /**
@@ -221,5 +242,15 @@ export type PostCredentialsVerifyErrorHandler = CommonErrorHandler & {
      * General handler for status = 400
      */
     badRequest: () => void;
+};
+
+/**
+ * Error handler for GetApprovedCount
+ */
+export type GetApprovedCountErrorHandler = CommonErrorHandler & {
+    /**
+     * General handler for status = 401
+     */
+    status401: () => void;
 };
 

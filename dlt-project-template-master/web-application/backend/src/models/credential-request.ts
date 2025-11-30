@@ -45,6 +45,26 @@ export class CredentialRequest extends DataModel {
         return CredentialRequest.finder.find(DataFilter.equals("status", "PENDING"));
     }
 
+    /**
+     * Static helper: Find approved requests by user DID
+     */
+    public static async findApprovedByUserDID(userDID: string): Promise<CredentialRequest[]> {
+        return CredentialRequest.finder.find(
+            DataFilter.and(
+                DataFilter.equals("status", "APPROVED")
+            ),
+            OrderBy.desc("requestedAt")
+        );
+    }
+
+    /**
+     * Static helper: Count approved requests by user DID
+     */
+    public static async countApprovedByUserDID(userDID: string): Promise<number> {
+        const requests = await CredentialRequest.findApprovedByUserDID(userDID);
+        return requests.length;
+    }
+
     /* db-type: VARCHAR 255 */
     public id: string;
 

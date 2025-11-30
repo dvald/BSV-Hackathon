@@ -41,6 +41,9 @@ export class CredentialsController extends Controller {
 
         // Helper: Verify credential
         application.post(prefix + "/credentials/verify", ensureObjectBody(this.verifyCredential.bind(this)));
+
+        // Helper: Get count of approved requests for authenticated user
+        application.get(prefix + "/credentials/approved/count", noCache(this.getApprovedCount.bind(this)));
     }
 
     /**
@@ -430,6 +433,47 @@ export class CredentialsController extends Controller {
         } catch (error) {
             Monitor.error(`Error verifying credential: ${error.message}`);
             return sendApiError(request, response, INTERNAL_SERVER_ERROR, "VERIFICATION_FAILED", error.message);
+        }
+    }
+
+    /**
+     * @typedef GetApprovedCountResponse
+     * @property {number} count.required - Number of approved credential requests
+     */
+
+    /**
+     * Get Count of Approved Credential Requests
+     * Get the number of approved credential requests for the authenticated user
+     * Binding: GetApprovedCount
+     * @route GET /credentials/approved/count
+     * @group credentials
+     * @returns {GetApprovedCountResponse.model} 200 - Count of approved requests
+     * @returns {Error} 401 - Unauthorized
+     * @returns {Error} 500 - Internal server error
+     */
+    public async getApprovedCount(request: Express.Request, response: Express.Response): Promise<void> {
+        const auth = await UsersService.getInstance().auth(request);
+        if (!auth.isRegisteredUser()) {
+            sendUnauthorized(request, response);
+            return;
+        }
+        try {
+            if (!auth.user.did) {
+                return sendApiResult(request, response, {
+                    count: 0
+                });
+            }
+
+            const count = await CredentialRequest.countApprovedByUserDID(auth.user.did);
+
+            Monitor.info(`Retrieved approved count for ${auth.user.did}: ${count}`);
+
+            return sendApiResult(request, response, {
+                count: count
+            });
+        } catch (error) {
+            Monitor.error(`Error getting approved count: ${error.message}`);
+            return sendApiError(request, response, INTERNAL_SERVER_ERROR, "GET_APPROVED_COUNT_FAILED", error.message);
         }
     }
 }
