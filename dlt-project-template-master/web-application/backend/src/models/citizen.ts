@@ -31,9 +31,6 @@ export class Citizen extends DataModel {
     /* db-type: INT */
     public updatedAt: number;
 
-    /* db-type: VARCHAR */
-    public did: string;
-
     constructor(data: TypedRow<Citizen>) {
         // First, we call DataModel constructor 
         super(DATA_SOURCE, TABLE, PRIMARY_KEY);
@@ -48,7 +45,6 @@ export class Citizen extends DataModel {
         this.status = enforceType(data.status, "string") || '';
         this.createdAt = enforceType(data.createdAt, "int") || 0;
         this.updatedAt = enforceType(data.updatedAt, "int") || 0;
-        this.did = enforceType(data.did, "string") || '';
 
         // Finally, we must call init()
         this.init();

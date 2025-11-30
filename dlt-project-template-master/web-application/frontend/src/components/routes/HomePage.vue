@@ -339,14 +339,24 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import { AuthController } from "@/control/auth";
+import { ApiDashboard } from "@/api/api-group-dashboard";
+import { Request } from "@asanrom/request-browser";
+import { getUniqueStringId } from "@/utils/unique-id";
+import { Timeouts } from "@/utils/timeout";
 
 export default defineComponent({
     components: {},
     name: "HomePage",
+    setup: function () {
+        return {
+            loadRequestId: getUniqueStringId(),
+        };
+    },
     data: function () {
         return {
             showAlert: true,
             pendingValidations: 5,
+            loading: true,
             // Datos ciudadano
             citizenData: {
                 name: "Maria Garcia",
@@ -367,13 +377,13 @@ export default defineComponent({
             },
             // Datos admin
             stats: {
-                totalCitizens: 12547,
-                citizensTrend: 8.2,
-                activeCredentials: 34892,
-                tokensIssued: 156780,
-                activeServices: 2,
-                blockchainTx: 89234,
-                verificationsToday: 1234,
+                totalCitizens: 0,
+                citizensTrend: 0,
+                activeCredentials: 0,
+                tokensIssued: 0,
+                activeServices: 0,
+                blockchainTx: 0,
+                verificationsToday: 0,
             },
             serviceStats: {
                 parking: {
@@ -464,6 +474,33 @@ export default defineComponent({
         dismissAlert(): void {
             this.showAlert = false;
         },
+        loadDashboardStats(): void {
+            Timeouts.Abort(this.loadRequestId);
+            Request.Abort(this.loadRequestId);
+
+            this.loading = true;
+
+            Request.Pending(this.loadRequestId, ApiDashboard.GetDashboardStats())
+                .onSuccess((data) => {
+                    this.loading = false;
+                    this.stats.totalCitizens = data.citizenCount;
+                    this.stats.activeCredentials = data.activeCredentials;
+                    this.stats.tokensIssued = data.tokensIssued;
+                    this.stats.activeServices = data.activeServices;
+                    this.stats.blockchainTx = data.transactionsCount;
+                    this.stats.verificationsToday = data.credentialsIssuedLastDay;
+                })
+                .onRequestError((err, handleErr) => {
+                    handleErr(err, {
+                        temporalError: () => {
+                            Timeouts.Set(this.loadRequestId, 1500, this.loadDashboardStats.bind(this));
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error(err);
+                    Timeouts.Set(this.loadRequestId, 1500, this.loadDashboardStats.bind(this));
+                });
         useParking(): void {
             // TODO: Implementar uso de parking
             console.log("Use parking");
@@ -474,9 +511,12 @@ export default defineComponent({
         },
     },
     mounted: function () {
-        // TODO: Cargar datos reales del API
+        this.loadDashboardStats();
     },
-    beforeUnmount: function () {},
+    beforeUnmount: function () {
+        Timeouts.Abort(this.loadRequestId);
+        Request.Abort(this.loadRequestId);
+    },
 });
 </script>
 
