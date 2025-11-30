@@ -235,6 +235,7 @@ export default defineComponent({
         const state = ref<ModalState>('select');
         const isProcessing = ref(false);
         const errorMessage = ref('');
+        const txid = ref(''); // Manual TXID for external wallet payments
         
         // Wallet integration
         const { wallet, identityKey, isConnected, isConnecting, connect } = useWallet();

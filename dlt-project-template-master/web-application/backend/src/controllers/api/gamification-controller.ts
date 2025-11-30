@@ -49,6 +49,25 @@ export class GamificationController extends Controller {
             name: 'Parking Familia Numerosa',
             successMessage: '¡Plaza reservada! Has ganado 10 puntos de fidelidad.'
         },
+        // Mobility services from ServiciosDetallePage
+        'srv-mobility-familia': {
+            cost: 50,
+            reward: 10,
+            name: 'Large Family Parking',
+            successMessage: 'Parking space reserved! You earned 10 loyalty points.'
+        },
+        'srv-mobility-accessible': {
+            cost: 50,
+            reward: 10,
+            name: 'Accessible Parking',
+            successMessage: 'Accessible parking reserved! You earned 10 loyalty points.'
+        },
+        'srv-mobility-transport': {
+            cost: 30,
+            reward: 15,
+            name: 'Public Transport Pass',
+            successMessage: 'Transport pass activated! You earned 15 loyalty points.'
+        },
         'eco-recycling': {
             cost: 20,
             reward: 5,

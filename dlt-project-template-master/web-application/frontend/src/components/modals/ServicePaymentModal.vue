@@ -696,6 +696,10 @@ export default defineComponent({
         const isUsingTokens = ref(false);
         const tokenUseSuccess = ref(false);
 
+        // Manual TXID state (for external wallets)
+        const manualTxid = ref('');
+        const manualTxidError = ref('');
+
         // Redemption state
         const isRedeeming = ref(false);
         const redemptionSuccess = ref(false);
