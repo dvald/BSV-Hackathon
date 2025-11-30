@@ -2,7 +2,7 @@
 
 "use strict";
 
-import { DataModel, enforceType, TypedRow, DataSource, DataFinder } from "tsbean-orm";
+import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter } from "tsbean-orm";
 
 const DATA_SOURCE = DataSource.DEFAULT;
 const TABLE = "credential_type";
@@ -11,6 +11,16 @@ const PRIMARY_KEY = "id";
 export class CredentialType extends DataModel {
 
     public static finder = new DataFinder<CredentialType, string>(DATA_SOURCE, TABLE, PRIMARY_KEY, (data: TypedRow<CredentialType>) => { return new CredentialType(data) });
+
+
+    public static async findAll(): Promise<CredentialType[]> {
+        const credentialTypes = await CredentialType.finder.find(DataFilter.any());
+        return credentialTypes;
+    }
+
+    public static async findByService(serviceId: string): Promise<CredentialType[]> {
+        return await CredentialType.finder.find(DataFilter.equals("serviceId", serviceId));
+    }
 
     /* db-type: VARCHAR */
     public id: string;

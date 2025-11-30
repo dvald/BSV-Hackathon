@@ -25,6 +25,14 @@
                     <i class="mdi mdi-plus" aria-hidden="true"></i>
                     {{ $t("New service") }}
                 </button>
+                <button 
+                    @click="showNewCredentialTypeModal = true"
+                    class="a11y-btn a11y-btn-secondary a11y-btn-large"
+                    :aria-label="$t('Create new credential type')"
+                >
+                    <i class="mdi mdi-plus" aria-hidden="true"></i>
+                    {{ $t("New credential") }}
+                </button>
             </div>
         </header>
 
@@ -391,6 +399,115 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal para nuevo tipo de credencial -->
+        <div 
+            v-if="showNewCredentialTypeModal" 
+            class="modal-overlay"
+            @click.self="showNewCredentialTypeModal = false"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-credential-type-title"
+        >
+            <div class="modal-content a11y-card">
+                <header class="modal-header">
+                    <h2 id="new-credential-type-title" class="a11y-heading-2">
+                        {{ $t("Create new credential type") }}
+                    </h2>
+                    <button 
+                        @click="showNewCredentialTypeModal = false"
+                        class="a11y-btn a11y-btn-icon"
+                        :aria-label="$t('Close')"
+                    >
+                        ✕
+                    </button>
+                </header>
+                
+                <form @submit.prevent="createCredentialType" class="modal-body">
+                    <div class="a11y-form-group">
+                        <label for="credential-type-name" class="a11y-label a11y-label-required">
+                            {{ $t("Credential type name") }}
+                        </label>
+                        <input 
+                            id="credential-type-name"
+                            type="text"
+                            v-model="newCredentialType.name"
+                            class="a11y-input"
+                            :placeholder="$t('e.g. Disability Certificate')"
+                            required
+                        />
+                    </div>
+
+                    <div class="a11y-form-group">
+                        <label for="credential-type-description" class="a11y-label">
+                            {{ $t("Description") }}
+                        </label>
+                        <textarea 
+                            id="credential-type-description"
+                            v-model="newCredentialType.description"
+                            class="a11y-textarea"
+                            rows="3"
+                            :placeholder="$t('Describe what this credential type is used for...')"
+                        ></textarea>
+                    </div>
+
+                    <div class="a11y-form-group">
+                        <label for="credential-type-service" class="a11y-label">
+                            {{ $t("Associated service") }}
+                        </label>
+                        <select 
+                            id="credential-type-service"
+                            v-model="newCredentialType.serviceId"
+                            class="a11y-select"
+                        >
+                            <option value="">{{ $t("No service (general credential)") }}</option>
+                            <option 
+                                v-for="service in services" 
+                                :key="service.id"
+                                :value="service.id"
+                            >
+                                {{ $t(service.name) }}
+                            </option>
+                        </select>
+                        <p class="a11y-help-text">
+                            {{ $t("Optional: link this credential type to a specific service") }}
+                        </p>
+                    </div>
+
+                    <!-- Mensaje de error -->
+                    <div v-if="credentialTypeError" class="upload-message upload-error" role="alert">
+                        <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
+                        {{ credentialTypeError }}
+                    </div>
+
+                    <!-- Mensaje de éxito -->
+                    <div v-if="credentialTypeSuccess" class="upload-message upload-success" role="status">
+                        <i class="mdi mdi-check-circle" aria-hidden="true"></i>
+                        {{ $t("Credential type created successfully!") }}
+                    </div>
+
+                    <footer class="modal-footer">
+                        <button 
+                            type="button"
+                            @click="showNewCredentialTypeModal = false"
+                            class="a11y-btn a11y-btn-secondary"
+                            :disabled="creatingCredentialType"
+                        >
+                            {{ $t("Cancel") }}
+                        </button>
+                        <button 
+                            type="submit"
+                            class="a11y-btn a11y-btn-primary"
+                            :disabled="creatingCredentialType || credentialTypeSuccess"
+                        >
+                            <i v-if="creatingCredentialType" class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                            <i v-else class="mdi mdi-certificate" aria-hidden="true"></i>
+                            {{ creatingCredentialType ? $t("Creating...") : $t("Create credential type") }}
+                        </button>
+                    </footer>
+                </form>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -399,6 +516,7 @@ import { defineComponent } from "vue";
 import { AuthController } from "@/control/auth";
 import { Request } from "@asanrom/request-browser";
 import { ApiFiles } from "@/api/api-group-files";
+import { ApiCredential } from "@/api/api-group-credential";
 import { getUniqueStringId } from "@/utils/unique-id";
 import { Timeouts } from "@/utils/timeout";
 
@@ -443,8 +561,18 @@ export default defineComponent({
                 search: "",
             },
             showNewServiceModal: false,
+            showNewCredentialTypeModal: false,
             showRequestServiceModal: false,
             selectedService: null as Service | null,
+            newCredentialType: {
+                name: "",
+                description: "",
+                serviceId: "",
+            },
+            credentialTypeRequestId: getUniqueStringId(),
+            creatingCredentialType: false,
+            credentialTypeError: "",
+            credentialTypeSuccess: false,
             serviceRequest: {
                 document: null as File | null,
             },
@@ -642,6 +770,53 @@ export default defineComponent({
             this.uploadError = "";
             this.uploadSuccess = false;
         },
+        createCredentialType() {
+            if (!this.newCredentialType.name) return;
+            
+            this.creatingCredentialType = true;
+            this.credentialTypeError = "";
+            this.credentialTypeSuccess = false;
+
+            Request.Abort(this.credentialTypeRequestId);
+
+            Request.Pending(this.credentialTypeRequestId, ApiCredential.CreateCredentialType({
+                name: this.newCredentialType.name,
+                description: this.newCredentialType.description,
+                serviceId: this.newCredentialType.serviceId || undefined,
+            }))
+                .onSuccess((response) => {
+                    this.creatingCredentialType = false;
+                    this.credentialTypeSuccess = true;
+                    console.log("Credential type created:", response);
+                    
+                    // Cerrar modal después de éxito
+                    setTimeout(() => {
+                        this.showNewCredentialTypeModal = false;
+                        this.credentialTypeSuccess = false;
+                        this.newCredentialType = {
+                            name: "",
+                            description: "",
+                            serviceId: "",
+                        };
+                    }, 1500);
+                })
+                .onRequestError((err, handleErr) => {
+                    this.creatingCredentialType = false;
+                    handleErr(err, {
+                        badRequest: () => {
+                            this.credentialTypeError = this.$t("Invalid request. Please check the data entered.");
+                        },
+                        temporalError: () => {
+                            this.credentialTypeError = this.$t("Error creating credential type. Please try again.");
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error(err);
+                    this.creatingCredentialType = false;
+                    this.credentialTypeError = this.$t("Unexpected error occurred.");
+                });
+        },
     },
     mounted: function () {
         // TODO: Cargar servicios desde el API
@@ -649,6 +824,7 @@ export default defineComponent({
     beforeUnmount: function () {
         Timeouts.Abort(this.uploadRequestId);
         Request.Abort(this.uploadRequestId);
+        Request.Abort(this.credentialTypeRequestId);
     },
 });
 </script>
@@ -670,6 +846,12 @@ export default defineComponent({
     display: flex;
     align-items: center;
     gap: var(--a11y-spacing-sm);
+}
+
+.header-actions {
+    display: flex;
+    gap: var(--a11y-spacing-sm);
+    flex-wrap: wrap;
 }
 
 /* Filters */
