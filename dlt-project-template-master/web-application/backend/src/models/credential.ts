@@ -6,7 +6,7 @@ import { DataModel, enforceType, TypedRow, DataSource, DataFinder, DataFilter, O
 
 const DATA_SOURCE = DataSource.DEFAULT;
 const TABLE = "credential";
-const PRIMARY_KEY = "uid";
+const PRIMARY_KEY = "did";
 
 export enum CredentialStatus {
     ACTIVE = "ACTIVE",
@@ -26,9 +26,9 @@ export class Credential extends DataModel {
         return Credential.finder.count(DataFilter.greaterThan("issuedAt", oneDayAgo));
     }
 
-    public static async create(uid: string, credentialType: string): Promise<Credential> {
+    public static async create(did: string, credentialType: string): Promise<Credential> {
         const credential = new Credential({
-            uid: uid,
+            did: did,
             credentialType: credentialType,
             issuedAt: Date.now(),
             status: CredentialStatus.ACTIVE
@@ -38,7 +38,7 @@ export class Credential extends DataModel {
     }
 
     /* db-type: VARCHAR */
-    public uid: string;
+    public did: string;
 
     /* db-type: VARCHAR */
     public credentialType: string;
@@ -58,7 +58,7 @@ export class Credential extends DataModel {
         // You can also enforce the types if you do not trust the data source
         // In that case you can use the enforceType utility function
 
-        this.uid = enforceType(data.uid, "string") || '';
+        this.did = enforceType(data.did, "string") || '';
         this.credentialType = enforceType(data.credentialType, "string") || '';
         this.issuedAt = enforceType(data.issuedAt, "int") || 0;
         this.status = enforceType(data.status, "string") || '';
