@@ -843,7 +843,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted } from "vue";
+import { defineComponent, ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { AuthController } from "@/control/auth";
 import { useWallet } from "@/composables/useWallet";
@@ -1457,8 +1457,9 @@ export default defineComponent({
                 expiry.setFullYear(expiry.getFullYear() + 1);
                 credentialExpiry.value = expiry.toLocaleDateString();
                 
-                // URL que irá codificada en el QR (PEGA TU URL AQUÍ)
-                const qrUrl = "http://localhost:3000/api/credentials";
+                // URL que irá codificada en el QR - apunta al endpoint de acceso
+                const apiBaseUrl = getApiUrl('/credentials/access');
+                const qrUrl = apiBaseUrl;
                 
                 // Generar imagen QR usando API de qrserver.com
                 credentialQRData.value = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`;
@@ -1551,12 +1552,93 @@ export default defineComponent({
                 });
         };
 
+        // WebSocket connection para recibir eventos en tiempo real
+        let websocket: WebSocket | null = null;
+
+        const connectWebSocket = () => {
+            if (!AuthController.isAuthenticated()) {
+                return;
+            }
+
+            try {
+                // Construir URL del WebSocket
+                // El WebSocket está en /websocket según la configuración del backend
+                const apiBaseUrl = getApiUrl('');
+                const wsProtocol = apiBaseUrl.startsWith('https') ? 'wss' : 'ws';
+                const wsHost = apiBaseUrl.replace(/^https?:\/\//, '').replace(/\/api\/v1.*$/, '');
+                const wsUrl = `${wsProtocol}://${wsHost}/websocket`;
+                
+                console.log('[WebSocket] Conectando a:', wsUrl);
+                websocket = new WebSocket(wsUrl);
+
+                websocket.onopen = () => {
+                    console.log('[WebSocket] Conectado');
+                    // El backend obtendrá automáticamente el DID del usuario desde la sesión
+                    // No necesitamos enviarlo manualmente
+                };
+
+                websocket.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        console.log('[WebSocket] Mensaje recibido:', message);
+
+                        if (message.event === 'credential_status_updated') {
+                            console.log('[WebSocket] Credencial actualizada:', message);
+                            // Cerrar el modal del QR si está abierto
+                            if (showCredentialQRModal.value) {
+                                closeCredentialQRModal();
+                            }
+                            // Redirigir a ServiceDetailsPage si se indica en el mensaje
+                            if (message.redirect && message.redirectTo === 'services-details') {
+                                console.log('[WebSocket] Redirigiendo a ServiceDetailsPage');
+                                router.push({ name: 'services-details' });
+                            }
+                        } else if (message.event === 'hello') {
+                            console.log('[WebSocket] Servidor conectado');
+                        }
+                    } catch (error) {
+                        console.error('[WebSocket] Error al parsear mensaje:', error);
+                    }
+                };
+
+                websocket.onerror = (error) => {
+                    console.error('[WebSocket] Error:', error);
+                };
+
+                websocket.onclose = () => {
+                    console.log('[WebSocket] Desconectado');
+                    // Intentar reconectar después de 5 segundos
+                    setTimeout(() => {
+                        if (AuthController.isAuthenticated()) {
+                            connectWebSocket();
+                        }
+                    }, 5000);
+                };
+
+            } catch (error) {
+                console.error('[WebSocket] Error al conectar:', error);
+            }
+        };
+
+        const disconnectWebSocket = () => {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+        };
+
         // Cargar el conteo cuando se monta el componente
         onMounted(() => {
             if (AuthController.isAuthenticated()) {
                 loadApprovedCount();
                 checkCredentialStatus();
+                connectWebSocket();
             }
+        });
+
+        // Limpiar WebSocket al desmontar
+        onUnmounted(() => {
+            disconnectWebSocket();
         });
 
         return {
