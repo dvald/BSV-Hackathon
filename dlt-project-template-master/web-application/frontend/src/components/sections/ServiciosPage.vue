@@ -170,7 +170,8 @@
                                 <button 
                                     @click="openCredentialQR(category)"
                                     class="a11y-btn a11y-btn-secondary"
-                                    :title="$t('Get your credential QR code')"
+                                    :disabled="category.disabled"
+                                    :title="hasApprovedCredentials ? $t('Get your credential QR code') : $t('No approved credentials available')"
                                 >
                                     <i class="mdi mdi-qrcode" aria-hidden="true"></i>
                                     {{ $t("My Credential") }}
@@ -818,10 +819,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed } from "vue";
+import { defineComponent, ref, computed, onMounted } from "vue";
 import { AuthController } from "@/control/auth";
 import { useWallet } from "@/composables/useWallet";
 import { getApiUrl } from "@/api/utils";
+import { Request } from "@asanrom/request-browser";
+import { ApiCredentials } from "@/api/api-group-credentials";
+import { ApiFiles } from "@/api/api-group-files";
+import { RequestCredentialRequest } from "@/api/definitions";
 
 // Configuración fija para tokens de servicios municipales
 const TOKEN_FIXED_CONFIG = {
@@ -843,6 +848,7 @@ interface ServiceCategory {
     category: string;
     status: "active" | "inactive" | "maintenance";
     servicesCount: number;
+    disabled: boolean;
     requiredCredentials: string[];
     // Solo para admin
     metrics?: ServiceMetrics;
@@ -960,6 +966,10 @@ export default defineComponent({
         const credentialQRData = ref<string | null>(null);
         const credentialId = ref<string | null>(null);
         const credentialExpiry = ref<string | null>(null);
+        
+        // Estado para conteo de requests aprobados
+        const approvedCount = ref(0);
+        const loadingApprovedCount = ref(false);
 
         const newService = ref<NewServiceForm>({
             name: "",
@@ -993,6 +1003,7 @@ export default defineComponent({
                 status: "active",
                 servicesCount: 3,
                 requiredCredentials: ["Disability Credential", "Census Credential"],
+                disabled: false,
                 metrics: {
                     users: 1250,
                     credentials: 1580,
@@ -1013,6 +1024,7 @@ export default defineComponent({
                 status: "active",
                 servicesCount: 4,
                 requiredCredentials: ["Census Credential"],
+                disabled: true,
                 metrics: {
                     users: 8456,
                     credentials: 8456,
@@ -1288,8 +1300,93 @@ export default defineComponent({
         };
 
         const submitServiceRequest = () => {
-            // TODO: Implementar envío de solicitud
-            console.log("Submit service request:", serviceRequest.value);
+            if (!selectedService.value || !serviceRequest.value.credentialType || !serviceRequest.value.document) {
+                uploadError.value = "Por favor, complete todos los campos requeridos";
+                return;
+            }
+
+            uploading.value = true;
+            uploadError.value = "";
+            uploadSuccess.value = false;
+
+            // Paso 1: Subir el documento
+            Request.Do(ApiFiles.PostFilesUpload({
+                file: serviceRequest.value.document,
+                bucket: "documents",
+                isPublic: false,
+            }))
+                .onSuccess((uploadResult: any) => {
+                    const documentId = uploadResult.documentId;
+
+                    if (!documentId) {
+                        uploading.value = false;
+                        uploadError.value = "No se recibió el ID del documento";
+                        return;
+                    }
+
+                    // Paso 2: Hacer la petición de credencial
+                    const credentialRequest: RequestCredentialRequest = {
+                        credentialId: serviceRequest.value.credentialType,
+                        serviceId: selectedService.value.id,
+                        documentId: documentId,
+                    };
+
+                    Request.Do(ApiCredentials.RequestCredential(credentialRequest))
+                        .onSuccess((credentialResult) => {
+                            // Éxito
+                            uploading.value = false;
+                            uploadSuccess.value = true;
+                            uploadError.value = "";
+                            
+                            console.log("Solicitud de credencial creada:", credentialResult);
+
+                            // Cerrar el modal después de un breve delay
+                            setTimeout(() => {
+                                closeRequestModal();
+                            }, 2000);
+                        })
+                        .onRequestError((err: any, handleErr: any) => {
+                            uploading.value = false;
+                            handleErr(err, {
+                                badRequest: () => {
+                                    uploadError.value = "Error en los datos de la solicitud";
+                                },
+                                serverError: () => {
+                                    uploadError.value = "Error del servidor al procesar la solicitud";
+                                },
+                                temporalError: () => {
+                                    uploadError.value = "Error temporal. Por favor, intente nuevamente";
+                                },
+                                networkError: () => {
+                                    uploadError.value = "Error de conexión. Verifique su internet";
+                                },
+                            });
+                        })
+                        .onUnexpectedError((err) => {
+                            console.error("Error inesperado al solicitar credencial:", err);
+                            uploading.value = false;
+                            uploadError.value = "Error inesperado al procesar la solicitud";
+                        });
+                })
+                .onRequestError((err: any, handleErr: any) => {
+                    uploading.value = false;
+                    handleErr(err, {
+                        serverError: () => {
+                            uploadError.value = "Error del servidor al subir el documento";
+                        },
+                        temporalError: () => {
+                            uploadError.value = "Error temporal al subir el documento. Por favor, intente nuevamente";
+                        },
+                        networkError: () => {
+                            uploadError.value = "Error de conexión al subir el documento. Verifique su internet";
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error("Error inesperado al subir documento:", err);
+                    uploading.value = false;
+                    uploadError.value = "Error inesperado al subir el documento";
+                });
         };
 
         const createCredentialType = () => {
@@ -1350,6 +1447,60 @@ export default defineComponent({
             document.body.removeChild(link);
         };
 
+        // Función para cargar el conteo de requests aprobados
+        const loadApprovedCount = () => {
+            if (!AuthController.isAuthenticated()) {
+                approvedCount.value = 0;
+                return;
+            }
+            
+            loadingApprovedCount.value = true;
+            Request.Do(ApiCredentials.GetApprovedCount())
+                .onSuccess((response) => {
+                    approvedCount.value = response.count || 0;
+                    loadingApprovedCount.value = false;
+                })
+                .onRequestError((err: any, handleErr: any) => {
+                    handleErr(err, {
+                        unauthorized: () => {
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                        serverError: () => {
+                            console.error("Error al obtener conteo de requests aprobados");
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                        networkError: () => {
+                            console.error("Error de red al obtener conteo de requests aprobados");
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                        temporalError: () => {
+                            approvedCount.value = 0;
+                            loadingApprovedCount.value = false;
+                        },
+                    });
+                })
+                .onUnexpectedError((err) => {
+                    console.error("Error inesperado al obtener conteo:", err);
+                    approvedCount.value = 0;
+                    loadingApprovedCount.value = false;
+                });
+        };
+
+        // Computed para saber si hay requests aprobados
+        const hasApprovedCredentials = computed(() => {
+            return approvedCount.value > 0;
+        });
+
+        // Cargar el conteo cuando se monta el componente
+        onMounted(() => {
+            if (AuthController.isAuthenticated()) {
+                loadApprovedCount();
+            }
+        });
+
         return {
             // State
             filters,
@@ -1380,6 +1531,8 @@ export default defineComponent({
             credentialQRData,
             credentialId,
             credentialExpiry,
+            approvedCount,
+            hasApprovedCredentials,
             
             // Wallet
             wallet,

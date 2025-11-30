@@ -40,17 +40,29 @@ export class CredentialRequest extends DataModel {
     /**
      * Static helper: Find pending requests
      */
-    public static async findPending(credentialType?: string): Promise<CredentialRequest[]> {
-        let filter: any = DataFilter.equals("status", "PENDING");
-        
-        if (credentialType) {
-            filter = DataFilter.and(
-                filter,
-                DataFilter.equals("credentialType", credentialType)
-            );
-        }
+    public static async findPending(): Promise<CredentialRequest[]> {
 
-        return CredentialRequest.finder.find(filter, OrderBy.asc("requestedAt"));
+        return CredentialRequest.finder.find(DataFilter.equals("status", "PENDING"));
+    }
+
+    /**
+     * Static helper: Find approved requests by user DID
+     */
+    public static async findApprovedByUserDID(userDID: string): Promise<CredentialRequest[]> {
+        return CredentialRequest.finder.find(
+            DataFilter.and(
+                DataFilter.equals("status", "APPROVED")
+            ),
+            OrderBy.desc("requestedAt")
+        );
+    }
+
+    /**
+     * Static helper: Count approved requests by user DID
+     */
+    public static async countApprovedByUserDID(userDID: string): Promise<number> {
+        const requests = await CredentialRequest.findApprovedByUserDID(userDID);
+        return requests.length;
     }
 
     /* db-type: VARCHAR 255 */
@@ -86,6 +98,12 @@ export class CredentialRequest extends DataModel {
     /* db-type: VARCHAR 255 */
     public credentialId: string;
 
+    /* db-type: VARCHAR 255 */
+    public documentId: string;
+
+    /* db-type: VARCHAR 255 */
+    public serviceId: string;
+
     constructor(row: TypedRow<CredentialRequest>) {
         // First, call DataModel constructor
         super(DATA_SOURCE, TABLE, PRIMARY_KEY);
@@ -101,7 +119,8 @@ export class CredentialRequest extends DataModel {
         this.reviewedBy = enforceType(row.reviewedBy, "string") || "";
         this.rejectionReason = enforceType(row.rejectionReason, "string") || "";
         this.credentialId = enforceType(row.credentialId, "string") || "";
-
+        this.documentId = enforceType(row.documentId, "string") || "";
+        this.serviceId = enforceType(row.serviceId, "string") || "";
         // Finally, call init()
         this.init();
     }

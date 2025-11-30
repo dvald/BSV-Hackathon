@@ -3,24 +3,22 @@
 "use strict";
 
 import { RequestErrorHandler, RequestParams, CommonErrorHandler } from "@asanrom/request-browser";
-import { getApiUrl, generateURIQuery } from "./utils";
-import { RequestCredentialResponse, RequestCredentialRequest, GetPendingRequestsResponse, ApproveRequestResponse, ApproveRequestRequest, RejectRequestResponse, RejectRequestRequest, GetUserCredentialsResponse, GetRequestStatusResponse, VerifyCredentialResponse, VerifyCredentialRequest } from "./definitions";
+import { getApiUrl } from "./utils";
+import { RequestCredentialResponse, RequestCredentialRequest, GetPendingRequestsResponse, ApproveRequestResponse, ApproveRequestRequest, RejectRequestResponse, RejectRequestRequest, GetUserCredentialsResponse, GetRequestStatusResponse, VerifyCredentialResponse, VerifyCredentialRequest, GetApprovedCountResponse } from "./definitions";
 
 export class ApiCredentials {
     /**
      * Method: POST
      * Path: /credentials/request
-Binding:
      * Request a Verifiable Credential
      * User submits a request for a specific type of credential
      * @param body Body parameters
      * @returns The request parameters
      */
-    public static PostCredentialsRequestbinding(body: RequestCredentialRequest): RequestParams<RequestCredentialResponse, PostCredentialsRequestbindingErrorHandler> {
+    public static RequestCredential(body: RequestCredentialRequest): RequestParams<RequestCredentialResponse, RequestCredentialErrorHandler> {
         return {
             method: "POST",
-            url: getApiUrl(`/credentials/request
-Binding:`),
+            url: getApiUrl(`/credentials/request`),
             json: body,
             handleError: (err, handler) => {
                 new RequestErrorHandler()
@@ -36,14 +34,12 @@ Binding:`),
      * Method: GET
      * Path: /credentials/requests/pending
      * Get Pending Credential Requests
-     * For issuers to review pending requests
-     * @param queryParams Query parameters
      * @returns The request parameters
      */
-    public static GetCredentialsRequestsPending(queryParams: GetCredentialsRequestsPendingQueryParameters): RequestParams<GetPendingRequestsResponse, CommonErrorHandler> {
+    public static GetPendingRequests(): RequestParams<GetPendingRequestsResponse, CommonErrorHandler> {
         return {
             method: "GET",
-            url: getApiUrl(`/credentials/requests/pending` + generateURIQuery(queryParams)),
+            url: getApiUrl(`/credentials/requests/pending`),
             handleError: (err, handler) => {
                 new RequestErrorHandler()
                     .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
@@ -61,7 +57,7 @@ Binding:`),
      * @param body Body parameters
      * @returns The request parameters
      */
-    public static PostCredentialsApprove(body: ApproveRequestRequest): RequestParams<ApproveRequestResponse, PostCredentialsApproveErrorHandler> {
+    public static ApproveRequest(body: ApproveRequestRequest): RequestParams<ApproveRequestResponse, ApproveRequestErrorHandler> {
         return {
             method: "POST",
             url: getApiUrl(`/credentials/approve`),
@@ -84,7 +80,7 @@ Binding:`),
      * @param body Body parameters
      * @returns The request parameters
      */
-    public static PostCredentialsReject(body: RejectRequestRequest): RequestParams<RejectRequestResponse, PostCredentialsRejectErrorHandler> {
+    public static RejectRequest(body: RejectRequestRequest): RequestParams<RejectRequestResponse, RejectRequestErrorHandler> {
         return {
             method: "POST",
             url: getApiUrl(`/credentials/reject`),
@@ -165,12 +161,33 @@ Binding:`),
             },
         };
     }
+
+    /**
+     * Method: GET
+     * Path: /credentials/approved/count
+     * Get Count of Approved Credential Requests
+     * Get the number of approved credential requests for the authenticated user
+     * @returns The request parameters
+     */
+    public static GetApprovedCount(): RequestParams<GetApprovedCountResponse, GetApprovedCountErrorHandler> {
+        return {
+            method: "GET",
+            url: getApiUrl(`/credentials/approved/count`),
+            handleError: (err, handler) => {
+                new RequestErrorHandler()
+                    .add(401, "*", handler.status401)
+                    .add(500, "*", "serverError" in handler ? handler.serverError : handler.temporalError)
+                    .add("*", "*", "networkError" in handler ? handler.networkError : handler.temporalError)
+                    .handle(err);
+            },
+        };
+    }
 }
 
 /**
- * Error handler for PostCredentialsRequestbinding
+ * Error handler for RequestCredential
  */
-export type PostCredentialsRequestbindingErrorHandler = CommonErrorHandler & {
+export type RequestCredentialErrorHandler = CommonErrorHandler & {
     /**
      * General handler for status = 400
      */
@@ -178,19 +195,9 @@ export type PostCredentialsRequestbindingErrorHandler = CommonErrorHandler & {
 };
 
 /**
- * Query parameters for GetCredentialsRequestsPending
+ * Error handler for ApproveRequest
  */
-export interface GetCredentialsRequestsPendingQueryParameters {
-    /**
-     * Optional filter by credential type
-     */
-    credentialType?: string;
-}
-
-/**
- * Error handler for PostCredentialsApprove
- */
-export type PostCredentialsApproveErrorHandler = CommonErrorHandler & {
+export type ApproveRequestErrorHandler = CommonErrorHandler & {
     /**
      * General handler for status = 400
      */
@@ -198,9 +205,9 @@ export type PostCredentialsApproveErrorHandler = CommonErrorHandler & {
 };
 
 /**
- * Error handler for PostCredentialsReject
+ * Error handler for RejectRequest
  */
-export type PostCredentialsRejectErrorHandler = CommonErrorHandler & {
+export type RejectRequestErrorHandler = CommonErrorHandler & {
     /**
      * General handler for status = 400
      */
@@ -235,5 +242,15 @@ export type PostCredentialsVerifyErrorHandler = CommonErrorHandler & {
      * General handler for status = 400
      */
     badRequest: () => void;
+};
+
+/**
+ * Error handler for GetApprovedCount
+ */
+export type GetApprovedCountErrorHandler = CommonErrorHandler & {
+    /**
+     * General handler for status = 401
+     */
+    status401: () => void;
 };
 

@@ -759,9 +759,14 @@ export interface RequestCredentialRequest {
     credentialId: string;
 
     /**
-     * Data for this credential type (dynamic)
+     * Service ID
      */
-    requestData: any;
+    serviceId: string;
+
+    /**
+     * Document ID
+     */
+    documentId: string;
 }
 
 export interface RequestCredentialResponse {
@@ -777,7 +782,7 @@ export interface RequestCredentialResponse {
 }
 
 export interface GetPendingRequestsResponse {
-    requests: any[];
+    requests: CredentialRequest[];
 
     /**
      * Total count
@@ -790,28 +795,13 @@ export interface ApproveRequestRequest {
      * The request ID to approve
      */
     requestId: string;
-
-    /**
-     * Issuer's private key in hex format
-     */
-    issuerPrivateKey: string;
-
-    /**
-     * Optional expiration date (ISO 8601)
-     */
-    expirationDate?: string;
 }
 
 export interface ApproveRequestResponse {
     /**
      * The issued credential ID
      */
-    credentialId: string;
-
-    /**
-     * Blockchain anchor transaction ID
-     */
-    txid: string;
+    credentialRequestId: string;
 
     /**
      * The complete credential
@@ -824,11 +814,6 @@ export interface RejectRequestRequest {
      * The request ID to reject
      */
     requestId: string;
-
-    /**
-     * Issuer's DID
-     */
-    issuerDID: string;
 
     /**
      * Reason for rejection
@@ -913,6 +898,13 @@ export interface VerifyCredentialResponse {
      * Individual checks
      */
     checks: any;
+}
+
+export interface GetApprovedCountResponse {
+    /**
+     * Number of approved credential requests
+     */
+    count: number;
 }
 
 export interface CredentialTypeListResponse {
