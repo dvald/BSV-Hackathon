@@ -6,6 +6,7 @@ import { Monitor } from "../../monitor";
 import { Controller } from "../controller";
 import { StripeService } from "../../services/stripe-service";
 import { UsersService } from "../../services/users-service";
+import { TokenService } from "../../services/token-service";
 import { BAD_REQUEST, ensureObjectBody, INTERNAL_SERVER_ERROR, sendApiError, sendApiResult, sendUnauthorized } from "../../utils/http-utils";
 import { Config } from "../../config/config";
 import { Token } from "../../models/tokens/token";
@@ -94,8 +95,12 @@ export class ApiPurchaseTokenController extends Controller {
                 return sendApiError(request, response, BAD_REQUEST, "INVALID_AMOUNT", "Amount must be a positive number");
             }
 
-            // Check token exists
-            const token = await Token.finder.findByKey(token_id);
+            // Check token exists - first try by ID, then by symbol
+            let token = await Token.finder.findByKey(token_id);
+            if (!token) {
+                // Try to find by symbol (e.g., "SERVICE", "LOYALTY")
+                token = await TokenService.getInstance().getTokenBySymbol(token_id);
+            }
             if (!token) {
                 return sendApiError(request, response, BAD_REQUEST, "TOKEN_NOT_FOUND", "Token not found");
             }

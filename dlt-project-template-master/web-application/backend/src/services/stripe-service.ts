@@ -13,10 +13,6 @@ import { StripeAccount } from "../models/stripe-account";
 export class StripeService {
     /* Singleton */
 
-    public static CONFIG: Stripe.StripeConfig = {
-        apiVersion: '2025-08-27.basil',
-    };
-
     public static instance: StripeService = null;
 
     public static getInstance(): StripeService {
@@ -36,7 +32,7 @@ export class StripeService {
             this.client = null;
             return;
         }
-        this.client = new Stripe(StripeConfig.getInstance().clientSecret, StripeService.CONFIG);
+        this.client = new Stripe(StripeConfig.getInstance().clientSecret);
     }
 
     public async createConnectedAccount(): Promise<string> {        
@@ -52,8 +48,8 @@ export class StripeService {
     }
 
     public async createAccountLink(methodId: string, accountId: string, isVerified: boolean): Promise<string> {
-        const cancelURL = Config.getInstance().getFrontendURI("/#/payment-methods");
-        const successURL = Config.getInstance().getFrontendURI("/#/payment-methods?success=" + encodeURIComponent(methodId));
+        const cancelURL = Config.getInstance().getFrontendURI("/services-details");
+        const successURL = Config.getInstance().getFrontendURI("/services-details?success=" + encodeURIComponent(methodId));
 
         if (!this.client) {
             throw new Error("Stripe is not configured");

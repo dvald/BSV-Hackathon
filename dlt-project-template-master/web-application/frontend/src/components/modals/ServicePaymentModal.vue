@@ -39,15 +39,15 @@
                             {{ $t("Tokens") }}
                             <span v-if="serviceBalance > 0" class="tokens-badge">{{ serviceBalance }}</span>
                         </button>
-                        <!-- Tab 2: Buy with TXID -->
+                        <!-- Tab 2: Pay with Card (Stripe) -->
                         <button 
                             type="button"
-                            class="tab-btn"
-                            :class="{ active: paymentMethod === 'manual' }"
-                            @click="paymentMethod = 'manual'"
+                            class="tab-btn stripe-tab"
+                            :class="{ active: paymentMethod === 'stripe' }"
+                            @click="paymentMethod = 'stripe'"
                         >
-                            <i class="mdi mdi-form-textbox" aria-hidden="true"></i>
-                            {{ $t("TXID") }}
+                            <i class="mdi mdi-credit-card" aria-hidden="true"></i>
+                            {{ $t("Card") }}
                         </button>
                         <!-- Tab 3: Buy with Wallet -->
                         <button 
@@ -73,7 +73,7 @@
                     </div>
                     
                     <!-- Payment Details (for BSV direct payment: TXID and Wallet) -->
-                    <div v-if="paymentMethod === 'manual' || paymentMethod === 'auto'" class="payment-details">
+                    <div v-if="paymentMethod === 'stripe' || paymentMethod === 'auto'" class="payment-details">
                         <div class="detail-row bsv-row">
                             <span class="detail-label">{{ $t("Parking Cost") }}:</span>
                             <span class="detail-value cost bsv-cost">
@@ -215,59 +215,38 @@
                         </div>
                     </div>
 
-                    <!-- MANUAL PAYMENT VIEW -->
-                    <div v-if="paymentMethod === 'manual'" class="manual-payment-section">
-                        <div class="manual-payment-header">
-                            <i class="mdi mdi-wallet-travel" aria-hidden="true"></i>
-                            <span>{{ $t("Pay with BSV Desktop Wallet") }}</span>
+                    <!-- STRIPE PAYMENT VIEW -->
+                    <div v-if="paymentMethod === 'stripe'" class="stripe-payment-section">
+                        <div class="stripe-payment-header">
+                            <i class="mdi mdi-credit-card" aria-hidden="true"></i>
+                            <span>{{ $t("Pay with Card") }}</span>
                         </div>
 
-                        <!-- Step 1: Payment Address -->
-                        <div class="manual-step">
-                            <div class="step-number">1</div>
-                            <div class="step-content">
-                                <label>{{ $t("Send BSV to this address") }}:</label>
-                                <div class="address-box">
-                                    <code class="payment-address">{{ backendAddress || $t("Loading...") }}</code>
-                                    <button 
-                                        type="button" 
-                                        class="btn-copy" 
-                                        @click="copyAddress"
-                                        :title="$t('Copy address')"
-                                    >
-                                        <i class="mdi" :class="addressCopied ? 'mdi-check' : 'mdi-content-copy'" aria-hidden="true"></i>
-                                    </button>
-                                </div>
-                                <a 
-                                    v-if="backendAddress"
-                                    :href="bsvPaymentUri" 
-                                    class="btn-open-wallet"
-                                    target="_blank"
-                                >
-                                    <i class="mdi mdi-open-in-new" aria-hidden="true"></i>
-                                    {{ $t("Open BSV Wallet") }}
-                                </a>
+                        <!-- Price Display -->
+                        <div class="stripe-price-display">
+                            <div class="price-amount">
+                                <span class="currency">EUR</span>
+                                <span class="price">{{ stripePrice.toFixed(2) }}</span>
                             </div>
+                            <p class="price-description">{{ $t("Family Parking Reservation") }} - {{ cost }} tokens</p>
                         </div>
 
-                        <!-- Step 2: Enter TXID -->
-                        <div class="manual-step">
-                            <div class="step-number">2</div>
-                            <div class="step-content">
-                                <label for="manual-txid">{{ $t("Paste your Transaction ID (TXID)") }}:</label>
-                                <input 
-                                    id="manual-txid"
-                                    v-model="manualTxid"
-                                    type="text"
-                                    class="txid-input"
-                                    :placeholder="$t('64-character transaction ID')"
-                                    maxlength="64"
-                                />
-                                <div v-if="manualTxidError" class="txid-error">
-                                    <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
-                                    {{ manualTxidError }}
-                                </div>
-                            </div>
+                        <!-- Stripe Info -->
+                        <div class="stripe-info">
+                            <i class="mdi mdi-shield-check" aria-hidden="true"></i>
+                            <span>{{ $t("Secure payment powered by Stripe") }}</span>
+                        </div>
+
+                        <!-- Stripe Error -->
+                        <div v-if="stripeError" class="stripe-error">
+                            <i class="mdi mdi-alert-circle" aria-hidden="true"></i>
+                            {{ stripeError }}
+                        </div>
+
+                        <!-- Processing State -->
+                        <div v-if="isStripeProcessing" class="stripe-processing">
+                            <i class="mdi mdi-loading mdi-spin" aria-hidden="true"></i>
+                            <span>{{ $t("Opening Stripe checkout...") }}</span>
                         </div>
                     </div>
 
@@ -409,16 +388,16 @@
             <!-- Footer -->
             <div class="modal-footer">
                 <template v-if="state === 'confirm'">
-                    <!-- Manual Payment Button -->
+                    <!-- Stripe Payment Button -->
                     <button 
-                        v-if="paymentMethod === 'manual'"
+                        v-if="paymentMethod === 'stripe'"
                         type="button" 
-                        class="btn btn-primary confirm-btn verify-btn"
-                        :disabled="!manualTxid || manualTxid.length !== 64 || isProcessing"
-                        @click="verifyManualPayment"
+                        class="btn btn-primary confirm-btn stripe-btn"
+                        :disabled="isProcessing || isStripeProcessing"
+                        @click="initiateStripePayment"
                     >
-                        <i class="mdi mdi-check-circle" aria-hidden="true"></i>
-                        {{ $t("Verify Payment") }}
+                        <i class="mdi mdi-credit-card" aria-hidden="true"></i>
+                        {{ $t("Pay") }} {{ stripePrice.toFixed(2) }} EUR
                     </button>
                     <!-- Automatic Payment Button -->
                     <button 
@@ -521,14 +500,13 @@ export default defineComponent({
         const backendIdentityKey = ref<string | null>(null);
         const satoshiCost = ref(100); // Cost in satoshis (100 sats = avoids dust limit)
 
-        // Payment method (manual = txid, auto = x402, loyalty = redeem points)
-        const paymentMethod = ref<'tokens' | 'manual' | 'auto' | 'loyalty'>('manual'); // Default: manual for hackathon
+        // Payment method (stripe = card, auto = x402, loyalty = redeem points)
+        const paymentMethod = ref<'tokens' | 'stripe' | 'auto' | 'loyalty'>('stripe'); // Default: stripe for hackathon
         
-        // Manual payment state
-        const manualTxid = ref('');
-        const manualTxidError = ref('');
-        const backendAddress = ref('');
-        const addressCopied = ref(false);
+        // Stripe payment state
+        const stripePrice = ref(5.00); // Price in EUR
+        const stripeError = ref('');
+        const isStripeProcessing = ref(false);
 
         // Token balances (fetched from backend)
         const serviceBalance = ref(0);
@@ -541,28 +519,6 @@ export default defineComponent({
         // Redemption state
         const isRedeeming = ref(false);
         const redemptionSuccess = ref(false);
-
-        // Computed: BSV Payment URI for external wallet
-        const bsvPaymentUri = computed(() => {
-            if (!backendAddress.value) return '#';
-            return `bitcoin:${backendAddress.value}?amount=${satoshiCost.value / 100000000}`;
-        });
-
-        // Fetch backend payment address
-        const fetchPaymentAddress = async () => {
-            try {
-                const response = await fetch(getApiUrl('/api/v1/gamification/payment-address'));
-                if (response.ok) {
-                    const data = await response.json();
-                    backendAddress.value = data.address;
-                    if (data.satoshisRequired) {
-                        satoshiCost.value = data.satoshisRequired;
-                    }
-                }
-            } catch (error) {
-                console.error('[ServicePaymentModal] Error fetching payment address:', error);
-            }
-        };
 
         // Fetch backend identity key on mount
         const fetchBackendIdentityKey = async () => {
@@ -605,36 +561,19 @@ export default defineComponent({
             }
         };
 
-        // Watch for display changes to fetch backend key and address
+        // Watch for display changes to fetch backend key
         watch(() => props.display, (newVal) => {
             if (newVal) {
                 if (!backendIdentityKey.value) {
                     fetchBackendIdentityKey();
                 }
-                if (!backendAddress.value) {
-                    fetchPaymentAddress();
-                }
-                // Always fetch loyalty balance when modal opens
+                // Always fetch balances when modal opens
                 fetchBalances();
-                // Reset manual payment state
-                manualTxid.value = '';
-                manualTxidError.value = '';
-                addressCopied.value = false;
+                // Reset stripe state
+                stripeError.value = '';
+                isStripeProcessing.value = false;
             }
         }, { immediate: true });
-
-        // Copy address to clipboard
-        const copyAddress = async () => {
-            if (backendAddress.value) {
-                try {
-                    await navigator.clipboard.writeText(backendAddress.value);
-                    addressCopied.value = true;
-                    setTimeout(() => { addressCopied.value = false; }, 2000);
-                } catch (error) {
-                    console.error('[ServicePaymentModal] Failed to copy address:', error);
-                }
-            }
-        };
 
         const connectWallet = async () => {
             await connect();
@@ -644,6 +583,65 @@ export default defineComponent({
             if (!txid) return 'N/A';
             if (txid.length <= 16) return txid;
             return `${txid.substring(0, 8)}...${txid.substring(txid.length - 8)}`;
+        };
+
+        /**
+         * Initiate Stripe Payment
+         * Calls /api/v1/purchase-token/checkout to create a Stripe checkout session
+         */
+        const initiateStripePayment = async () => {
+            stripeError.value = '';
+            isStripeProcessing.value = true;
+
+            try {
+                console.log('[ServicePaymentModal] Initiating Stripe payment...');
+                
+                const userKey = identityKey.value || props.userId;
+                if (!userKey) {
+                    throw new Error('User identity not available. Please connect your wallet first.');
+                }
+
+                // Call the Stripe checkout API (purchase-token/checkout)
+                // Use 500 cents = 5 EUR as the fixed price for parking
+                const priceCents = 500;
+                
+                const response = await fetch(getApiUrl('/api/v1/purchase-token/checkout'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        token_id: 'SERVICE', // SERVICE token for parking
+                        amount: priceCents, // Price in cents (5 EUR = 500 cents)
+                        holder_identity_key: userKey
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const errorCode = data.code || data.error || 'UNKNOWN_ERROR';
+                    const errorMsg = data.message || data.error || 'Failed to create checkout session';
+                    console.error('[ServicePaymentModal] Stripe API error:', errorCode, errorMsg);
+                    throw new Error(errorMsg);
+                }
+
+                console.log('[ServicePaymentModal] Stripe checkout URL:', data.url);
+
+                // Redirect to Stripe checkout
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    throw new Error('No checkout URL received from server');
+                }
+
+            } catch (error: any) {
+                console.error('[ServicePaymentModal] Stripe payment error:', error);
+                stripeError.value = error.message || 'Failed to initiate payment';
+            } finally {
+                isStripeProcessing.value = false;
+            }
         };
 
         /**
@@ -806,71 +804,6 @@ export default defineComponent({
             }
         };
 
-        /**
-         * Verify Manual Payment - For external wallets (BSV Desktop)
-         * User enters TXID after sending BSV from external wallet
-         */
-        const verifyManualPayment = async () => {
-            // Validate TXID format
-            const txidRegex = /^[a-fA-F0-9]{64}$/;
-            if (!txidRegex.test(manualTxid.value)) {
-                manualTxidError.value = 'Invalid TXID format. Must be 64 hexadecimal characters.';
-                return;
-            }
-
-            manualTxidError.value = '';
-            state.value = 'loading';
-            isProcessing.value = true;
-
-            try {
-                console.log('[ServicePaymentModal] Verifying manual payment with TXID:', manualTxid.value);
-
-                const response = await fetch(getApiUrl('/api/v1/gamification/pay-service'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-bsv-identity-key': identityKey.value || props.userId
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        serviceId: props.serviceId,
-                        manualTxid: manualTxid.value
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || data.message || 'Payment verification failed');
-                }
-
-                console.log('[ServicePaymentModal] Manual payment verified!', data);
-
-                // Success!
-                bsvPaymentTxid.value = data.bsvTxid || data.txIds?.bsvPayment || manualTxid.value;
-                txIds.value = {
-                    // Backend sends: txIds.bsvPayment (payment) and txIds.loyalty (reward)
-                    burn: data.txIds?.burn || data.txIds?.bsvPayment || manualTxid.value,
-                    mint: data.txIds?.mint || data.txIds?.loyalty || null
-                };
-                newBalances.value = {
-                    serviceToken: data.balances?.serviceToken || 0,
-                    loyaltyToken: data.balances?.loyaltyToken || 0
-                };
-
-                state.value = 'success';
-                emit('payment-success', data);
-
-            } catch (error: any) {
-                console.error('[ServicePaymentModal] Manual payment error:', error);
-                manualTxidError.value = error.message || 'Payment verification failed';
-                errorMessage.value = error.message || 'Payment verification failed';
-                state.value = 'error';
-            } finally {
-                isProcessing.value = false;
-            }
-        };
-
         // Use SERVICE_TOKEN for reservation (no BSV payment needed)
         const useServiceTokens = async () => {
             if (serviceBalance.value < props.cost) return;
@@ -1011,12 +944,10 @@ export default defineComponent({
             satoshiCost,
             // Payment method
             paymentMethod,
-            // Manual payment
-            manualTxid,
-            manualTxidError,
-            backendAddress,
-            addressCopied,
-            bsvPaymentUri,
+            // Stripe payment
+            stripePrice,
+            stripeError,
+            isStripeProcessing,
             // Token balances
             serviceBalance,
             loyaltyBalance,
@@ -1030,8 +961,7 @@ export default defineComponent({
             formatTxId,
             confirmPayment,
             cancelPayment,
-            verifyManualPayment,
-            copyAddress,
+            initiateStripePayment,
             connectWallet,
             useServiceTokens,
             redeemLoyalty,
@@ -1677,167 +1607,132 @@ export default defineComponent({
     font-size: 1.1rem;
 }
 
-/* Manual Payment Section */
-.manual-payment-section {
-    margin-top: 1rem;
-    padding: 1rem;
-    background-color: #f9fafb;
-    border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
+/* Stripe Tab */
+.tab-btn.stripe-tab {
+    color: #635bff;
 }
 
-.manual-payment-header {
+.tab-btn.stripe-tab.active {
+    background-color: #635bff;
+    color: white;
+    border-color: #635bff;
+}
+
+/* Stripe Payment Section */
+.stripe-payment-section {
+    margin-top: 1rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f0f0ff 0%, #fff 100%);
+    border-radius: 0.75rem;
+    border: 1px solid #e0e0ff;
+}
+
+.stripe-payment-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     font-weight: 600;
-    color: #374151;
+    color: #635bff;
 }
 
-.manual-payment-header i {
-    font-size: 1.25rem;
-    color: #f59e0b;
+.stripe-payment-header i {
+    font-size: 1.5rem;
 }
 
-.manual-step {
-    display: flex;
-    gap: 1rem;
+.stripe-price-display {
+    text-align: center;
+    padding: 1.5rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(99, 91, 255, 0.1);
     margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
 }
 
-.manual-step:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
+.price-amount {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.25rem;
 }
 
-.step-number {
-    width: 28px;
-    height: 28px;
+.price-amount .currency {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.price-amount .price {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.price-description {
+    margin-top: 0.5rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.stripe-info {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f59e0b;
-    color: white;
-    border-radius: 50%;
-    font-weight: 700;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: #f0fdf4;
+    border-radius: 0.375rem;
+    color: #15803d;
     font-size: 0.875rem;
-    flex-shrink: 0;
 }
 
-.step-content {
-    flex: 1;
+.stripe-info i {
+    font-size: 1rem;
 }
 
-.step-content label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #4b5563;
-    margin-bottom: 0.5rem;
-}
-
-.address-box {
+.stripe-error {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem;
-    background-color: white;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    margin-bottom: 0.5rem;
-}
-
-.payment-address {
-    flex: 1;
-    font-family: monospace;
-    font-size: 0.75rem;
-    color: #374151;
-    word-break: break-all;
-}
-
-.btn-copy {
-    padding: 0.375rem 0.5rem;
-    background-color: #e5e7eb;
-    border: none;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-copy:hover {
-    background-color: #d1d5db;
-}
-
-.btn-copy i {
-    font-size: 1rem;
-    color: #374151;
-}
-
-.btn-open-wallet {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    background-color: #f59e0b;
-    color: white;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.875rem;
-    transition: background-color 0.2s;
-}
-
-.btn-open-wallet:hover {
-    background-color: #d97706;
-}
-
-.txid-input {
-    width: 100%;
+    margin-top: 1rem;
     padding: 0.75rem;
-    font-family: monospace;
-    font-size: 0.875rem;
-    border: 1px solid #d1d5db;
+    background-color: #fef2f2;
     border-radius: 0.375rem;
-    background-color: white;
-}
-
-.txid-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.txid-error {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    margin-top: 0.5rem;
     color: #dc2626;
     font-size: 0.875rem;
+}
+
+.stripe-processing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #f0f0ff;
+    border-radius: 0.375rem;
+    color: #635bff;
+    font-size: 0.875rem;
+}
+
+/* Stripe Button */
+.stripe-btn {
+    background: linear-gradient(135deg, #635bff 0%, #8b85ff 100%);
+    border: none;
+}
+
+.stripe-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #524ddb 0%, #7a74e8 100%);
+}
+
+.stripe-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
 }
 
 /* Auto Payment Section */
 .auto-payment-section {
     margin-top: 1rem;
-}
-
-/* Verify Button */
-.verify-btn {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    border: none;
-}
-
-.verify-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-}
-
-.verify-btn:disabled {
-    background: #9ca3af;
-    cursor: not-allowed;
 }
 
 /* Redemption Section */
