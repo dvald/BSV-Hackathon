@@ -15,7 +15,7 @@ export class ApiDid {
      * @param body Body parameters
      * @returns The request parameters
      */
-    public static PostDidCreate(body: CreateDIDRequest): RequestParams<CreateDIDResponse, PostDidCreateErrorHandler> {
+    public static CreateDID(body: CreateDIDRequest): RequestParams<CreateDIDResponse, CreateDIDErrorHandler> {
         return {
             method: "POST",
             url: getApiUrl(`/did/create`),
@@ -123,9 +123,9 @@ export class ApiDid {
 }
 
 /**
- * Error handler for PostDidCreate
+ * Error handler for CreateDID
  */
-export type PostDidCreateErrorHandler = CommonErrorHandler & {
+export type CreateDIDErrorHandler = CommonErrorHandler & {
     /**
      * General handler for status = 400
      */

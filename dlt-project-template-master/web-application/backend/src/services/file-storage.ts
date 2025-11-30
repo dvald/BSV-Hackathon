@@ -24,7 +24,8 @@ export const TOKEN_SUBJECT = "file_access";
 const DEFAULT_TOKEN_EXPIRATION = 24 * 60 * 60;
 
 /**
- * This service manages the file storage
+ * This service manages the file storage (filesystem only)
+ * BSV blockchain storage is handled entirely by the frontend with the user's wallet
  */
 export class FileStorageService {
     public static instance: FileStorageService = null;
@@ -45,8 +46,15 @@ export class FileStorageService {
     }
 
     /**
+     * Starts the file storage service
+     */
+    public async start(): Promise<void> {
+        // Filesystem storage doesn't need async initialization
+    }
+
+    /**
      * Gets URL for static file, using the file storage key
-     * @param key The file storage key
+     * @param key The file storage key (path)
      * @param expirationSeconds The expiration time for the URL (seconds)
      * @returns The file URL
      */
@@ -95,12 +103,7 @@ export class FileStorageService {
      * @returns the file key
      */
     public async getRandomKey(isPublic: boolean, ext?: string): Promise<string> {
-        switch (this.mode) {
-            case "fs":
-                return FileStorageFileSystem.getInstance().getRandomKey(isPublic, ext);
-            default:
-                throw new Error("File storage service is misconfigured");
-        }
+        return FileStorageFileSystem.getInstance().getRandomKey(isPublic, ext);
     }
 
     /**
@@ -109,12 +112,7 @@ export class FileStorageService {
      * @returns True if the object exists
      */
     public async checkExists(key: string): Promise<boolean> {
-        switch (this.mode) {
-            case "fs":
-                return FileStorageFileSystem.getInstance().checkExists(key);
-            default:
-                throw new Error("File storage service is misconfigured");
-        }
+        return FileStorageFileSystem.getInstance().checkExists(key);
     }
 
     /**
@@ -123,12 +121,7 @@ export class FileStorageService {
      * @returns Object contents
      */
     public async getObjectContents(key: string): Promise<Buffer> {
-        switch (this.mode) {
-            case "fs":
-                return FileStorageFileSystem.getInstance().getObjectContents(key);
-            default:
-                throw new Error("File storage service is misconfigured");
-        }
+        return FileStorageFileSystem.getInstance().getObjectContents(key);
     }
 
     /**
@@ -137,52 +130,36 @@ export class FileStorageService {
      * @returns Object contents
      */
     public async getObjectContentsStream(key: string): Promise<Readable> {
-        switch (this.mode) {
-            case "fs":
-                return FileStorageFileSystem.getInstance().getObjectContentsStream(key);
-            default:
-                throw new Error("File storage service is misconfigured");
-        }
+        return FileStorageFileSystem.getInstance().getObjectContentsStream(key);
     }
 
     /**
      * Set object contents
      * @param key Object key
-     * @param contents Contents (as Buffer)
+     * @param contents Contents (as string or Buffer)
+     * @returns The storage key
      */
-    public async setObjectContents(key: string, contents: string) {
-        switch (this.mode) {
-            case "fs":
-                return FileStorageFileSystem.getInstance().setObjectContents(key, contents);
-            default:
-                throw new Error("File storage service is misconfigured");
-        }
+    public async setObjectContents(key: string, contents: string | Buffer): Promise<string> {
+        await FileStorageFileSystem.getInstance().setObjectContents(key, contents);
+        return key;
     }
 
     /**
-     * Uploads file
+     * Uploads file from disk
      * @param key Object key
-     * @param file File to upload
+     * @param file Path to file on disk
+     * @returns The storage key
      */
-    public async uploadFile(key: string, file: string) {
-        switch (this.mode) {
-            case "fs":
-                return FileStorageFileSystem.getInstance().uploadFile(key, file);
-            default:
-                throw new Error("File storage service is misconfigured");
-        }
+    public async uploadFile(key: string, file: string): Promise<string> {
+        await FileStorageFileSystem.getInstance().uploadFile(key, file);
+        return key;
     }
 
     /**
      * Deletes file from storage
      * @param key Key
      */
-    public async deleteFile(key: string) {
-        switch (this.mode) {
-            case "fs":
-                return FileStorageFileSystem.getInstance().deleteFile(key);
-            default:
-                throw new Error("File storage service is misconfigured");
-        }
+    public async deleteFile(key: string): Promise<void> {
+        return FileStorageFileSystem.getInstance().deleteFile(key);
     }
 }

@@ -28,10 +28,17 @@ export class BsvService {
     private identityKey: string;
     private address: string;
 
+    private initPromise: Promise<void>;
+
     constructor() {
-        this.initializeWallet().catch(err => {
+        this.initPromise = this.initializeWallet();
+        this.initPromise.catch(err => {
             Monitor.error("Failed to initialize BSV Wallet: " + err.message);
         });
+    }
+
+    public async ready() {
+        await this.initPromise;
     }
 
     /**
@@ -68,6 +75,23 @@ export class BsvService {
             Monitor.info(`BSV Backend wallet initialized. Identity: ${this.identityKey} Address: ${this.address}`);
         } catch (error) {
             Monitor.error("Error initializing BSV wallet: " + error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Fetches a transaction from the blockchain
+     * @param txid Transaction ID
+     */
+    public async getTransaction(txid: string): Promise<string> {
+        try {
+            const response = await fetch(`https://api.whatsonchain.com/v1/bsv/main/tx/${txid}/hex`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch transaction: ${response.statusText}`);
+            }
+            return await response.text();
+        } catch (error) {
+            Monitor.error(`Error fetching transaction ${txid}: ${error.message}`);
             throw error;
         }
     }

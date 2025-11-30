@@ -3,11 +3,12 @@
 "use strict";
 
 import Express from "express";
-import { BAD_REQUEST, ensureObjectBody, INTERNAL_SERVER_ERROR, noCache, sendApiError, sendApiResult } from "../../utils/http-utils";
+import { BAD_REQUEST, ensureObjectBody, INTERNAL_SERVER_ERROR, noCache, sendApiError, sendApiResult, sendUnauthorized } from "../../utils/http-utils";
 import { Controller } from "../controller";
 import { VerifiableCredentialsService } from "../../services/verifiable-credentials-service";
 import { Monitor } from "../../monitor";
 import { PrivateKey } from "@bsv/sdk";
+import { UsersService } from "../../services/users-service";
 
 /**
  * Verifiable Credentials API Controller
@@ -15,12 +16,7 @@ import { PrivateKey } from "@bsv/sdk";
  * @group credentials - Verifiable Credentials API
  */
 export class CredentialsController extends Controller {
-    private vcService: VerifiableCredentialsService;
 
-    constructor() {
-        super();
-        this.vcService = VerifiableCredentialsService.getInstance();
-    }
 
     public registerAPI(prefix: string, application: Express.Express): void {
         // Step 1: User requests a credential
@@ -47,8 +43,7 @@ export class CredentialsController extends Controller {
 
     /**
      * @typedef RequestCredentialRequest
-     * @property {string} userDID.required - User's DID identifier
-     * @property {string} credentialType.required - Type of credential (e.g., "DriversLicense", "MedicalCertificate")
+     * @property {string} credentialId.required - Credential ID
      * @property {object} requestData.required - Data for this credential type (dynamic)
      */
 
@@ -62,6 +57,7 @@ export class CredentialsController extends Controller {
      * Request a Verifiable Credential
      * User submits a request for a specific type of credential
      * @route POST /credentials/request
+     * Binding: RequestCredential
      * @group credentials
      * @param {RequestCredentialRequest.model} request.body.required - Request parameters
      * @returns {RequestCredentialResponse.model} 200 - Request created successfully
@@ -69,11 +65,16 @@ export class CredentialsController extends Controller {
      * @returns {Error} 500 - Internal server error
      */
     public async requestCredential(request: Express.Request, response: Express.Response): Promise<void> {
+        const auth = await UsersService.getInstance().auth(request);
+        if (!auth.isRegisteredUser()) {
+            sendUnauthorized(request, response);
+            return;
+        }
         try {
             const body = request.body;
 
             // Validate required fields
-            if (!body.userDID) {
+            if (!auth.user.did) {
                 return sendApiError(request, response, BAD_REQUEST, "MISSING_USER_DID", "User DID is required");
             }
 
@@ -86,18 +87,18 @@ export class CredentialsController extends Controller {
             }
 
             // Validate DID format
-            if (!body.userDID.startsWith('did:bsv:')) {
+            if (!auth.user.did.startsWith('did:bsv:')) {
                 return sendApiError(request, response, BAD_REQUEST, "INVALID_DID_FORMAT", "DID must start with 'did:bsv:'");
             }
 
             // Create credential request
-            const result = await this.vcService.requestCredential(
+            const result = await VerifiableCredentialsService.getInstance().requestCredential(
                 body.userDID,
                 body.credentialType,
                 body.requestData
             );
 
-            Monitor.info(`Credential request created: ${result.requestId} for ${body.userDID}`);
+            Monitor.info(`Credential request created: ${result.requestId} for ${auth.user.did}`);
 
             return sendApiResult(request, response, {
                 requestId: result.requestId,
@@ -128,7 +129,7 @@ export class CredentialsController extends Controller {
         try {
             const credentialType = request.query.credentialType as string;
 
-            const requests = await this.vcService.getPendingRequests(credentialType);
+            const requests = await VerifiableCredentialsService.getInstance().getPendingRequests(credentialType);
 
             Monitor.info(`Retrieved ${requests.length} pending credential requests`);
 
@@ -188,7 +189,7 @@ export class CredentialsController extends Controller {
             }
 
             // Approve and issue credential
-            const result = await this.vcService.approveRequest(
+            const result = await VerifiableCredentialsService.getInstance().approveRequest(
                 body.requestId,
                 issuerPrivateKey,
                 body.expirationDate
@@ -247,7 +248,7 @@ export class CredentialsController extends Controller {
             }
 
             // Reject request
-            const result = await this.vcService.rejectRequest(
+            const result = await VerifiableCredentialsService.getInstance().rejectRequest(
                 body.requestId,
                 body.issuerDID,
                 body.reason
@@ -292,7 +293,7 @@ export class CredentialsController extends Controller {
                 return sendApiError(request, response, BAD_REQUEST, "INVALID_DID_FORMAT", "DID must start with 'did:bsv:'");
             }
 
-            const credentials = await this.vcService.getUserCredentials(userDID);
+            const credentials = await VerifiableCredentialsService.getInstance().getUserCredentials(userDID);
 
             Monitor.info(`Retrieved ${credentials.length} credentials for ${userDID}`);
 
@@ -336,7 +337,7 @@ export class CredentialsController extends Controller {
                 return sendApiError(request, response, BAD_REQUEST, "MISSING_REQUEST_ID", "Request ID is required");
             }
 
-            const requestStatus = await this.vcService.getRequestStatus(requestId);
+            const requestStatus = await VerifiableCredentialsService.getInstance().getRequestStatus(requestId);
 
             if (!requestStatus) {
                 return sendApiError(request, response, 404, "REQUEST_NOT_FOUND", "Request not found");
@@ -381,7 +382,7 @@ export class CredentialsController extends Controller {
                 return sendApiError(request, response, BAD_REQUEST, "INVALID_CREDENTIAL", "Credential must be an object");
             }
 
-            const result = await this.vcService.verifyCredential(body.credential);
+            const result = await VerifiableCredentialsService.getInstance().verifyCredential(body.credential);
 
             Monitor.info(`Credential verified: ${body.credential.id}, Valid: ${result.valid}`);
 

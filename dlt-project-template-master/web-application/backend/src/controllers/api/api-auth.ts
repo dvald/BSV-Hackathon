@@ -1094,8 +1094,8 @@ export class AuthController extends Controller {
      */
 
     /**
-     * @typedef WalletLoginError
-     * @property {string} code.required - Error codes:\n - WALLET_NOT_CONFIGURED: BSV wallet not available\n - NO_IDENTITY_KEY: Could not extract identity key from request\n - INTERNAL_ERROR: Server error
+     * @typedef WalletLoginRequest
+     * @property {string} identityKey.required - Identity key
      */
 
     /**
@@ -1103,19 +1103,20 @@ export class AuthController extends Controller {
      * Binding: LoginWithWallet
      * @route POST /auth/login-wallet
      * @group auth
+     * @param {WalletLoginRequest.model} request.body - Request body
      * @returns {WalletLoginResponse.model} 200 - Success (new user or existing user logged in)
-     * @returns {WalletLoginError.model} 400 - Bad request
-     * @returns {WalletLoginError.model} 500 - Internal server error
+     * @returns {void} 400 - Bad request: NO_IDENTITY_KEY
+     * @returns {void} 403 - Forbidden: USER_BANNED
+     * @returns {void} 500 - Internal server error: INTERNAL_ERROR
      */
     public async loginWithWallet(request: Express.Request, response: Express.Response) {
         // For development, accept identity key directly from the request
         // TODO: In production, use full BRC-103/104 signature verification with middleware
 
-        const identityKey = request.headers['x-identity-key'] as string || request.body?.identityKey;
+        const identityKey = (request.body?.identityKey || "") + "";
 
         request.logger.info("=== LOGIN WITH WALLET DEBUG ===");
-        request.logger.info(`Identity key from header: ${request.headers['x-identity-key']}`);
-        request.logger.info(`Identity key from body: ${request.body?.identityKey}`);
+        request.logger.info(`Identity key from body: ${identityKey}`);
         request.logger.info(`Final identity key: ${identityKey}`);
 
         if (!identityKey) {

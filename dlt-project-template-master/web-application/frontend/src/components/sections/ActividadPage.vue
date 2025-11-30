@@ -12,9 +12,9 @@
                     <i class="mdi mdi-clipboard-text-clock" aria-hidden="true"></i>
                     {{ $t("Activity and Traceability") }}
                 </h1>
-                <p class="a11y-text-secondary">
-                    {{ $t("Complete audit trail with blockchain verification") }}
-                </p>
+            <p class="a11y-text-secondary">
+                {{ $t("Review all actions performed: issuance, verification and revocation of credentials") }}
+            </p>
             </div>
             <div class="header-actions">
                 <button 
@@ -739,14 +739,29 @@ export default defineComponent({
 }
 
 /* Filters */
-.filters-section {
-    padding: var(--a11y-spacing-lg);
+.filters-section.a11y-card {
+    padding: 0.75rem 1rem;
 }
 
 .filters-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: var(--a11y-spacing-md);
+    gap: 0.5rem;
+}
+
+.filters-section .a11y-form-group {
+    margin-bottom: 0;
+}
+
+.filters-section .a11y-label {
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+}
+
+.filters-section .a11y-select,
+.filters-section .a11y-input {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.9rem;
 }
 
 .search-group {

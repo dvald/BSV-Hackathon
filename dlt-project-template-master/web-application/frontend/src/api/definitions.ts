@@ -353,6 +353,151 @@ export interface UserAdminPasswordChangeBadRequest {
     code: string;
 }
 
+export interface ServiceItem {
+    /**
+     * Service ID
+     */
+    id: string;
+
+    /**
+     * Service name
+     */
+    name: string;
+
+    /**
+     * Service description
+     */
+    description?: string;
+
+    /**
+     * Admin user
+     */
+    adminUser?: string;
+
+    /**
+     * Required credentials (comma-separated)
+     */
+    requiredCredentials?: string;
+
+    /**
+     * Associated token
+     */
+    associatedToken?: string;
+
+    /**
+     * User count
+     */
+    userCount?: number;
+
+    /**
+     * Credential count
+     */
+    credentialCount?: number;
+
+    /**
+     * Tokens used
+     */
+    tokensUsed?: number;
+}
+
+export interface ServiceListResponse {
+    services: ServiceItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateServiceRequest {
+    /**
+     * Service name
+     */
+    name: string;
+
+    /**
+     * Service description
+     */
+    description?: string;
+
+    /**
+     * Admin user ID
+     */
+    adminUser?: string;
+
+    requiredCredentials?: string[];
+
+    /**
+     * Associated token
+     */
+    associatedToken?: string;
+}
+
+export interface UpdateServiceRequest {
+    /**
+     * Service name
+     */
+    name?: string;
+
+    /**
+     * Service description
+     */
+    description?: string;
+
+    /**
+     * Admin user ID
+     */
+    adminUser?: string;
+
+    /**
+     * Required credentials
+     */
+    requiredCredentials?: string;
+
+    /**
+     * Associated token
+     */
+    associatedToken?: string;
+}
+
+export interface ServiceAdminItem {
+    /**
+     * Record ID
+     */
+    id: string;
+
+    /**
+     * Admin user ID
+     */
+    adminUID: string;
+
+    /**
+     * Service ID
+     */
+    serviceId: string;
+}
+
+export interface ServiceAdminListResponse {
+    admins: ServiceAdminItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateServiceAdminRequest {
+    /**
+     * Admin user ID
+     */
+    adminUID: string;
+
+    /**
+     * Service ID
+     */
+    serviceId: string;
+}
+
 export interface GlobalRolePermission {
     /**
      * Permission identifier
@@ -609,14 +754,9 @@ export interface ExportDIDResponse {
 
 export interface RequestCredentialRequest {
     /**
-     * User's DID identifier
+     * Credential ID
      */
-    userDID: string;
-
-    /**
-     * Type of credential (e.g., "DriversLicense", "MedicalCertificate")
-     */
-    credentialType: string;
+    credentialId: string;
 
     /**
      * Data for this credential type (dynamic)
@@ -773,6 +913,172 @@ export interface VerifyCredentialResponse {
      * Individual checks
      */
     checks: any;
+}
+
+export interface CredentialTypeListResponse {
+    credentialTypes: CredentialTypeItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateCredentialTypeRequest {
+    /**
+     * Credential type name
+     */
+    name: string;
+
+    /**
+     * Description
+     */
+    description?: string;
+}
+
+export interface UpdateCredentialTypeRequest {
+    /**
+     * Credential type name
+     */
+    name?: string;
+
+    /**
+     * Description
+     */
+    description?: string;
+}
+
+export interface CitizenItem {
+    /**
+     * Citizen ID
+     */
+    id: string;
+
+    /**
+     * User ID
+     */
+    uid: string;
+
+    /**
+     * Citizen status
+     */
+    status: string;
+
+    /**
+     * Creation timestamp
+     */
+    createdAt: number;
+
+    /**
+     * Last update timestamp
+     */
+    updatedAt: number;
+
+    /**
+     * Decentralized identifier
+     */
+    did?: string;
+}
+
+export interface CitizenListResponse {
+    citizens: CitizenItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateCitizenRequest {
+    /**
+     * User ID
+     */
+    uid: string;
+
+    /**
+     * Citizen status (default: active)
+     */
+    status?: string;
+
+    /**
+     * Decentralized identifier
+     */
+    did?: string;
+}
+
+export interface CreateCitizenBadRequest {
+    /**
+     * Error code:
+     * - MISSING_UID
+     * - CITIZEN_ALREADY_EXISTS
+     */
+    code: string;
+}
+
+export interface UpdateCitizenRequest {
+    /**
+     * Citizen status
+     */
+    status?: string;
+
+    /**
+     * Decentralized identifier
+     */
+    did?: string;
+}
+
+export interface UpdateCitizenBadRequest {
+    /**
+     * Error code:
+     * - NOT_FOUND
+     */
+    code: string;
+}
+
+export interface DeleteCitizenBadRequest {
+    /**
+     * Error code:
+     * - NOT_FOUND
+     */
+    code: string;
+}
+
+export interface CitizenServiceItem {
+    /**
+     * Record ID
+     */
+    id: string;
+
+    /**
+     * Citizen ID
+     */
+    citizenId: string;
+
+    /**
+     * Service ID
+     */
+    serviceId: string;
+}
+
+export interface CitizenServiceListResponse {
+    citizenServices: CitizenServiceItem[];
+
+    /**
+     * Total count
+     */
+    count: number;
+}
+
+export interface CreateCitizenServiceRequest {
+    /**
+     * Citizen ID
+     */
+    citizenId: string;
+
+    /**
+     * Service ID
+     */
+    serviceId: string;
 }
 
 export interface ExplorerSearchInformationItem {
@@ -1664,11 +1970,11 @@ export interface WalletLoginResponse {
     session_id: string;
 }
 
-export interface WalletLoginError {
+export interface WalletLoginRequest {
     /**
-     * Error codes:\n - WALLET_NOT_CONFIGURED: BSV wallet not available\n - NO_IDENTITY_KEY: Could not extract identity key from request\n - INTERNAL_ERROR: Server error
+     * Identity key
      */
-    code: string;
+    identityKey: string;
 }
 
 export interface LinkWalletError {

@@ -2,6 +2,7 @@
     <div class="wallet-auth-button">
         <button
             v-if="!isConnected"
+            type="button"
             class="btn btn-wallet"
             :class="{ loading: isConnecting }"
             :disabled="isConnecting"
@@ -14,6 +15,7 @@
 
         <button
             v-else
+            type="button"
             class="btn btn-wallet"
             @click="handleWalletLogin"
         >
@@ -30,12 +32,36 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useWallet } from '@/composables/useWallet';
-import { useRouter } from 'vue-router';
-import { getApiUrl } from '@/api/utils';
+import { ApiAuth } from '@/api/api-group-auth';
+import { ApiDid } from '@/api/api-group-did';
+import { Request } from '@asanrom/request-browser';
+import { AuthController } from '@/control/auth';
 
-const router = useRouter();
-const { wallet, identityKey, isConnected, isConnecting, connect } = useWallet();
+const { wallet, isConnected, isConnecting, connect } = useWallet();
 const error = ref<string | null>(null);
+
+function createUserDID(identityKey: string) {
+    Request.Do(ApiDid.CreateDID({
+        privateKey: identityKey,
+        services: []
+    })).onSuccess((didResponse) => {
+        console.log('DID created successfully:', didResponse.did);
+    }).onRequestError((didErr, handleDIDErr) => {
+        handleDIDErr(didErr, {
+            badRequest: () => {
+                console.error('Error creating DID: Bad request');
+            },
+            serverError: () => {
+                console.error('Error creating DID: Server error');
+            },
+            networkError: () => {
+                console.error('Error creating DID: Network error');
+            },
+        });
+    }).onUnexpectedError((didErr) => {
+        console.error('Unexpected error creating DID:', didErr);
+    });
+}
 
 async function handleWalletLogin() {
     try {
@@ -53,54 +79,43 @@ async function handleWalletLogin() {
         console.log('User Identity Key:', userIdentityKey);
         
         // Create a signed request to the backend
-        // The backend will use @bsv/auth-express-middleware to verify this
-        try {
-            const response = await fetch(getApiUrl('/auth/login-wallet'), {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // For now, send the identity key directly
-                    // TODO: Implement proper BRC-103/104 signature
-                    'X-Identity-Key': userIdentityKey
-                },
-                body: JSON.stringify({
-                    identityKey: userIdentityKey
-                })
-            });
-            
-            if (response.ok) {
-                // Try to parse JSON response, fallback if empty
-                let result: any = {};
-                try {
-                    result = await response.json();
-                } catch (e) {
-                    // Empty response is OK for success
-                }
-                
-                // Set session using AuthController
-                if (result.session_id) {
-                    // Import AuthController at runtime to set session
-                    const { AuthController } = await import('@/control/auth');
-                    AuthController.SetSession(result.session_id);
-                    // Redirect will happen automatically by AuthController
-                } else {
-                    // If no session_id in response, there might be an issue
-                    error.value = 'Login succeeded but no session received';
-                }
+        Request.Do(ApiAuth.LoginWithWallet({
+            identityKey: userIdentityKey
+        })).onSuccess((response) => {
+            if (response.session_id) {
+                AuthController.SetSession(response.session_id);
+                createUserDID(userIdentityKey);
             } else {
-                let errorMessage = 'Login failed';
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorMessage;
-                } catch (e) {
-                    // Response might not be JSON
-                }
-                throw new Error(errorMessage);
+                error.value = 'Login succeeded but no session received';
             }
-        } catch (fetchError: any) {
-            throw new Error('Login request failed: ' + fetchError.message);
-        }
+        }).onRequestError((err, handleErr) => {
+            handleErr(err, {
+                badRequest: () => {
+                    error.value = 'Invalid request';
+                },
+                badRequestNoIdentityKey: () => {
+                    error.value = 'No identity key provided';
+                },
+                forbidden: () => {
+                    error.value = 'Access denied';
+                },
+                forbiddenUserBanned: () => {
+                    error.value = 'User is banned';
+                },
+                serverErrorInternalError: () => {
+                    error.value = 'Internal server error';
+                },
+                serverError: () => {
+                    error.value = 'Server error';
+                },
+                networkError: () => {
+                    error.value = 'Could not connect to server';
+                },
+            });
+        }).onUnexpectedError((err) => {
+            console.error('Unexpected error:', err);
+            error.value = 'Unexpected error: ' + err.message;
+        });
     } catch (err: any) {
         console.error('Wallet login failed:', err);
         error.value = err.message || 'Wallet login failed';

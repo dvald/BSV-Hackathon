@@ -27,6 +27,31 @@
     align-items: center;
 }
 
+/* Logo imagen */
+.logo-image {
+    height: 70px;
+    width: auto;
+    object-fit: contain;
+}
+
+@media (max-width: 1024px) {
+    .logo-image {
+        height: 48px;
+    }
+}
+
+@media (max-width: 768px) {
+    .logo-image {
+        height: 42px;
+    }
+}
+
+@media (max-width: 480px) {
+    .logo-image {
+        height: 36px;
+    }
+}
+
 .top-bar-user-td {
     display: flex;
     flex-direction: row;
@@ -35,13 +60,25 @@
 
 .top-bar-title {
     font-family: 'Outfit', sans-serif;
-    font-weight: 600;
-    font-size: 1.5rem;
+    font-weight: 700;
+    font-size: 1.75rem;
     letter-spacing: -0.02em;
-    background: linear-gradient(135deg, var(--primary-color, #004d99) 0%, var(--secondary-color, #003366) 100%);
+    background: linear-gradient(135deg, var(--primary-color, #004d99) 0%, var(--secondary-color, #003366) 50%, var(--tertiary-color, #6b7c8a) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+@media (max-width: 1024px) {
+    .top-bar-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .top-bar-title {
+        display: none;
+    }
 }
 
 .top-bar-title-min {
@@ -49,27 +86,11 @@
     font-weight: 600;
     font-size: 1.5rem;
     letter-spacing: -0.02em;
-    background: linear-gradient(135deg, var(--primary-color, #004d99) 0%, var(--secondary-color, #003366) 100%);
+    background: linear-gradient(135deg, var(--primary-color, #004d99) 0%, var(--secondary-color, #003366) 50%, var(--tertiary-color, #6b7c8a) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     display: none;
-}
-
-@media (max-width: 1024px) {
-    .top-bar-title {
-        display: none;
-    }
-
-    .top-bar-title-min {
-        display: initial;
-    }
-}
-
-@media (max-width: 300px) {
-    .top-bar-title-min {
-        display: none;
-    }
 }
 
 .top-bar-button {

@@ -10,15 +10,17 @@ export class ApiCredentials {
     /**
      * Method: POST
      * Path: /credentials/request
+Binding:
      * Request a Verifiable Credential
      * User submits a request for a specific type of credential
      * @param body Body parameters
      * @returns The request parameters
      */
-    public static PostCredentialsRequest(body: RequestCredentialRequest): RequestParams<RequestCredentialResponse, PostCredentialsRequestErrorHandler> {
+    public static PostCredentialsRequestbinding(body: RequestCredentialRequest): RequestParams<RequestCredentialResponse, PostCredentialsRequestbindingErrorHandler> {
         return {
             method: "POST",
-            url: getApiUrl(`/credentials/request`),
+            url: getApiUrl(`/credentials/request
+Binding:`),
             json: body,
             handleError: (err, handler) => {
                 new RequestErrorHandler()
@@ -166,9 +168,9 @@ export class ApiCredentials {
 }
 
 /**
- * Error handler for PostCredentialsRequest
+ * Error handler for PostCredentialsRequestbinding
  */
-export type PostCredentialsRequestErrorHandler = CommonErrorHandler & {
+export type PostCredentialsRequestbindingErrorHandler = CommonErrorHandler & {
     /**
      * General handler for status = 400
      */
