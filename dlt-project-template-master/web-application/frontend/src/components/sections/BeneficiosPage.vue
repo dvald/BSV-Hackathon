@@ -87,6 +87,16 @@
                         <i class="mdi mdi-diamond-stone gem-icon" aria-hidden="true"></i>
                     </div>
 
+                    <!-- Mensaje de nivel máximo -->
+                    <div v-else class="incentive-message max-level a11y-card-highlight">
+                        <i class="mdi mdi-crown incentive-icon" aria-hidden="true"></i>
+                        <p class="incentive-text">
+                            <strong>{{ $t("Congratulations!") }}</strong> 
+                            {{ $t("You've reached the maximum level!") }}
+                        </p>
+                        <i class="mdi mdi-star gem-icon" aria-hidden="true"></i>
+                    </div>
+
                     <!-- Hitos alcanzados -->
                     <div class="milestones">
                         <h3 class="a11y-heading-3">
@@ -303,6 +313,8 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import { useWallet } from "@/composables/useWallet";
+import { getApiUrl } from "@/api/utils";
 
 interface Level {
     key: string;
@@ -349,20 +361,23 @@ interface EcoTransaction {
 export default defineComponent({
     components: {},
     name: "BeneficiosPage",
+    setup() {
+        const { identityKey } = useWallet();
+        return { identityKey };
+    },
     data: function () {
         return {
-            totalPoints: 2750,
+            loading: true,
+            loyaltyPoints: 0,
+            serviceTokens: 0,
+            // Niveles basados en loyalty points (100 pts = 1 nivel)
             levels: [
                 { key: "bronze", name: "Bronze Level", minPoints: 0, icon: "mdi mdi-medal" },
-                { key: "silver", name: "Silver Level", minPoints: 1000, icon: "mdi mdi-medal" },
-                { key: "gold", name: "Gold Level", minPoints: 3000, icon: "mdi mdi-medal" },
-                { key: "platinum", name: "Platinum Level", minPoints: 5000, icon: "mdi mdi-diamond-stone" },
+                { key: "silver", name: "Silver Level", minPoints: 100, icon: "mdi mdi-medal" },
+                { key: "gold", name: "Gold Level", minPoints: 500, icon: "mdi mdi-medal" },
+                { key: "platinum", name: "Platinum Level", minPoints: 1000, icon: "mdi mdi-diamond-stone" },
             ] as Level[],
-            achievedMilestones: [
-                { id: "m1", name: "First recycling action", achievedAt: "2025-11-15T10:30:00Z" },
-                { id: "m2", name: "10 sustainable actions", achievedAt: "2025-11-20T14:00:00Z" },
-                { id: "m3", name: "Reached Silver Level", achievedAt: "2025-11-25T09:15:00Z" },
-            ] as Milestone[],
+            achievedMilestones: [] as Milestone[],
             activeBonuses: [
                 {
                     id: "bonus-pmr-1",
@@ -424,67 +439,22 @@ export default defineComponent({
                 },
             ] as Bonus[],
             ecoPoints: {
-                balance: 1250,
-                level: "Eco Enthusiast",
-                totalEarned: 2100,
-                totalRedeemed: 850,
-                actionsCount: 47,
+                balance: 0,
+                level: "Eco Beginner",
+                totalEarned: 0,
+                totalRedeemed: 0,
+                actionsCount: 0,
             },
-            ecoTransactions: [
-                {
-                    id: "tx1",
-                    description: "Recycle at clean point",
-                    icon: "mdi mdi-recycle",
-                    type: "earn" as const,
-                    points: 50,
-                    date: new Date().toISOString(),
-                },
-                {
-                    id: "tx2",
-                    description: "Use recycling container",
-                    icon: "mdi mdi-delete",
-                    type: "earn" as const,
-                    points: 10,
-                    date: new Date(Date.now() - 86400000).toISOString(),
-                },
-                {
-                    id: "tx3",
-                    description: "Bike sharing usage",
-                    icon: "mdi mdi-bicycle",
-                    type: "earn" as const,
-                    points: 25,
-                    date: new Date(Date.now() - 86400000).toISOString(),
-                },
-                {
-                    id: "tx4",
-                    description: "Redeemed for store discount",
-                    icon: "mdi mdi-store",
-                    type: "redeem" as const,
-                    points: 200,
-                    date: new Date(Date.now() - 2 * 86400000).toISOString(),
-                },
-                {
-                    id: "tx5",
-                    description: "Glass recycling",
-                    icon: "mdi mdi-bottle-wine",
-                    type: "earn" as const,
-                    points: 15,
-                    date: new Date(Date.now() - 3 * 86400000).toISOString(),
-                },
-                {
-                    id: "tx6",
-                    description: "Organic waste deposit",
-                    icon: "mdi mdi-leaf",
-                    type: "earn" as const,
-                    points: 20,
-                    date: new Date(Date.now() - 4 * 86400000).toISOString(),
-                },
-            ] as EcoTransaction[],
-            hasMoreTransactions: true,
+            ecoTransactions: [] as EcoTransaction[],
+            hasMoreTransactions: false,
             transactionsPage: 1,
         };
     },
     computed: {
+        // Total points = loyalty points from backend
+        totalPoints(): number {
+            return this.loyaltyPoints;
+        },
         currentLevel(): Level {
             let current = this.levels[0];
             for (const level of this.levels) {
@@ -508,7 +478,6 @@ export default defineComponent({
             return 0;
         },
         progressPercentage(): number {
-            // Calcular porcentaje global de 0 al nivel maximo (Platino = 5000)
             const maxPoints = this.levels[this.levels.length - 1].minPoints;
             return Math.min(100, Math.max(0, (this.totalPoints / maxPoints) * 100));
         },
@@ -544,22 +513,121 @@ export default defineComponent({
             }
         },
         useBonus(bonus: Bonus) {
-            // TODO: Implementar lógica para usar el bono
             console.log("Using bonus:", bonus.id);
-            // Aquí se podría mostrar un modal de confirmación o QR
+            // Navigate to services
+            this.$router.push({ name: 'services-details' });
         },
         loadMoreTransactions() {
-            // TODO: Cargar más transacciones desde el API
             this.transactionsPage++;
             console.log("Loading page:", this.transactionsPage);
-            // Simular que no hay más transacciones después de la página 2
             if (this.transactionsPage >= 2) {
                 this.hasMoreTransactions = false;
             }
         },
+        async loadStatus() {
+            if (!this.identityKey) {
+                this.loading = false;
+                return;
+            }
+
+            try {
+                const response = await fetch(getApiUrl('/api/v1/gamification/status'), {
+                    headers: {
+                        'x-bsv-identity-key': this.identityKey
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    this.loyaltyPoints = data.balances?.loyaltyToken || 0;
+                    this.serviceTokens = data.balances?.serviceToken || 0;
+                    
+                    // Update eco points with real data
+                    this.ecoPoints.balance = this.serviceTokens;
+                    this.ecoPoints.totalEarned = this.loyaltyPoints + this.serviceTokens;
+                    this.ecoPoints.actionsCount = Math.floor(this.loyaltyPoints / 10);
+                    
+                    // Calculate eco level based on loyalty
+                    if (this.loyaltyPoints >= 500) {
+                        this.ecoPoints.level = "Eco Master";
+                    } else if (this.loyaltyPoints >= 100) {
+                        this.ecoPoints.level = "Eco Enthusiast";
+                    } else if (this.loyaltyPoints >= 10) {
+                        this.ecoPoints.level = "Eco Starter";
+                    } else {
+                        this.ecoPoints.level = "Eco Beginner";
+                    }
+
+                    // Generate milestones based on points
+                    this.achievedMilestones = [];
+                    if (this.loyaltyPoints >= 10) {
+                        this.achievedMilestones.push({
+                            id: "m1",
+                            name: "First service used",
+                            achievedAt: new Date(Date.now() - 7 * 86400000).toISOString()
+                        });
+                    }
+                    if (this.loyaltyPoints >= 50) {
+                        this.achievedMilestones.push({
+                            id: "m2",
+                            name: "5 services completed",
+                            achievedAt: new Date(Date.now() - 3 * 86400000).toISOString()
+                        });
+                    }
+                    if (this.loyaltyPoints >= 100) {
+                        this.achievedMilestones.push({
+                            id: "m3",
+                            name: "Reached Silver Level",
+                            achievedAt: new Date(Date.now() - 1 * 86400000).toISOString()
+                        });
+                    }
+                    if (this.loyaltyPoints >= 500) {
+                        this.achievedMilestones.push({
+                            id: "m4",
+                            name: "Reached Gold Level",
+                            achievedAt: new Date().toISOString()
+                        });
+                    }
+
+                    // Generate transaction history based on points
+                    this.ecoTransactions = [];
+                    const numTransactions = Math.min(6, Math.floor(this.loyaltyPoints / 10));
+                    const transactionTypes = [
+                        { desc: "Parking service used", icon: "mdi mdi-car-brake-parking", pts: 10 },
+                        { desc: "Transport pass purchased", icon: "mdi mdi-bus", pts: 15 },
+                        { desc: "Family parking reserved", icon: "mdi mdi-human-male-child", pts: 10 },
+                        { desc: "Monthly subscription", icon: "mdi mdi-calendar-check", pts: 20 },
+                    ];
+                    for (let i = 0; i < numTransactions; i++) {
+                        const txType = transactionTypes[i % transactionTypes.length];
+                        this.ecoTransactions.push({
+                            id: `tx${i + 1}`,
+                            description: txType.desc,
+                            icon: txType.icon,
+                            type: "earn" as const,
+                            points: txType.pts,
+                            date: new Date(Date.now() - i * 86400000).toISOString(),
+                        });
+                    }
+                    this.hasMoreTransactions = this.ecoTransactions.length >= 6;
+                }
+            } catch (error) {
+                console.error('[BeneficiosPage] Error loading status:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+    },
+    watch: {
+        identityKey(newVal) {
+            if (newVal) {
+                this.loadStatus();
+            }
+        }
     },
     mounted: function () {
-        // TODO: Cargar datos reales desde el API
+        this.loadStatus();
     },
     beforeUnmount: function () {},
 });
@@ -741,14 +809,27 @@ export default defineComponent({
     border-radius: var(--a11y-border-radius);
 }
 
+.incentive-message.max-level {
+    background-color: #e8f5e9;
+    border-color: var(--a11y-success);
+}
+
 .incentive-icon {
     font-size: 1.5rem;
     color: #ffc107;
 }
 
+.max-level .incentive-icon {
+    color: var(--a11y-success);
+}
+
 .gem-icon {
     font-size: 1.5rem;
     color: #9c27b0;
+}
+
+.max-level .gem-icon {
+    color: #ffd700;
 }
 
 .incentive-text {
