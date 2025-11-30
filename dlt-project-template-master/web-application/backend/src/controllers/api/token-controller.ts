@@ -1,3 +1,5 @@
+// Reserved for license
+
 "use strict";
 
 import Express from "express";
@@ -8,7 +10,24 @@ import { UsedBsvTransaction } from "../../models/tokens/used-bsv-transaction";
 import { DataFilter } from "tsbean-orm";
 import { BsvService } from "../../services/bsv-service";
 import { createRandomUID } from "../../utils/text-utils";
+import { 
+    BAD_REQUEST, 
+    NOT_FOUND, 
+    INTERNAL_SERVER_ERROR,
+    CONFLICT,
+    PAYMENT_REQUIRED,
+    ensureObjectBody, 
+    noCache, 
+    sendApiError, 
+    sendApiResult, 
+    sendApiSuccess 
+} from "../../utils/http-utils";
 
+/**
+ * Token API Controller
+ * Manages token creation, minting, transfers, and economy operations
+ * @group tokens
+ */
 export class TokenController extends Controller {
     private tokenService: TokenService;
 
@@ -17,66 +36,171 @@ export class TokenController extends Controller {
         this.tokenService = TokenService.getInstance();
     }
 
-    public registerAPI(baseUrl: string, app: Express.Application) {
-        const router = Express.Router();
+    public registerAPI(prefix: string, application: Express.Express): void {
+        // Token CRUD
+        application.post(prefix + "/tokens/create", ensureObjectBody(this.createToken.bind(this)));
+        application.post(prefix + "/tokens/confirm-genesis", ensureObjectBody(this.confirmGenesis.bind(this)));
+        application.post(prefix + "/tokens/create-service-token", ensureObjectBody(this.createServiceToken.bind(this)));
 
-        router.post('/create', this.createToken.bind(this));
-        router.post('/confirm-genesis', this.confirmGenesis.bind(this));
+        // Minting
+        application.post(prefix + "/tokens/:tokenId/mint", ensureObjectBody(this.mintToken.bind(this)));
+        application.post(prefix + "/tokens/confirm-mint", ensureObjectBody(this.confirmMint.bind(this)));
 
-        // NEW: Create service token (backend creates and owns the token)
-        router.post('/create-service-token', this.createServiceToken.bind(this));
+        // Transfers
+        application.post(prefix + "/tokens/:tokenId/transfer", ensureObjectBody(this.transferToken.bind(this)));
+        application.post(prefix + "/tokens/:tokenId/execute-transfer", ensureObjectBody(this.executeTransfer.bind(this)));
+        application.post(prefix + "/tokens/confirm-transfer", ensureObjectBody(this.confirmTransfer.bind(this)));
 
-        router.post('/:tokenId/mint', this.mintToken.bind(this));
-        router.post('/confirm-mint', this.confirmMint.bind(this));
+        // Queries
+        application.get(prefix + "/tokens/my-tokens", noCache(this.getMyTokens.bind(this)));
+        application.get(prefix + "/tokens/my-balances", noCache(this.getMyBalances.bind(this)));
+        application.get(prefix + "/tokens/service-tokens", noCache(this.getServiceTokens.bind(this)));
+        application.get(prefix + "/tokens/all", noCache(this.getAllTokens.bind(this)));
 
-        router.post('/:tokenId/transfer', this.transferToken.bind(this));
-        router.post('/:tokenId/execute-transfer', this.executeTransfer.bind(this));
-        router.post('/confirm-transfer', this.confirmTransfer.bind(this));
+        // Economy endpoints
+        application.post(prefix + "/tokens/economy/init", ensureObjectBody(this.initEconomyTokens.bind(this)));
+        application.post(prefix + "/tokens/economy/purchase", ensureObjectBody(this.purchaseServiceToken.bind(this)));
+        application.post(prefix + "/tokens/economy/play", ensureObjectBody(this.playGame.bind(this)));
+        application.post(prefix + "/tokens/economy/buy-credits", ensureObjectBody(this.buyCredits.bind(this)));
+        application.post(prefix + "/tokens/economy/buy-credits-x402", ensureObjectBody(this.buyCreditsX402.bind(this)));
+        application.get(prefix + "/tokens/economy/balance/:userId", noCache(this.getEconomyBalance.bind(this)));
+        application.get(prefix + "/tokens/economy/balance", noCache(this.getMyEconomyBalance.bind(this)));
 
-        router.get('/my-tokens', this.getMyTokens.bind(this)); // Tokens I created
-        router.get('/my-balances', this.getMyBalances.bind(this)); // Tokens I hold
-        router.get('/service-tokens', this.getServiceTokens.bind(this)); // Tokens created by backend
-        router.get('/all', this.getAllTokens.bind(this));
+        // BSV Purchase
+        application.post(prefix + "/tokens/buy-with-bsv", ensureObjectBody(this.buyWithBsv.bind(this)));
 
-        // ==========================================
-        // HACKATHON ECONOMY ENDPOINTS
-        // ==========================================
-        router.post('/economy/init', this.initEconomyTokens.bind(this));
-        router.post('/economy/purchase', this.purchaseServiceToken.bind(this));
-        router.post('/economy/play', this.playGame.bind(this));
-        router.post('/economy/buy-credits', this.buyCredits.bind(this));
-        router.post('/economy/buy-credits-x402', this.buyCreditsX402.bind(this));
-        router.get('/economy/balance/:userId', this.getEconomyBalance.bind(this));
-        router.get('/economy/balance', this.getMyEconomyBalance.bind(this));
-
-        // BSV Purchase endpoint - validates BSV transaction and grants SERVICE tokens
-        router.post('/buy-with-bsv', this.buyWithBsv.bind(this));
-
-        router.get('/:tokenId', this.getToken.bind(this));
-
-        app.use(baseUrl + '/tokens', router);
+        // Single token query (must be last due to :tokenId param)
+        application.get(prefix + "/tokens/:tokenId", noCache(this.getToken.bind(this)));
     }
 
-    /**
-     * Create a service token - Backend wallet creates and owns the token
-     * This is used for municipal services where the backend manages tokens
-     */
-    private async createServiceToken(req: Express.Request, res: Express.Response) {
-        try {
-            const { name, symbol, decimals, maxSupply, metadata } = req.body;
+    // ==========================================
+    // TYPE DEFINITIONS FOR SWAGGER
+    // ==========================================
 
-            if (!name || !symbol) {
-                res.status(400).json({ error: 'Name and symbol are required' });
+    /**
+     * @typedef CreateTokenBody
+     * @property {string} name.required - Token name
+     * @property {string} symbol.required - Token symbol (e.g., "SVC")
+     * @property {integer} decimals - Decimal places (default: 2)
+     * @property {integer} maxSupply - Maximum supply (0 = unlimited)
+     * @property {object} metadata - Additional metadata
+     */
+
+    /**
+     * @typedef TokenResponse
+     * @property {string} tokenId.required - Token ID
+     * @property {string} name.required - Token name
+     * @property {string} symbol.required - Token symbol
+     * @property {integer} decimals - Decimal places
+     * @property {integer} maxSupply - Maximum supply
+     */
+
+    /**
+     * @typedef TokenErrorResponse
+     * @property {string} code.required - Error code:
+     *  - MISSING_IDENTITY_KEY: Identity key header required
+     *  - MISSING_FIELDS: Required fields missing
+     *  - TOKEN_NOT_FOUND: Token does not exist
+     *  - TXID_ALREADY_USED: Transaction already processed
+     *  - INSUFFICIENT_BALANCE: Not enough tokens
+     */
+
+    /**
+     * @typedef EconomyBalanceResponse
+     * @property {string} userId.required - User identity key
+     * @property {object} balances.required - Token balances
+     */
+
+    // ==========================================
+    // TOKEN CRUD ENDPOINTS
+    // ==========================================
+
+    /**
+     * Create a new token
+     * Binding: CreateToken
+     * @route POST /tokens/create
+     * @group tokens
+     * @param {CreateTokenBody.model} request.body.required - Token data
+     * @returns {TokenResponse.model} 200 - Token created
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
+     */
+    private async createToken(request: Express.Request, response: Express.Response) {
+        try {
+            const { name, symbol, decimals, maxSupply, metadata } = request.body;
+            const creatorIdentityKey = request.headers['x-bsv-identity-key'] as string;
+
+            if (!creatorIdentityKey) {
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY_KEY", "Missing identity key header");
                 return;
             }
 
-            // Use backend's BSV wallet to create the token
+            const result = await this.tokenService.createToken(creatorIdentityKey, name, symbol, decimals, maxSupply, metadata);
+            const tempTokenId = `temp_${Date.now()}`;
+
+            sendApiResult(request, response, {
+                action: result.action,
+                tokenId: tempTokenId,
+                name,
+                symbol,
+                decimals,
+                maxSupply
+            });
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TOKEN_ERROR", e.message);
+        }
+    }
+
+    /**
+     * Confirm token genesis transaction
+     * Binding: ConfirmGenesis
+     * @route POST /tokens/confirm-genesis
+     * @group tokens
+     * @param {object} request.body.required - Genesis data with txid and vout
+     * @returns {TokenResponse.model} 200 - Token confirmed
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
+     */
+    private async confirmGenesis(request: Express.Request, response: Express.Response) {
+        try {
+            const { txid, vout, name, symbol, decimals, maxSupply, metadata } = request.body;
+            const creatorIdentityKey = request.headers['x-bsv-identity-key'] as string;
+
+            request.logger.info('[confirmGenesis] Saving token', { name, symbol, txid, vout });
+
+            const token = await this.tokenService.confirmGenesis(txid, vout, creatorIdentityKey, name, symbol, decimals, maxSupply, metadata);
+            
+            request.logger.info('[confirmGenesis] Token saved', { tokenId: token.id });
+            sendApiResult(request, response, { tokenId: token.id });
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TOKEN_ERROR", e.message);
+        }
+    }
+
+    /**
+     * Create a service token owned by backend
+     * Binding: CreateServiceToken
+     * @route POST /tokens/create-service-token
+     * @group tokens
+     * @param {CreateTokenBody.model} request.body.required - Token data
+     * @returns {TokenResponse.model} 200 - Service token created
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     */
+    private async createServiceToken(request: Express.Request, response: Express.Response) {
+        try {
+            const { name, symbol, decimals, maxSupply, metadata } = request.body;
+
+            if (!name || !symbol) {
+                sendApiError(request, response, BAD_REQUEST, "MISSING_FIELDS", "Name and symbol are required");
+                return;
+            }
+
             const bsvService = BsvService.getInstance();
             await bsvService.ready();
-
             const backendIdentityKey = bsvService.getIdentityKey();
 
-            // Create the token using the new createServiceToken method
             const result = await this.tokenService.createServiceToken(
                 name,
                 symbol,
@@ -86,9 +210,9 @@ export class TokenController extends Controller {
                 backendIdentityKey
             );
 
-            console.log('[createServiceToken] Token created:', result.tokenId);
+            request.logger.info('[createServiceToken] Token created', { tokenId: result.tokenId });
 
-            res.json({
+            sendApiResult(request, response, {
                 success: true,
                 tokenId: result.tokenId,
                 txid: result.txid,
@@ -99,182 +223,230 @@ export class TokenController extends Controller {
                 creatorIdentityKey: backendIdentityKey
             });
         } catch (e: any) {
-            console.error('[createServiceToken] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TOKEN_ERROR", e.message);
         }
     }
 
-    private async createToken(req: Express.Request, res: Express.Response) {
+    // ==========================================
+    // MINTING ENDPOINTS
+    // ==========================================
+
+    /**
+     * Prepare mint action for a token
+     * Binding: MintToken
+     * @route POST /tokens/{tokenId}/mint
+     * @group tokens
+     * @param {string} tokenId.path.required - Token ID
+     * @param {object} request.body.required - Mint data with recipientIdentityKey and amount
+     * @returns {object} 200 - Mint action prepared
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
+     */
+    private async mintToken(request: Express.Request, response: Express.Response) {
         try {
-            const { name, symbol, decimals, maxSupply, metadata } = req.body;
-            const creatorIdentityKey = req.headers['x-bsv-identity-key'] as string;
-
-            if (!creatorIdentityKey) {
-                res.status(400).json({ error: 'Missing identity key' });
-                return;
-            }
-
-            const result = await this.tokenService.createToken(creatorIdentityKey, name, symbol, decimals, maxSupply, metadata);
-
-            // Generate a temporary tokenId that will be replaced with the actual genesis txid.vout
-            const tempTokenId = `temp_${Date.now()}`;
-
-            res.json({
-                action: result.action,
-                tokenId: tempTokenId,
-                name,
-                symbol,
-                decimals,
-                maxSupply
-            });
-        } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    private async confirmGenesis(req: Express.Request, res: Express.Response) {
-        try {
-            const { txid, vout, name, symbol, decimals, maxSupply, metadata } = req.body;
-            const creatorIdentityKey = req.headers['x-bsv-identity-key'] as string;
-
-            console.log('[confirmGenesis] Saving token with creatorIdentityKey:', creatorIdentityKey);
-            console.log('[confirmGenesis] Token details:', { name, symbol, txid, vout });
-
-            const token = await this.tokenService.confirmGenesis(txid, vout, creatorIdentityKey, name, symbol, decimals, maxSupply, metadata);
-            console.log('[confirmGenesis] Token saved with ID:', token.id);
-            res.json({ tokenId: token.id });
-        } catch (e: any) {
-            console.error('[confirmGenesis] Error:', e);
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    private async mintToken(req: Express.Request, res: Express.Response) {
-        try {
-            const { tokenId } = req.params;
-            const { recipientIdentityKey, amount } = req.body;
-            const creatorIdentityKey = req.headers['x-bsv-identity-key'] as string;
+            const { tokenId } = request.params;
+            const { recipientIdentityKey, amount } = request.body;
+            const creatorIdentityKey = request.headers['x-bsv-identity-key'] as string;
 
             const result = await this.tokenService.prepareMintAction(tokenId, creatorIdentityKey, recipientIdentityKey, amount);
-            res.json(result);
+            sendApiResult(request, response, result);
         } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    private async confirmMint(req: Express.Request, res: Express.Response) {
-        try {
-            const { tokenId, txid, vout, recipientIdentityKey, amount } = req.body;
-
-            await this.tokenService.confirmMint(tokenId, txid, vout, recipientIdentityKey, amount);
-            res.json({ success: true });
-        } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    private async transferToken(req: Express.Request, res: Express.Response) {
-        try {
-            const { tokenId } = req.params;
-            const { recipientIdentityKey, amount } = req.body;
-            const senderIdentityKey = req.headers['x-bsv-identity-key'] as string;
-
-            const result = await this.tokenService.prepareTransferAction(tokenId, senderIdentityKey, recipientIdentityKey, amount);
-            res.json(result);
-        } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    private async executeTransfer(req: Express.Request, res: Express.Response) {
-        try {
-            const { tokenId } = req.params;
-            const { recipientIdentityKey, amount } = req.body;
-            const senderIdentityKey = req.headers['x-bsv-identity-key'] as string;
-
-            if (!senderIdentityKey) {
-                res.status(400).json({ error: 'Missing identity key' });
-                return;
-            }
-
-            const result = await this.tokenService.executeTransfer(tokenId, senderIdentityKey, recipientIdentityKey, amount);
-            res.json(result);
-        } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    private async confirmTransfer(req: Express.Request, res: Express.Response) {
-        try {
-            const { tokenId, txid, inputs, outputs } = req.body;
-            // inputs: { txid, vout }[]
-            // outputs: { vout, amount, recipient }[]
-
-            await this.tokenService.confirmTransfer(tokenId, txid, inputs, outputs);
-            res.json({ success: true });
-        } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    private async getMyTokens(req: Express.Request, res: Express.Response) {
-        try {
-            const identityKey = req.headers['x-bsv-identity-key'] as string;
-            console.log('[getMyTokens] Identity key from header:', identityKey);
-            if (!identityKey) {
-                res.status(400).json({ error: 'Missing identity key' });
-                return;
-            }
-            const tokens = await this.tokenService.getTokensByCreator(identityKey);
-            console.log('[getMyTokens] Found tokens:', tokens.length, tokens);
-            res.json(tokens);
-        } catch (e: any) {
-            console.error('[getMyTokens] Error:', e);
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    private async getMyBalances(req: Express.Request, res: Express.Response) {
-        try {
-            const identityKey = req.headers['x-bsv-identity-key'] as string;
-            console.log('[getMyBalances] Identity key from header:', identityKey);
-            if (!identityKey) {
-                res.status(400).json({ error: 'Missing identity key' });
-                return;
-            }
-            const tokens = await this.tokenService.getTokensByHolder(identityKey);
-            console.log('[getMyBalances] Found tokens:', tokens.length, tokens);
-            res.json(tokens);
-        } catch (e: any) {
-            console.error('[getMyBalances] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "MINT_ERROR", e.message);
         }
     }
 
     /**
-     * Get service tokens - tokens created by the backend wallet
-     * These are tokens for municipal services that the admin can manage
+     * Confirm mint transaction
+     * Binding: ConfirmMint
+     * @route POST /tokens/confirm-mint
+     * @group tokens
+     * @param {object} request.body.required - Mint confirmation data
+     * @returns {void} 200 - Mint confirmed
+     * @returns {TokenErrorResponse.model} 400 - Bad request
      */
-    private async getServiceTokens(req: Express.Request, res: Express.Response) {
+    private async confirmMint(request: Express.Request, response: Express.Response) {
+        try {
+            const { tokenId, txid, vout, recipientIdentityKey, amount } = request.body;
+
+            await this.tokenService.confirmMint(tokenId, txid, vout, recipientIdentityKey, amount);
+            sendApiSuccess(request, response);
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "MINT_ERROR", e.message);
+        }
+    }
+
+    // ==========================================
+    // TRANSFER ENDPOINTS
+    // ==========================================
+
+    /**
+     * Prepare transfer action
+     * Binding: TransferToken
+     * @route POST /tokens/{tokenId}/transfer
+     * @group tokens
+     * @param {string} tokenId.path.required - Token ID
+     * @param {object} request.body.required - Transfer data
+     * @returns {object} 200 - Transfer action prepared
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
+     */
+    private async transferToken(request: Express.Request, response: Express.Response) {
+        try {
+            const { tokenId } = request.params;
+            const { recipientIdentityKey, amount } = request.body;
+            const senderIdentityKey = request.headers['x-bsv-identity-key'] as string;
+
+            const result = await this.tokenService.prepareTransferAction(tokenId, senderIdentityKey, recipientIdentityKey, amount);
+            sendApiResult(request, response, result);
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TRANSFER_ERROR", e.message);
+        }
+    }
+
+    /**
+     * Execute transfer directly
+     * Binding: ExecuteTransfer
+     * @route POST /tokens/{tokenId}/execute-transfer
+     * @group tokens
+     * @param {string} tokenId.path.required - Token ID
+     * @param {object} request.body.required - Transfer data
+     * @returns {object} 200 - Transfer executed
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
+     */
+    private async executeTransfer(request: Express.Request, response: Express.Response) {
+        try {
+            const { tokenId } = request.params;
+            const { recipientIdentityKey, amount } = request.body;
+            const senderIdentityKey = request.headers['x-bsv-identity-key'] as string;
+
+            if (!senderIdentityKey) {
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY_KEY", "Missing identity key");
+                return;
+            }
+
+            const result = await this.tokenService.executeTransfer(tokenId, senderIdentityKey, recipientIdentityKey, amount);
+            sendApiResult(request, response, result);
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TRANSFER_ERROR", e.message);
+        }
+    }
+
+    /**
+     * Confirm transfer transaction
+     * Binding: ConfirmTransfer
+     * @route POST /tokens/confirm-transfer
+     * @group tokens
+     * @param {object} request.body.required - Transfer confirmation data
+     * @returns {void} 200 - Transfer confirmed
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     */
+    private async confirmTransfer(request: Express.Request, response: Express.Response) {
+        try {
+            const { tokenId, txid, inputs, outputs } = request.body;
+            await this.tokenService.confirmTransfer(tokenId, txid, inputs, outputs);
+            sendApiSuccess(request, response);
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TRANSFER_ERROR", e.message);
+        }
+    }
+
+    // ==========================================
+    // QUERY ENDPOINTS
+    // ==========================================
+
+    /**
+     * Get tokens created by current user
+     * Binding: GetMyTokens
+     * @route GET /tokens/my-tokens
+     * @group tokens
+     * @returns {Array.<TokenResponse>} 200 - List of tokens
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
+     */
+    private async getMyTokens(request: Express.Request, response: Express.Response) {
+        try {
+            const identityKey = request.headers['x-bsv-identity-key'] as string;
+            
+            if (!identityKey) {
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY_KEY", "Missing identity key");
+                return;
+            }
+
+            const tokens = await this.tokenService.getTokensByCreator(identityKey);
+            request.logger.info('[getMyTokens] Found tokens', { count: tokens.length });
+            sendApiResult(request, response, tokens);
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TOKEN_ERROR", e.message);
+        }
+    }
+
+    /**
+     * Get token balances for current user
+     * Binding: GetMyBalances
+     * @route GET /tokens/my-balances
+     * @group tokens
+     * @returns {Array.<object>} 200 - List of balances
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
+     */
+    private async getMyBalances(request: Express.Request, response: Express.Response) {
+        try {
+            const identityKey = request.headers['x-bsv-identity-key'] as string;
+            
+            if (!identityKey) {
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY_KEY", "Missing identity key");
+                return;
+            }
+
+            const tokens = await this.tokenService.getTokensByHolder(identityKey);
+            request.logger.info('[getMyBalances] Found tokens', { count: tokens.length });
+            sendApiResult(request, response, tokens);
+        } catch (e: any) {
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TOKEN_ERROR", e.message);
+        }
+    }
+
+    /**
+     * Get service tokens created by backend
+     * Binding: GetServiceTokens
+     * @route GET /tokens/service-tokens
+     * @group tokens
+     * @returns {Array.<TokenResponse>} 200 - List of service tokens
+     */
+    private async getServiceTokens(request: Express.Request, response: Express.Response) {
         try {
             const bsvService = BsvService.getInstance();
             await bsvService.ready();
             const backendIdentityKey = bsvService.getIdentityKey();
-            
-            console.log('[getServiceTokens] Backend identity key:', backendIdentityKey);
+
             const tokens = await this.tokenService.getTokensByCreator(backendIdentityKey);
-            console.log('[getServiceTokens] Found service tokens:', tokens.length);
-            res.json(tokens);
+            request.logger.info('[getServiceTokens] Found service tokens', { count: tokens.length });
+            sendApiResult(request, response, tokens);
         } catch (e: any) {
-            console.error('[getServiceTokens] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TOKEN_ERROR", e.message);
         }
     }
 
-    private async getAllTokens(req: Express.Request, res: Express.Response) {
+    /**
+     * Get all tokens in the system
+     * Binding: GetAllTokens
+     * @route GET /tokens/all
+     * @group tokens
+     * @returns {object} 200 - List of all tokens
+     */
+    private async getAllTokens(request: Express.Request, response: Express.Response) {
         try {
             const tokensRaw = await Token.finder.find(DataFilter.any());
-            // Convert to plain objects
             const tokens = tokensRaw.map(token => ({
                 id: token.id,
                 name: token.name,
@@ -288,39 +460,55 @@ export class TokenController extends Controller {
                 genesisTxid: token.genesisTxid,
                 genesisVout: token.genesisVout
             }));
-            res.json({
+            
+            sendApiResult(request, response, {
                 tokens,
                 disclaimer: "This list only includes tokens indexed by this application overlay."
             });
         } catch (e: any) {
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TOKEN_ERROR", e.message);
         }
     }
 
-    private async getToken(req: Express.Request, res: Express.Response) {
+    /**
+     * Get a specific token by ID
+     * Binding: GetToken
+     * @route GET /tokens/{tokenId}
+     * @group tokens
+     * @param {string} tokenId.path.required - Token ID
+     * @returns {TokenResponse.model} 200 - Token details
+     * @returns {void} 404 - Token not found
+     */
+    private async getToken(request: Express.Request, response: Express.Response) {
         try {
-            const { tokenId } = req.params;
+            const { tokenId } = request.params;
             const token = await Token.finder.findByKey(tokenId);
+            
             if (!token) {
-                res.status(404).json({ error: "Token not found" });
+                sendApiError(request, response, NOT_FOUND, "TOKEN_NOT_FOUND", "Token not found");
                 return;
             }
-            res.json(token);
+            
+            sendApiResult(request, response, token);
         } catch (e: any) {
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "TOKEN_ERROR", e.message);
         }
     }
 
     // ==========================================
-    // HACKATHON ECONOMY ENDPOINTS
+    // ECONOMY ENDPOINTS
     // ==========================================
 
     /**
-     * Initialize the economy tokens (SERVICE, GAME, SERVICE_TOKEN, LOYALTY_TOKEN)
-     * Should be called once to set up the hackathon economy
-     * @route POST /api/v1/tokens/economy/init
+     * Initialize economy tokens (SERVICE, GAME, SERVICE_TOKEN, LOYALTY_TOKEN)
+     * Binding: InitEconomyTokens
+     * @route POST /tokens/economy/init
+     * @group tokens-economy
+     * @returns {object} 200 - Economy tokens initialized
      */
-    private async initEconomyTokens(req: Express.Request, res: Express.Response) {
+    private async initEconomyTokens(request: Express.Request, response: Express.Response) {
         try {
             const bsvService = BsvService.getInstance();
             await bsvService.ready();
@@ -328,19 +516,12 @@ export class TokenController extends Controller {
 
             const results: any[] = [];
 
-            // ==========================================
-            // LEGACY TOKENS (for backward compatibility)
-            // ==========================================
-
-            // Check and create SERVICE token (legacy)
+            // LEGACY TOKENS
             const serviceToken = await this.tokenService.getTokenBySymbol('SERVICE');
             if (!serviceToken) {
-                console.log('[initEconomyTokens] Creating SERVICE token...');
+                request.logger.info('[initEconomyTokens] Creating SERVICE token...');
                 const serviceResult = await this.tokenService.createServiceToken(
-                    'Service Token',
-                    'SERVICE',
-                    0, // No decimals for simplicity
-                    0, // Unlimited supply
+                    'Service Token', 'SERVICE', 0, 0,
                     { description: 'Token de servicio para el hackathon. Se obtiene comprando con BSV.' },
                     backendIdentityKey
                 );
@@ -349,15 +530,11 @@ export class TokenController extends Controller {
                 results.push({ token: 'SERVICE', created: false, tokenId: serviceToken.id, message: 'Already exists' });
             }
 
-            // Check and create GAME token (legacy)
             const gameToken = await this.tokenService.getTokenBySymbol('GAME');
             if (!gameToken) {
-                console.log('[initEconomyTokens] Creating GAME token...');
+                request.logger.info('[initEconomyTokens] Creating GAME token...');
                 const gameResult = await this.tokenService.createServiceToken(
-                    'Game Token',
-                    'GAME',
-                    0, // No decimals for simplicity
-                    0, // Unlimited supply
+                    'Game Token', 'GAME', 0, 0,
                     { description: 'Token de juego para el hackathon. Se obtiene jugando.' },
                     backendIdentityKey
                 );
@@ -366,19 +543,12 @@ export class TokenController extends Controller {
                 results.push({ token: 'GAME', created: false, tokenId: gameToken.id, message: 'Already exists' });
             }
 
-            // ==========================================
             // NEW LOYALTY SYSTEM TOKENS
-            // ==========================================
-
-            // Check and create SERVICE_TOKEN (for paying services)
             const serviceTokenNew = await this.tokenService.getTokenBySymbol('SERVICE_TOKEN');
             if (!serviceTokenNew) {
-                console.log('[initEconomyTokens] Creating SERVICE_TOKEN...');
+                request.logger.info('[initEconomyTokens] Creating SERVICE_TOKEN...');
                 const serviceTokenResult = await this.tokenService.createServiceToken(
-                    'Service Payment Token',
-                    'SERVICE_TOKEN',
-                    0, // No decimals for simplicity
-                    0, // Unlimited supply
+                    'Service Payment Token', 'SERVICE_TOKEN', 0, 0,
                     { description: 'Token para pagar servicios municipales. Se obtiene comprando con BSV.' },
                     backendIdentityKey
                 );
@@ -387,15 +557,11 @@ export class TokenController extends Controller {
                 results.push({ token: 'SERVICE_TOKEN', created: false, tokenId: serviceTokenNew.id, message: 'Already exists' });
             }
 
-            // Check and create LOYALTY_TOKEN (rewards for using services)
             const loyaltyToken = await this.tokenService.getTokenBySymbol('LOYALTY_TOKEN');
             if (!loyaltyToken) {
-                console.log('[initEconomyTokens] Creating LOYALTY_TOKEN...');
+                request.logger.info('[initEconomyTokens] Creating LOYALTY_TOKEN...');
                 const loyaltyResult = await this.tokenService.createServiceToken(
-                    'Loyalty Reward Token',
-                    'LOYALTY_TOKEN',
-                    0, // No decimals for simplicity
-                    0, // Unlimited supply
+                    'Loyalty Reward Token', 'LOYALTY_TOKEN', 0, 0,
                     { description: 'Token de fidelidad. Se obtiene al usar servicios municipales.' },
                     backendIdentityKey
                 );
@@ -404,48 +570,47 @@ export class TokenController extends Controller {
                 results.push({ token: 'LOYALTY_TOKEN', created: false, tokenId: loyaltyToken.id, message: 'Already exists' });
             }
 
-            res.json({
+            sendApiResult(request, response, {
                 success: true,
                 message: 'Economy tokens initialized',
                 tokens: results
             });
         } catch (e: any) {
-            console.error('[initEconomyTokens] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "ECONOMY_ERROR", e.message);
         }
     }
 
     /**
      * Purchase SERVICE tokens with BSV
-     * User pays BSV -> Receives SERVICE tokens
-     * @route POST /api/v1/tokens/economy/purchase
-     * @body { userId: string, amount: number, bsvTxid?: string }
+     * Binding: PurchaseServiceToken
+     * @route POST /tokens/economy/purchase
+     * @group tokens-economy
+     * @param {object} request.body.required - Purchase data with amount
+     * @returns {object} 200 - Tokens purchased
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
      */
-    private async purchaseServiceToken(req: Express.Request, res: Express.Response) {
+    private async purchaseServiceToken(request: Express.Request, response: Express.Response) {
         try {
-            const { userId, amount, bsvTxid } = req.body;
-            
-            // Allow userId from body or header
-            const userIdentity = userId || req.headers['x-bsv-identity-key'] as string;
+            const { userId, amount, bsvTxid } = request.body;
+            const userIdentity = userId || request.headers['x-bsv-identity-key'] as string;
 
             if (!userIdentity) {
-                res.status(400).json({ error: 'User ID required (userId in body or x-bsv-identity-key header)' });
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY", "User ID required");
                 return;
             }
 
             if (!amount || amount <= 0) {
-                res.status(400).json({ error: 'Amount must be a positive number' });
+                sendApiError(request, response, BAD_REQUEST, "INVALID_AMOUNT", "Amount must be positive");
                 return;
             }
 
-            // In a real implementation, we would verify the BSV payment here
-            // For the hackathon, we trust the request and mint tokens
-            console.log('[purchaseServiceToken] Processing purchase:', { userIdentity, amount, bsvTxid });
+            request.logger.info('[purchaseServiceToken] Processing:', { userIdentity: userIdentity.substring(0, 16), amount });
 
-            // Add SERVICE tokens to user
             const result = await this.tokenService.addBalance(userIdentity, 'SERVICE', amount);
 
-            res.json({
+            sendApiResult(request, response, {
                 success: true,
                 message: `Purchased ${amount} SERVICE tokens`,
                 userId: userIdentity,
@@ -455,79 +620,82 @@ export class TokenController extends Controller {
                 bsvPaymentTxid: bsvTxid || null
             });
         } catch (e: any) {
-            console.error('[purchaseServiceToken] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "PURCHASE_ERROR", e.message);
         }
     }
 
     /**
-     * Play game - Spend SERVICE tokens, earn GAME tokens
-     * @route POST /api/v1/tokens/economy/play
-     * @body { userId: string, serviceCost: number, gameReward: number }
+     * Play game - spend SERVICE tokens, earn GAME tokens
+     * Binding: PlayGame
+     * @route POST /tokens/economy/play
+     * @group tokens-economy
+     * @param {object} request.body.required - Game data
+     * @returns {object} 200 - Game result
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
      */
-    private async playGame(req: Express.Request, res: Express.Response) {
+    private async playGame(request: Express.Request, response: Express.Response) {
         try {
-            const { userId, serviceCost, gameReward } = req.body;
-            
-            // Allow userId from body or header
-            const userIdentity = userId || req.headers['x-bsv-identity-key'] as string;
+            const { userId, serviceCost, gameReward } = request.body;
+            const userIdentity = userId || request.headers['x-bsv-identity-key'] as string;
 
             if (!userIdentity) {
-                res.status(400).json({ error: 'User ID required (userId in body or x-bsv-identity-key header)' });
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY", "User ID required");
                 return;
             }
 
-            const cost = serviceCost || 1; // Default cost: 1 SERVICE token
-            const reward = gameReward || 10; // Default reward: 10 GAME tokens
+            const cost = serviceCost || 1;
+            const reward = gameReward || 10;
 
             if (cost <= 0 || reward <= 0) {
-                res.status(400).json({ error: 'Cost and reward must be positive numbers' });
+                sendApiError(request, response, BAD_REQUEST, "INVALID_AMOUNT", "Cost and reward must be positive");
                 return;
             }
 
-            console.log('[playGame] Processing game:', { userIdentity, cost, reward });
+            request.logger.info('[playGame] Processing:', { userIdentity: userIdentity.substring(0, 16), cost, reward });
 
-            // Step 1: Burn SERVICE tokens (payment to play)
             const burnResult = await this.tokenService.burnBalance(userIdentity, 'SERVICE', cost);
-
-            // Step 2: Mint GAME tokens (reward for playing)
             const mintResult = await this.tokenService.addBalance(userIdentity, 'GAME', reward);
-
-            // Get updated balances
             const balances = await this.tokenService.getEconomyBalances(userIdentity);
 
-            res.json({
+            sendApiResult(request, response, {
                 success: true,
                 message: `Played game! Spent ${cost} SERVICE, earned ${reward} GAME tokens`,
                 userId: userIdentity,
                 serviceCost: cost,
                 gameReward: reward,
-                balances: balances,
+                balances,
                 burnTxid: burnResult.txid,
                 mintTxid: mintResult.txid
             });
         } catch (e: any) {
-            console.error('[playGame] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "GAME_ERROR", e.message);
         }
     }
 
     /**
      * Get economy balance for a specific user
-     * @route GET /api/v1/tokens/economy/balance/:userId
+     * Binding: GetEconomyBalance
+     * @route GET /tokens/economy/balance/{userId}
+     * @group tokens-economy
+     * @param {string} userId.path.required - User identity key
+     * @returns {EconomyBalanceResponse.model} 200 - User balances
+     * @returns {TokenErrorResponse.model} 400 - Bad request
      */
-    private async getEconomyBalance(req: Express.Request, res: Express.Response) {
+    private async getEconomyBalance(request: Express.Request, response: Express.Response) {
         try {
-            const { userId } = req.params;
+            const { userId } = request.params;
 
             if (!userId) {
-                res.status(400).json({ error: 'User ID required' });
+                sendApiError(request, response, BAD_REQUEST, "MISSING_USER_ID", "User ID required");
                 return;
             }
 
             const balances = await this.tokenService.getEconomyBalances(userId);
 
-            res.json({
+            sendApiResult(request, response, {
                 userId,
                 balances: {
                     service: balances.service,
@@ -535,27 +703,32 @@ export class TokenController extends Controller {
                 }
             });
         } catch (e: any) {
-            console.error('[getEconomyBalance] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "BALANCE_ERROR", e.message);
         }
     }
 
     /**
-     * Get economy balance for the current user (from header)
-     * @route GET /api/v1/tokens/economy/balance
+     * Get economy balance for current user
+     * Binding: GetMyEconomyBalance
+     * @route GET /tokens/economy/balance
+     * @group tokens-economy
+     * @returns {EconomyBalanceResponse.model} 200 - User balances
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @security AuthToken
      */
-    private async getMyEconomyBalance(req: Express.Request, res: Express.Response) {
+    private async getMyEconomyBalance(request: Express.Request, response: Express.Response) {
         try {
-            const userId = req.headers['x-bsv-identity-key'] as string;
+            const userId = request.headers['x-bsv-identity-key'] as string;
 
             if (!userId) {
-                res.status(400).json({ error: 'Missing x-bsv-identity-key header' });
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY_KEY", "Missing x-bsv-identity-key header");
                 return;
             }
 
             const balances = await this.tokenService.getEconomyBalances(userId);
 
-            res.json({
+            sendApiResult(request, response, {
                 userId,
                 balances: {
                     service: balances.service,
@@ -563,46 +736,50 @@ export class TokenController extends Controller {
                 }
             });
         } catch (e: any) {
-            console.error('[getMyEconomyBalance] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "BALANCE_ERROR", e.message);
         }
     }
 
-    // Buy SERVICE_TOKEN credits with BSV (TXID)
-    // POST /api/v1/tokens/economy/buy-credits
-    private async buyCredits(req: Express.Request, res: Express.Response) {
+    /**
+     * Buy SERVICE_TOKEN credits with BSV (TXID verification)
+     * Binding: BuyCredits
+     * @route POST /tokens/economy/buy-credits
+     * @group tokens-economy
+     * @param {object} request.body.required - Purchase data with txid
+     * @returns {object} 200 - Credits purchased
+     * @returns {TokenErrorResponse.model} 400 - Bad request
+     * @returns {TokenErrorResponse.model} 409 - TXID already used
+     * @security AuthToken
+     */
+    private async buyCredits(request: Express.Request, response: Express.Response) {
         try {
-            const userIdentity = req.headers['x-bsv-identity-key'] as string;
-            const { txid, tokensRequested, satsPaid } = req.body;
+            const userIdentity = request.headers['x-bsv-identity-key'] as string;
+            const { txid, tokensRequested, satsPaid } = request.body;
 
             if (!userIdentity) {
-                res.status(400).json({ error: 'User identity required' });
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY", "User identity required");
                 return;
             }
 
             if (!txid || txid.length < 64) {
-                res.status(400).json({ error: 'Valid TXID required (64 hex characters)' });
+                sendApiError(request, response, BAD_REQUEST, "INVALID_TXID", "Valid TXID required (64 hex characters)");
                 return;
             }
 
-            // Check if TXID has already been used
             const isUsed = await UsedBsvTransaction.isTxidUsed(txid);
             if (isUsed) {
-                res.status(409).json({
-                    error: 'TXID already used',
-                    message: 'This transaction has already been processed.'
-                });
+                sendApiError(request, response, CONFLICT, "TXID_ALREADY_USED", "This transaction has already been processed");
                 return;
             }
 
             const tokensToGrant = tokensRequested || 50;
 
-            console.log(`[BuyCredits] User ${userIdentity.substring(0, 16)}... buying ${tokensToGrant} tokens`);
+            request.logger.info(`[BuyCredits] User ${userIdentity.substring(0, 16)}... buying ${tokensToGrant} tokens`);
 
-            // Record the TXID as used
             const usedTx = new UsedBsvTransaction({
                 id: `credits-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-                txid: txid,
+                txid,
                 userAddress: userIdentity,
                 satoshisReceived: satsPaid || 100,
                 tokensGranted: tokensToGrant,
@@ -610,14 +787,10 @@ export class TokenController extends Controller {
             });
             await usedTx.insert();
 
-            // Grant SERVICE_TOKEN to user
             const mintResult = await this.tokenService.addBalance(userIdentity, 'SERVICE_TOKEN', tokensToGrant);
-            console.log(`[BuyCredits] Granted ${tokensToGrant} SERVICE_TOKEN. TxID: ${mintResult.txid}`);
-
-            // Get final balance
             const balance = await this.tokenService.getBalanceBySymbol(userIdentity, 'SERVICE_TOKEN');
 
-            res.json({
+            sendApiResult(request, response, {
                 success: true,
                 tokensGranted: tokensToGrant,
                 balance,
@@ -627,59 +800,56 @@ export class TokenController extends Controller {
                     mint: mintResult.txid || null
                 }
             });
-
         } catch (e: any) {
-            console.error('[buyCredits] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "CREDITS_ERROR", e.message);
         }
     }
 
-    // Buy SERVICE_TOKEN credits with x402 wallet payment
-    // POST /api/v1/tokens/economy/buy-credits-x402
-    private async buyCreditsX402(req: Express.Request, res: Express.Response) {
+    /**
+     * Buy SERVICE_TOKEN credits with x402 wallet payment
+     * Binding: BuyCreditsX402
+     * @route POST /tokens/economy/buy-credits-x402
+     * @group tokens-economy
+     * @param {object} request.body.required - Purchase data
+     * @returns {object} 200 - Credits purchased
+     * @returns {void} 402 - Payment required
+     * @security AuthToken
+     */
+    private async buyCreditsX402(request: Express.Request, response: Express.Response) {
         try {
-            const paymentHeader = req.headers['x-bsv-payment'] as string;
-            const userIdentity = req.headers['x-bsv-identity-key'] as string;
-            const { tokensRequested, satsPaid } = req.body;
+            const paymentHeader = request.headers['x-bsv-payment'] as string;
+            const userIdentity = request.headers['x-bsv-identity-key'] as string;
+            const { tokensRequested } = request.body;
 
             if (!paymentHeader) {
-                res.status(402).json({ 
-                    error: 'Payment Required',
-                    message: 'x-bsv-payment header is required' 
-                });
+                sendApiError(request, response, PAYMENT_REQUIRED, "PAYMENT_REQUIRED", "x-bsv-payment header is required");
                 return;
             }
 
             if (!userIdentity) {
-                res.status(400).json({ error: 'User identity required' });
+                sendApiError(request, response, BAD_REQUEST, "MISSING_IDENTITY", "User identity required");
                 return;
             }
 
-            // Parse payment header
             let paymentData: any;
             try {
                 paymentData = JSON.parse(paymentHeader);
             } catch {
-                res.status(400).json({ error: 'Invalid x-bsv-payment header format' });
+                sendApiError(request, response, BAD_REQUEST, "INVALID_PAYMENT_HEADER", "Invalid x-bsv-payment header format");
                 return;
             }
 
             const { senderIdentityKey, amount } = paymentData;
             const payerIdentity = senderIdentityKey || userIdentity;
-
-            console.log(`[BuyCreditsX402] Processing wallet payment for ${payerIdentity.substring(0, 16)}...`);
-            console.log(`[BuyCreditsX402] Amount: ${amount} sats, Tokens: ${tokensRequested}`);
-
             const tokensToGrant = tokensRequested || 50;
 
-            // Grant SERVICE_TOKEN to user
-            const mintResult = await this.tokenService.addBalance(payerIdentity, 'SERVICE_TOKEN', tokensToGrant);
-            console.log(`[BuyCreditsX402] Granted ${tokensToGrant} SERVICE_TOKEN. TxID: ${mintResult.txid}`);
+            request.logger.info(`[BuyCreditsX402] Processing payment for ${payerIdentity.substring(0, 16)}... Amount: ${amount} sats`);
 
-            // Get final balance
+            const mintResult = await this.tokenService.addBalance(payerIdentity, 'SERVICE_TOKEN', tokensToGrant);
             const balance = await this.tokenService.getBalanceBySymbol(payerIdentity, 'SERVICE_TOKEN');
 
-            res.json({
+            sendApiResult(request, response, {
                 success: true,
                 paymentMethod: 'x402',
                 tokensGranted: tokensToGrant,
@@ -689,10 +859,9 @@ export class TokenController extends Controller {
                     mint: mintResult.txid || null
                 }
             });
-
         } catch (e: any) {
-            console.error('[buyCreditsX402] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "CREDITS_ERROR", e.message);
         }
     }
 
@@ -702,119 +871,95 @@ export class TokenController extends Controller {
 
     /**
      * Buy SERVICE tokens with BSV transaction
-     * Validates the BSV txid and grants tokens based on amount
-     * @route POST /api/v1/tokens/buy-with-bsv
-     * @body { txid: string, userAddress: string }
+     * Binding: BuyWithBsv
+     * @route POST /tokens/buy-with-bsv
+     * @group tokens-economy
+     * @param {object} request.body.required - Purchase data with txid and userAddress
+     * @returns {object} 200 - Tokens purchased
+     * @returns {TokenErrorResponse.model} 400 - Bad request
      */
-    private async buyWithBsv(req: Express.Request, res: Express.Response) {
+    private async buyWithBsv(request: Express.Request, response: Express.Response) {
         try {
-            const { txid, userAddress } = req.body;
+            const { txid, userAddress } = request.body;
 
-            // Validate required fields
             if (!txid) {
-                res.status(400).json({ error: 'txid is required' });
+                sendApiError(request, response, BAD_REQUEST, "MISSING_TXID", "txid is required");
                 return;
             }
 
             if (!userAddress) {
-                res.status(400).json({ error: 'userAddress is required' });
+                sendApiError(request, response, BAD_REQUEST, "MISSING_ADDRESS", "userAddress is required");
                 return;
             }
 
-            // Validate txid format (64 hex characters)
             const txidRegex = /^[a-fA-F0-9]{64}$/;
             if (!txidRegex.test(txid)) {
-                res.status(400).json({ error: 'Invalid txid format. Must be 64 hexadecimal characters.' });
+                sendApiError(request, response, BAD_REQUEST, "INVALID_TXID", "Invalid txid format. Must be 64 hexadecimal characters");
                 return;
             }
 
-            // Check if txid has already been used (prevent double-spend)
             const isUsed = await UsedBsvTransaction.isTxidUsed(txid);
             if (isUsed) {
-                res.status(400).json({ error: 'This transaction has already been used to purchase tokens.' });
+                sendApiError(request, response, BAD_REQUEST, "TXID_ALREADY_USED", "This transaction has already been used");
                 return;
             }
 
-            console.log('[buyWithBsv] Processing purchase:', { txid, userAddress });
+            request.logger.info('[buyWithBsv] Processing purchase:', { txid: txid.substring(0, 16), userAddress: userAddress.substring(0, 16) });
 
-            // ==========================================
-            // HACKATHON MODE: Simulate BSV amount
-            // In production, we would query the blockchain
-            // ==========================================
-            const satoshisReceived = 100000; // Default: 0.001 BSV = 100,000 satoshis
+            // HACKATHON MODE: Simulated amount
+            const satoshisReceived = 100000;
             let verificationMethod = 'simulated';
 
-            // Try to get actual transaction from blockchain (optional)
             try {
                 const bsvService = BsvService.getInstance();
                 await bsvService.ready();
-                
-                // Attempt to fetch transaction from WhatOnChain
                 const txHex = await bsvService.getTransaction(txid);
-                
                 if (txHex && txHex.length > 0) {
-                    // Transaction exists on blockchain
-                    // For hackathon, we still use simulated amount
-                    // In production, you would parse the tx to find the actual payment amount
                     verificationMethod = 'blockchain_verified';
-                    console.log('[buyWithBsv] Transaction found on blockchain');
+                    request.logger.info('[buyWithBsv] Transaction found on blockchain');
                 }
             } catch (fetchError: any) {
-                // Transaction not found or API error - continue with simulated amount
-                console.log('[buyWithBsv] Could not fetch tx from blockchain, using simulated amount:', fetchError.message);
-                verificationMethod = 'simulated';
+                request.logger.info('[buyWithBsv] Using simulated amount:', fetchError.message);
             }
 
-            // Calculate tokens to grant
-            // Conversion: 1 satoshi = 0.001 SERVICE token
-            // 100,000 satoshis (0.001 BSV) = 100 SERVICE tokens
             const tokensToGrant = Math.floor(satoshisReceived / 1000);
 
             if (tokensToGrant <= 0) {
-                res.status(400).json({ error: 'Amount too small to grant tokens' });
+                sendApiError(request, response, BAD_REQUEST, "AMOUNT_TOO_SMALL", "Amount too small to grant tokens");
                 return;
             }
 
-            // Grant SERVICE tokens to user
             const mintResult = await this.tokenService.addBalance(userAddress, 'SERVICE', tokensToGrant);
 
-            // Record the transaction as used
             const usedTx = new UsedBsvTransaction({
                 id: createRandomUID(),
-                txid: txid,
-                userAddress: userAddress,
-                satoshisReceived: satoshisReceived,
+                txid,
+                userAddress,
+                satoshisReceived,
                 tokensGranted: tokensToGrant,
                 timestamp: Date.now()
             } as any);
             await usedTx.insert();
 
-            console.log('[buyWithBsv] Purchase successful:', {
+            request.logger.info('[buyWithBsv] Purchase successful:', { txid: txid.substring(0, 16), tokensGranted: tokensToGrant });
+
+            sendApiResult(request, response, {
+                success: true,
                 txid,
                 userAddress,
                 satoshisReceived,
                 tokensGranted: tokensToGrant,
-                verificationMethod
-            });
-
-            res.json({
-                success: true,
-                txid: txid,
-                userAddress: userAddress,
-                satoshisReceived: satoshisReceived,
-                tokensGranted: tokensToGrant,
                 newBalance: mintResult.balance,
                 bsvAnchorTxid: mintResult.txid,
-                verificationMethod: verificationMethod,
+                verificationMethod,
                 conversion: {
                     rate: '1000 satoshis = 1 SERVICE token',
                     bsvAmount: satoshisReceived / 100000000
                 }
             });
-
         } catch (e: any) {
-            console.error('[buyWithBsv] Error:', e);
-            res.status(500).json({ error: e.message });
+            request.logger.error(e);
+            sendApiError(request, response, INTERNAL_SERVER_ERROR, "PURCHASE_ERROR", e.message);
         }
     }
 }
